@@ -1,0 +1,9 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Godot cache and generated export builds
+/PONG/
+/*.exe
+/*.pck
+*.tmp

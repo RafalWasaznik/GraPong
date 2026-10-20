@@ -1,0 +1,497 @@
+extends Node
+
+const CZAS_OSTRZEZENIA = 3.0
+const CZAS_AKTYWNEGO_WYDARZENIA = 6.0
+const CZAS_KROTSZYCH_PALETEK = 8.0
+const PRZESUNIECIE_SCIAN = 48.0
+const POSZERZENIE_ARENY_X = 40.0
+const POSZERZENIE_ARENY_Y = 32.0
+const PREDKOSC_ZAKRETU = 0.65
+const MNOZNIK_PREDKOSCI = 1.12
+const SZEROKOSC_STREFY = 104.0
+const MNOZNIK_STREFY = 1.05
+const MAKS_KAT_ZAKRETU = deg_to_rad(72.0)
+
+const SZEROKOSC_BRAMKI = 20.0
+const WYSOKOSC_OTWORU_BRAMKI = 156.0
+const PREDKOSC_RUCHU_BRAMKI = 1.35
+const CZAS_RUCHOMEJ_BRAMKI = 9.0
+const CZAS_POJAWIENIA_BRAMKI = 0.7
+const CZAS_ZANIKANIA_BRAMKI = 0.85
+const CZAS_WYGASZANIA_PO_PUNKCIE = 0.45
+const WYSOKOSC_PODWOJNEGO_OTWORU = 104.0
+const ODSTEP_PODWOJNYCH_OTWOROW = 166.0
+
+const WYDARZENIA = ["wiatr_gora", "wiatr_dol", "przyspieszenie", "waska_arena", "strefa_przyspieszenia", "krotsze_paletki", "mocne_sciany", "wieksza_arena", "ruchoma_bramka"]
+const PASUJACE_PARY = {
+	"wiatr_gora": ["krotsze_paletki", "strefa_przyspieszenia", "ruchoma_bramka"],
+	"wiatr_dol": ["krotsze_paletki", "strefa_przyspieszenia", "ruchoma_bramka"],
+	"przyspieszenie": ["krotsze_paletki", "ruchoma_bramka"],
+	"waska_arena": ["mocne_sciany"],
+	"strefa_przyspieszenia": ["wiatr_gora", "wiatr_dol", "krotsze_paletki"],
+	"krotsze_paletki": ["wiatr_gora", "wiatr_dol", "przyspieszenie", "strefa_przyspieszenia", "mocne_sciany"],
+	"mocne_sciany": ["waska_arena", "krotsze_paletki", "wieksza_arena"],
+	"wieksza_arena": ["wiatr_gora", "wiatr_dol", "przyspieszenie", "strefa_przyspieszenia", "krotsze_paletki", "mocne_sciany"],
+	"ruchoma_bramka": ["wiatr_gora", "wiatr_dol", "przyspieszenie"]
+}
+
+var gra: Node2D
+var stan = "oczekiwanie"
+var czas_do_zmiany = 0.0
+var aktywne_wydarzenie = ""
+var drugie_wydarzenie = ""
+var poprzednie_wydarzenie = ""
+var kierunek_wiatru = 1.0
+var bazowa_lewa = 0.0
+var bazowa_prawa = 0.0
+var bazowa_gora = 0.0
+var bazowy_dol = 0.0
+var bramka_cialo: StaticBody2D
+var bramka_kolizje: Array[CollisionShape2D] = []
+var bramka_ksztalty: Array[RectangleShape2D] = []
+var bramka_faza = 0.0
+var bramka_postep = 0.0
+var bramka_kolizje_wlaczone = false
+var bramka_wygaszanie = false
+var bramka_czas_wygaszania = 0.0
+var bramka_alfa_poczatkowa = 0.0
+var wariant_bramki = ""
+
+
+func uruchom(gra_glowna: Node2D) -> void:
+	gra = gra_glowna
+	bazowa_gora = Ustawienia.gorna_granica
+	bazowy_dol = Ustawienia.dolna_granica
+	bazowa_lewa = Ustawienia.lewa_granica
+	bazowa_prawa = Ustawienia.prawa_granica
+	stan = "oczekiwanie"
+	aktywne_wydarzenie = ""
+	drugie_wydarzenie = ""
+	czas_do_zmiany = randf_range(8.0, 12.0)
+	set_process(true)
+	set_physics_process(true)
+	gra.call("pokaz_informacje_graczowi", "TRYB ARENA", "Uważaj na zmieniające się warunki gry", Color("#72e0f2"), 4.0)
+
+
+func _process(delta: float) -> void:
+	czas_do_zmiany -= delta
+
+	match stan:
+		"oczekiwanie":
+			if czas_do_zmiany <= CZAS_OSTRZEZENIA:
+				_zapowiedz_wydarzenie()
+		"ostrzezenie":
+			if czas_do_zmiany <= 0.0:
+				_rozpocznij_wydarzenie()
+		"aktywne":
+			if czas_do_zmiany <= 0.0:
+				_zakoncz_wydarzenie()
+
+
+func _physics_process(delta: float) -> void:
+	if not is_instance_valid(bramka_cialo):
+		return
+	if bramka_wygaszanie:
+		bramka_czas_wygaszania += delta
+		bramka_postep = bramka_alfa_poczatkowa * clampf(1.0 - bramka_czas_wygaszania / CZAS_WYGASZANIA_PO_PUNKCIE, 0.0, 1.0)
+		if bramka_postep <= 0.0:
+			_usun_bramke()
+			return
+		if is_instance_valid(gra):
+			gra.queue_redraw()
+		return
+	if stan != "aktywne" or not _czy_aktywne("ruchoma_bramka"):
+		return
+	bramka_faza += delta * PREDKOSC_RUCHU_BRAMKI
+	bramka_postep = clampf(minf(
+		(CZAS_RUCHOMEJ_BRAMKI - czas_do_zmiany) / CZAS_POJAWIENIA_BRAMKI,
+		czas_do_zmiany / CZAS_ZANIKANIA_BRAMKI
+	), 0.0, 1.0)
+	if not bramka_kolizje_wlaczone and bramka_postep >= 0.92:
+		bramka_kolizje_wlaczone = true
+	_ustaw_pozycje_bramki()
+	if is_instance_valid(gra):
+		gra.queue_redraw()
+
+
+func _losuj_wydarzenie() -> String:
+	var mozliwe = WYDARZENIA.duplicate()
+	mozliwe.erase(poprzednie_wydarzenie)
+	return str(mozliwe.pick_random())
+
+
+func _zapowiedz_wydarzenie() -> void:
+	aktywne_wydarzenie = _losuj_wydarzenie()
+	drugie_wydarzenie = ""
+	if randf() < 0.15:
+		var mozliwe_drugie = PASUJACE_PARY.get(aktywne_wydarzenie, []).duplicate()
+		mozliwe_drugie.erase(poprzednie_wydarzenie)
+		if not mozliwe_drugie.is_empty():
+			drugie_wydarzenie = str(mozliwe_drugie.pick_random())
+	if aktywne_wydarzenie == "wiatr_gora" or drugie_wydarzenie == "wiatr_gora":
+		kierunek_wiatru = -1.0
+	elif aktywne_wydarzenie == "wiatr_dol" or drugie_wydarzenie == "wiatr_dol":
+		kierunek_wiatru = 1.0
+	if aktywne_wydarzenie == "ruchoma_bramka" or drugie_wydarzenie == "ruchoma_bramka":
+		wariant_bramki = ["fala", "podwojne_przejscie", "pulsujace_przejscie"].pick_random()
+	else:
+		wariant_bramki = ""
+	stan = "ostrzezenie"
+	czas_do_zmiany = CZAS_OSTRZEZENIA
+
+	var tytul = _nazwa_wydarzenia(aktywne_wydarzenie)
+	if not drugie_wydarzenie.is_empty():
+		tytul += " + " + _nazwa_wydarzenia(drugie_wydarzenie)
+	if not wariant_bramki.is_empty():
+		tytul += " (" + _nazwa_wariantu_bramki() + ")"
+	gra.call("pokaz_informacje_graczowi", tytul, "", Color("#ffb454"), CZAS_OSTRZEZENIA)
+
+
+func _nazwa_wydarzenia(nazwa: String) -> String:
+	match nazwa:
+		"wiatr_gora":
+			return "Podmuch w górę"
+		"wiatr_dol":
+			return "Podmuch w dół"
+		"przyspieszenie":
+			return "Przyspieszenie"
+		"waska_arena":
+			return "Mała arena"
+		"strefa_przyspieszenia":
+			return "Strefa przyspieszenia"
+		"krotsze_paletki":
+			return "Krótsze paletki"
+		"mocne_sciany":
+			return "Mocne odbicie od ściany"
+		"wieksza_arena":
+			return "Większa arena"
+		"ruchoma_bramka":
+			return "Ruchoma bramka"
+	return ""
+
+
+func _nazwa_wariantu_bramki() -> String:
+	match wariant_bramki:
+		"podwojne_przejscie":
+			return "Podwójne przejście"
+		"pulsujace_przejscie":
+			return "Pulsujące przejście"
+	return "Fala"
+
+
+func _czy_aktywne(nazwa: String) -> bool:
+	return aktywne_wydarzenie == nazwa or drugie_wydarzenie == nazwa
+
+
+func _rozpocznij_wydarzenie() -> void:
+	stan = "aktywne"
+	czas_do_zmiany = CZAS_AKTYWNEGO_WYDARZENIA
+	if _czy_aktywne("krotsze_paletki"):
+		czas_do_zmiany = maxf(czas_do_zmiany, CZAS_KROTSZYCH_PALETEK)
+	if _czy_aktywne("ruchoma_bramka"):
+		czas_do_zmiany = maxf(czas_do_zmiany, CZAS_RUCHOMEJ_BRAMKI)
+	if _czy_aktywne("waska_arena"):
+		var gora = bazowa_gora + PRZESUNIECIE_SCIAN
+		var dol = bazowy_dol - PRZESUNIECIE_SCIAN
+		gra.call("animuj_granice_areny", gora, dol, 0.8)
+	if _czy_aktywne("wieksza_arena"):
+		gra.call(
+			"animuj_wymiary_areny",
+			bazowa_lewa - POSZERZENIE_ARENY_X,
+			bazowa_prawa + POSZERZENIE_ARENY_X,
+			bazowa_gora - POSZERZENIE_ARENY_Y,
+			bazowy_dol + POSZERZENIE_ARENY_Y,
+			0.8
+		)
+	if _czy_aktywne("strefa_przyspieszenia"):
+		for pilka in get_tree().get_nodes_in_group("pilki"):
+			pilka.set_meta("w_strefie_przyspieszenia", absf(pilka.position.x - _srodek_planszy_x()) <= SZEROKOSC_STREFY * 0.5)
+		gra.call("animuj_strefe_przyspieszenia", true, 0.65)
+	if _czy_aktywne("krotsze_paletki"):
+		gra.call("animuj_wysokosc_paletek", 0.72, 0.45)
+	if _czy_aktywne("mocne_sciany"):
+		gra.queue_redraw()
+	if _czy_aktywne("ruchoma_bramka"):
+		_utworz_bramke()
+
+func _zakoncz_wydarzenie() -> void:
+	# Jeśli punkt uruchomił już wygaszanie, poczekaj na jego koniec, żeby nie
+	# usuwać bramki natychmiast przy granicy czasu wydarzenia.
+	if _czy_aktywne("ruchoma_bramka") and is_instance_valid(bramka_cialo):
+		if not bramka_wygaszanie:
+			_wygasz_bramke()
+		return
+	_przywroc_efekty_modyfikatorow(0.8)
+	_ustaw_nastepne_wydarzenie()
+
+
+func _przywroc_efekty_modyfikatorow(czas_animacji: float) -> void:
+	if _czy_aktywne("waska_arena") and is_instance_valid(gra):
+		gra.call("animuj_granice_areny", bazowa_gora, bazowy_dol, czas_animacji)
+	if _czy_aktywne("wieksza_arena") and is_instance_valid(gra):
+		gra.call("animuj_wymiary_areny", bazowa_lewa, bazowa_prawa, bazowa_gora, bazowy_dol, czas_animacji)
+	if _czy_aktywne("strefa_przyspieszenia") and is_instance_valid(gra):
+		gra.call("animuj_strefe_przyspieszenia", false, czas_animacji)
+	if _czy_aktywne("krotsze_paletki") and is_instance_valid(gra):
+		gra.call("animuj_wysokosc_paletek", 1.0, czas_animacji)
+	if _czy_aktywne("mocne_sciany") and is_instance_valid(gra):
+		gra.queue_redraw()
+	if _czy_aktywne("ruchoma_bramka") and is_instance_valid(bramka_cialo):
+		_wygasz_bramke()
+	if is_instance_valid(gra):
+		gra.queue_redraw()
+
+
+func _ustaw_nastepne_wydarzenie(minimum: float = 4.0, maksimum: float = 7.0) -> void:
+	if not aktywne_wydarzenie.is_empty():
+		poprzednie_wydarzenie = aktywne_wydarzenie
+	aktywne_wydarzenie = ""
+	drugie_wydarzenie = ""
+	stan = "oczekiwanie"
+	czas_do_zmiany = randf_range(minimum, maksimum)
+
+
+func po_zdobyciu_punktu() -> void:
+	# Przerwij też zapowiedź, żeby modyfikator nie wystartował podczas nowej piłki.
+	if stan == "aktywne":
+		_przywroc_efekty_modyfikatorow(0.45)
+	_ustaw_nastepne_wydarzenie(7.0, 10.0)
+	if is_instance_valid(gra):
+		gra.call("ukryj_informacje_graczowi")
+
+
+func mnoznik_predkosci() -> float:
+	return MNOZNIK_PREDKOSCI if stan == "aktywne" and _czy_aktywne("przyspieszenie") else 1.0
+
+
+func wzmocnij_odbicie_od_sciany(pilka: CharacterBody2D, nazwa_sciany: String) -> void:
+	if stan != "aktywne" or not _czy_aktywne("mocne_sciany"):
+		return
+	if nazwa_sciany not in ["górna ściana", "dolna ściana"]:
+		return
+	pilka.call("przyspiesz", 1.05)
+	pilka.call("pokaz_efekt_mocnego_odbicia")
+
+
+func mocne_sciany_aktywne() -> bool:
+	return stan == "aktywne" and _czy_aktywne("mocne_sciany")
+
+
+func wieksza_arena_aktywna() -> bool:
+	return stan == "aktywne" and _czy_aktywne("wieksza_arena")
+
+
+func strefa_przyspieszenia_aktywna() -> bool:
+	return stan == "aktywne" and _czy_aktywne("strefa_przyspieszenia")
+
+
+func bramka_aktywna() -> bool:
+	return is_instance_valid(bramka_cialo) and (bramka_wygaszanie or (stan == "aktywne" and _czy_aktywne("ruchoma_bramka")))
+
+
+func _wygasz_bramke() -> void:
+	if not is_instance_valid(bramka_cialo) or bramka_wygaszanie:
+		return
+	bramka_wygaszanie = true
+	bramka_czas_wygaszania = 0.0
+	bramka_alfa_poczatkowa = bramka_postep
+	bramka_kolizje_wlaczone = false
+	# Kolizja znika od razu, a widoczne segmenty płynnie gasną.
+	for kolizja in bramka_kolizje:
+		if is_instance_valid(kolizja):
+			kolizja.set_deferred("disabled", true)
+
+
+func dane_bramki() -> Array[Rect2]:
+	var segmenty: Array[Rect2] = []
+	if not bramka_aktywna():
+		return segmenty
+	return _zamkniete_segmenty_bramki()
+
+
+func przezroczystosc_bramki() -> float:
+	return bramka_postep
+
+
+func _utworz_bramke() -> void:
+	_usun_bramke()
+	bramka_cialo = StaticBody2D.new()
+	bramka_cialo.name = "RuchomaBramka"
+	bramka_cialo.collision_layer = 1
+	bramka_cialo.collision_mask = 1
+	bramka_kolizje.clear()
+	bramka_ksztalty.clear()
+	bramka_kolizje_wlaczone = false
+	bramka_postep = 0.0
+	for i in range(3):
+		var kolizja = CollisionShape2D.new()
+		kolizja.name = "Segment%d" % i
+		kolizja.disabled = true
+		var ksztalt = RectangleShape2D.new()
+		ksztalt.size = Vector2(SZEROKOSC_BRAMKI, 1.0)
+		kolizja.shape = ksztalt
+		bramka_cialo.add_child(kolizja)
+		bramka_kolizje.append(kolizja)
+		bramka_ksztalty.append(ksztalt)
+	gra.add_child(bramka_cialo)
+	bramka_faza = 0.0
+	_dopasuj_faze_bramki_do_pilek()
+	_ustaw_pozycje_bramki()
+	gra.queue_redraw()
+
+
+func _dopasuj_faze_bramki_do_pilek() -> void:
+	var pilki = get_tree().get_nodes_in_group("pilki")
+	if pilki.is_empty():
+		return
+	var najlepsza_faza = 0.0
+	var najmniejszy_blad = INF
+	for i in range(120):
+		var testowana_faza = TAU * float(i) / 120.0
+		var otwory = _otwory_bramki(testowana_faza)
+		var suma_bledu = 0.0
+		for pilka in pilki:
+			var blad_pilki = INF
+			for otwor in otwory:
+				var odleglosc = maxf(maxf(otwor.x - pilka.global_position.y, pilka.global_position.y - otwor.y), 0.0)
+				blad_pilki = minf(blad_pilki, odleglosc)
+			suma_bledu += blad_pilki
+		if suma_bledu < najmniejszy_blad:
+			najmniejszy_blad = suma_bledu
+			najlepsza_faza = testowana_faza
+	bramka_faza = najlepsza_faza
+
+
+func _ustaw_pozycje_bramki() -> void:
+	if not is_instance_valid(bramka_cialo):
+		return
+	var srodek_planszy = (Ustawienia.gorna_granica + Ustawienia.dolna_granica) * 0.5
+	bramka_cialo.position = Vector2((Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5, srodek_planszy)
+	var segmenty = _zamkniete_segmenty_bramki()
+	for i in range(bramka_kolizje.size()):
+		var kolizja = bramka_kolizje[i]
+		if i < segmenty.size():
+			var segment = segmenty[i]
+			bramka_ksztalty[i].size = Vector2(SZEROKOSC_BRAMKI, maxf(segment.size.y, 1.0))
+			kolizja.position = segment.get_center() - bramka_cialo.position
+			if kolizja.disabled == bramka_kolizje_wlaczone:
+				kolizja.set_deferred("disabled", not bramka_kolizje_wlaczone)
+		else:
+			if not kolizja.disabled:
+				kolizja.set_deferred("disabled", true)
+
+
+func _otwory_bramki(faza: float) -> Array[Vector2]:
+	var wysokosc_planszy = Ustawienia.dolna_granica - Ustawienia.gorna_granica
+	var srodek_planszy = (Ustawienia.gorna_granica + Ustawienia.dolna_granica) * 0.5
+	var wysokosc_otworu = WYSOKOSC_OTWORU_BRAMKI
+	if wariant_bramki == "podwojne_przejscie":
+		wysokosc_otworu = WYSOKOSC_PODWOJNEGO_OTWORU
+	elif wariant_bramki == "pulsujace_przejscie":
+		wysokosc_otworu = lerpf(112.0, 184.0, 0.5 + 0.5 * sin(faza * 1.3))
+	wysokosc_otworu = minf(wysokosc_otworu, wysokosc_planszy * 0.35)
+	var liczba_otworow = 2 if wariant_bramki == "podwojne_przejscie" else 1
+	var rozstaw = ODSTEP_PODWOJNYCH_OTWOROW if liczba_otworow == 2 else 0.0
+	var calkowita_wysokosc = wysokosc_otworu + rozstaw
+	var amplituda = maxf(0.0, (wysokosc_planszy - calkowita_wysokosc) * 0.5 - 8.0)
+	var czestotliwosc = 1.25 if liczba_otworow == 2 else 1.0
+	var srodek_ruchu = srodek_planszy + sin(faza * czestotliwosc) * amplituda
+	var otwory: Array[Vector2] = []
+	for i in range(liczba_otworow):
+		var przesuniecie = (float(i) - float(liczba_otworow - 1) * 0.5) * rozstaw
+		var srodek_otworu = srodek_ruchu + przesuniecie
+		var polowa = wysokosc_otworu * 0.5
+		otwory.append(Vector2(srodek_otworu - polowa, srodek_otworu + polowa))
+	return otwory
+
+
+func _zamkniete_segmenty_bramki() -> Array[Rect2]:
+	var segmenty: Array[Rect2] = []
+	var lewa = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5 - SZEROKOSC_BRAMKI * 0.5
+	var y = Ustawienia.gorna_granica
+	for otwor in _otwory_bramki(bramka_faza):
+		if otwor.x > y:
+			segmenty.append(Rect2(Vector2(lewa, y), Vector2(SZEROKOSC_BRAMKI, otwor.x - y)))
+		y = otwor.y
+	if Ustawienia.dolna_granica > y:
+		segmenty.append(Rect2(Vector2(lewa, y), Vector2(SZEROKOSC_BRAMKI, Ustawienia.dolna_granica - y)))
+	return segmenty
+
+
+func _usun_bramke() -> void:
+	if is_instance_valid(bramka_cialo):
+		bramka_cialo.queue_free()
+	bramka_cialo = null
+	bramka_kolizje.clear()
+	bramka_ksztalty.clear()
+	bramka_postep = 0.0
+	bramka_kolizje_wlaczone = false
+	bramka_wygaszanie = false
+	bramka_czas_wygaszania = 0.0
+	bramka_alfa_poczatkowa = 0.0
+	if is_instance_valid(gra):
+		gra.queue_redraw()
+
+
+func przyspieszenie_y(predkosc_pozioma: float) -> float:
+	if stan == "aktywne" and (_czy_aktywne("wiatr_gora") or _czy_aktywne("wiatr_dol")):
+		return kierunek_wiatru * PREDKOSC_ZAKRETU * absf(predkosc_pozioma)
+	return 0.0
+
+
+func przygotuj_pilke(pilka: CharacterBody2D, delta: float) -> float:
+	if stan == "aktywne" and _czy_aktywne("strefa_przyspieszenia"):
+		_obsluz_strefe_przyspieszenia(pilka)
+
+	if stan == "aktywne" and (_czy_aktywne("wiatr_gora") or _czy_aktywne("wiatr_dol")) and pilka.velocity.length_squared() > 0.0:
+		var predkosc = pilka.velocity.length()
+		var kierunek_x = signf(pilka.velocity.x)
+		var zakret = kierunek_wiatru * kierunek_x * PREDKOSC_ZAKRETU * delta
+		var nowa_predkosc = pilka.velocity.rotated(zakret)
+		var minimalna_skladowa_x = predkosc * cos(MAKS_KAT_ZAKRETU)
+
+		# Piłka wyraźnie zakręca, ale wiatr nie zawraca jej całkowicie na drugą stronę.
+		if signf(nowa_predkosc.x) != kierunek_x or absf(nowa_predkosc.x) < minimalna_skladowa_x:
+			var kierunek_y = signf(nowa_predkosc.y)
+			if kierunek_y == 0.0:
+				kierunek_y = kierunek_wiatru
+			nowa_predkosc = Vector2(
+				kierunek_x * minimalna_skladowa_x,
+				kierunek_y * predkosc * sin(MAKS_KAT_ZAKRETU)
+			)
+
+		pilka.velocity = nowa_predkosc
+	return mnoznik_predkosci()
+
+
+func _obsluz_strefe_przyspieszenia(pilka: CharacterBody2D) -> void:
+	var jest_w_strefie = absf(pilka.position.x - _srodek_planszy_x()) <= SZEROKOSC_STREFY * 0.5
+	var byla_w_strefie = bool(pilka.get_meta("w_strefie_przyspieszenia", false))
+	if jest_w_strefie and not byla_w_strefie:
+		pilka.call("przyspiesz", MNOZNIK_STREFY)
+		pilka.call("pokaz_efekt_strefy_przyspieszenia")
+	pilka.set_meta("w_strefie_przyspieszenia", jest_w_strefie)
+
+
+func _srodek_planszy_x() -> float:
+	return (Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5
+
+
+func zatrzymaj() -> void:
+	set_process(false)
+	set_physics_process(false)
+	if _czy_aktywne("waska_arena") and is_instance_valid(gra):
+		gra.call("animuj_granice_areny", bazowa_gora, bazowy_dol, 0.5)
+	if _czy_aktywne("wieksza_arena") and is_instance_valid(gra):
+		gra.call("animuj_wymiary_areny", bazowa_lewa, bazowa_prawa, bazowa_gora, bazowy_dol, 0.5)
+	if _czy_aktywne("strefa_przyspieszenia") and is_instance_valid(gra):
+		gra.call("animuj_strefe_przyspieszenia", false, 0.3)
+	if _czy_aktywne("krotsze_paletki") and is_instance_valid(gra):
+		gra.call("animuj_wysokosc_paletek", 1.0, 0.3)
+	if _czy_aktywne("ruchoma_bramka"):
+		_usun_bramke()
+	if is_instance_valid(gra):
+		gra.queue_redraw()
+	stan = "zatrzymane"
+	aktywne_wydarzenie = ""
+	drugie_wydarzenie = ""

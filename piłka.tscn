@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://bq6wxiv31yn53"]
+
+[ext_resource type="Script" uid="uid://numabvkhpbsv" path="res://piłka.gd" id="1_8y474"]
+[ext_resource type="AudioStream" uid="uid://drshh6rppa6ds" path="res://odbicie_paletka.wav" id="2_lf63w"]
+[ext_resource type="AudioStream" uid="uid://dmdf0be8r5cue" path="res://odbicie_sciana.wav" id="3_ur2lx"]
+[ext_resource type="AudioStream" uid="uid://7jegp8ir7mvs" path="res://punkt.wav" id="4_wa4t2"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_u1wac"]
+
+[node name="Piłka" type="CharacterBody2D" unique_id=1551756431]
+script = ExtResource("1_8y474")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=211538301]
+shape = SubResource("CircleShape2D_u1wac")
+
+[node name="DzwiekPaletka" type="AudioStreamPlayer" parent="." unique_id=989745961]
+stream = ExtResource("2_lf63w")
+volume_db = -8.0
+bus = &"Efekty"
+
+[node name="DzwiekSciana" type="AudioStreamPlayer" parent="." unique_id=175157462]
+stream = ExtResource("3_ur2lx")
+volume_db = -8.0
+bus = &"Efekty"
+
+[node name="DzwiekPunkt" type="AudioStreamPlayer" parent="." unique_id=1857789937]
+stream = ExtResource("4_wa4t2")
+volume_db = -8.0
+bus = &"Efekty"
+
+[node name="DzwiekPerfectHit" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_lf63w")
+volume_db = -5.0
+pitch_scale = 1.45
+bus = &"Efekty"

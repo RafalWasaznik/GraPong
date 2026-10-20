@@ -1,0 +1,167 @@
+[gd_scene format=3 uid="uid://dlg8ye5k5enjh"]
+
+[ext_resource type="PackedScene" uid="uid://ee71okw4bg5y" path="res://paletka.tscn" id="1_82ry8"]
+[ext_resource type="Script" uid="uid://d4cx2lop7xkfk" path="res://scena_główna.gd" id="1_u1wac"]
+[ext_resource type="PackedScene" uid="uid://bq6wxiv31yn53" path="res://piłka.tscn" id="2_p5xgf"]
+[ext_resource type="PackedScene" uid="uid://hjfo7y4yt0gs" path="res://paletka_ai.tscn" id="3_p5xgf"]
+[ext_resource type="Script" uid="uid://cqmd1ck0s0bk" path="res://menu_pauzy.gd" id="5_c8em3"]
+[ext_resource type="Script" uid="uid://bov8c7uqrjmm1" path="res://bonus_manager.gd" id="6_57rfe"]
+[ext_resource type="PackedScene" path="res://ustawienia_sterowania.tscn" id="7_sterowanie"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_618dn"]
+size = Vector2(1152, 20)
+
+[node name="Scena Główna" type="Node2D" unique_id=1496715320]
+script = ExtResource("1_u1wac")
+
+[node name="Paletka" parent="." unique_id=184993052 instance=ExtResource("1_82ry8")]
+position = Vector2(50, 360)
+
+[node name="Piłka" parent="." unique_id=1551756431 instance=ExtResource("2_p5xgf")]
+position = Vector2(576, 324)
+
+[node name="górna ściana" type="StaticBody2D" parent="." unique_id=1384889666]
+position = Vector2(576, 100)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="górna ściana" unique_id=1321046864]
+shape = SubResource("RectangleShape2D_618dn")
+
+[node name="dolna ściana" type="StaticBody2D" parent="." unique_id=1791932753]
+position = Vector2(576, 620)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="dolna ściana" unique_id=1277048860]
+shape = SubResource("RectangleShape2D_618dn")
+
+[node name="PaletkaAI" parent="." unique_id=948163822 instance=ExtResource("3_p5xgf")]
+position = Vector2(1102, 360)
+
+[node name="WynikGracza" type="Label" parent="." unique_id=275067296]
+offset_left = 500.0
+offset_top = 20.0
+offset_right = 540.0
+offset_bottom = 43.0
+theme_override_font_sizes/font_size = 48
+text = "0"
+horizontal_alignment = 1
+
+[node name="WynikAI" type="Label" parent="." unique_id=1684027074]
+offset_left = 620.0
+offset_top = 20.0
+offset_right = 660.0
+offset_bottom = 43.0
+theme_override_font_sizes/font_size = 48
+text = "0"
+horizontal_alignment = 1
+
+[node name="Komunikat" type="Label" parent="." unique_id=1453380441]
+offset_top = 220.0
+offset_right = 1152.0
+offset_bottom = 310.0
+theme_override_font_sizes/font_size = 64
+horizontal_alignment = 1
+
+[node name="PrzyciskMenu" type="Button" parent="." unique_id=942302896]
+offset_left = 500.0
+offset_top = 340.0
+offset_right = 621.0
+offset_bottom = 371.0
+text = "Wróć do menu"
+
+[node name="CzasBonusu" type="Timer" parent="." unique_id=653987158]
+wait_time = 8.0
+
+[node name="MenuPauzy" type="CanvasLayer" parent="." unique_id=737341797]
+script = ExtResource("5_c8em3")
+
+[node name="Przyciemnienie" type="ColorRect" parent="MenuPauzy" unique_id=461988856]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.23529412)
+
+[node name="CenterContainer" type="CenterContainer" parent="MenuPauzy/Przyciemnienie" unique_id=345765507]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelPauzy" type="PanelContainer" parent="MenuPauzy/Przyciemnienie/CenterContainer" unique_id=382856354]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy" unique_id=1931826438]
+layout_mode = 2
+alignment = 1
+
+[node name="TytulPauzy" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=1387406901]
+layout_mode = 2
+text = "Pauza"
+horizontal_alignment = 1
+
+[node name="PodpowiedzSterowania" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=1986107588]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "1 gracz: W/S lub ↑/↓
+2 graczy: lewy W/S • prawy ↑/↓"
+horizontal_alignment = 1
+
+[node name="WrocDoGry" type="Button" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=503298699]
+layout_mode = 2
+text = "Powrót do gry"
+
+[node name="OtworzUstawienia" type="Button" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=1689070266]
+layout_mode = 2
+text = "Otwórz Ustawienia"
+
+[node name="WrocDoMenu" type="Button" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=1553180304]
+layout_mode = 2
+text = "Wróć do menu"
+
+[node name="PanelUstawien" type="PanelContainer" parent="MenuPauzy/Przyciemnienie/CenterContainer" unique_id=649110049]
+custom_minimum_size = Vector2(500, 616)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien" unique_id=1850894159]
+layout_mode = 2
+alignment = 1
+
+[node name="TytulUstawien" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=885444904]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="EtykietaOgolna" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=492619942]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="GlosnoscOgolna" type="HSlider" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=1085309905]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="EtykietaMuzyka" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=171640888]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="GlosnoscMuzyki" type="HSlider" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=1348839136]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="EtykietaDzwieki" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=840731449]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="GlosnoscDzwiekow" type="HSlider" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=118961314]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="UstawieniaSterowania" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=882133345 instance=ExtResource("7_sterowanie")]
+layout_mode = 2
+
+[node name="WrocDoPauzy" type="Button" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=262051386]
+layout_mode = 2
+text = "Powrót"
+
+[node name="BonusManager" type="Node" parent="." unique_id=1157479977]
+script = ExtResource("6_57rfe")

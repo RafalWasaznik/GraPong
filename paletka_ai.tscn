@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://hjfo7y4yt0gs"]
+
+[ext_resource type="Script" uid="uid://cvlrawq5a5oxc" path="res://paletka_ai.gd" id="1_d3tkj"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_618dn"]
+size = Vector2(20, 120)
+
+[node name="Paletka" type="CharacterBody2D" unique_id=184993052]
+position = Vector2(50, 300)
+script = ExtResource("1_d3tkj")
+
+[node name="Obrys" type="ColorRect" parent="." unique_id=1533083722]
+offset_left = -13.0
+offset_top = -63.0
+offset_right = 13.0
+offset_bottom = 63.0
+color = Color(0.025, 0.04, 0.07, 1)
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=106409541]
+offset_left = -10.0
+offset_top = -60.0
+offset_right = 10.0
+offset_bottom = 60.0
+color = Color(1.0, 0.36, 0.44, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=243765534]
+shape = SubResource("RectangleShape2D_618dn")

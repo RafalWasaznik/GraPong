@@ -1,0 +1,66 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ustawienia_sterowania.gd" id="1_script"]
+
+[node name="UstawieniaSterowania" type="VBoxContainer"]
+theme_override_constants/separation = 9
+script = ExtResource("1_script")
+
+[node name="Tytul" type="Label" parent="."]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.333333, 0.905882, 1, 1)
+text = "STEROWANIE"
+horizontal_alignment = 1
+
+[node name="Gracze" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Gracz1" type="PanelContainer" parent="Gracze"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Klawisze" type="VBoxContainer" parent="Gracze/Gracz1"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Tytul" type="Label" parent="Gracze/Gracz1/Klawisze"]
+layout_mode = 2
+text = "GRACZ 1"
+horizontal_alignment = 1
+
+[node name="Gracz2" type="PanelContainer" parent="Gracze"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Klawisze" type="VBoxContainer" parent="Gracze/Gracz2"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Tytul" type="Label" parent="Gracze/Gracz2/Klawisze"]
+layout_mode = 2
+text = "GRACZ 2"
+horizontal_alignment = 1
+
+[node name="Pauza" type="PanelContainer" parent="."]
+layout_mode = 2
+
+[node name="Wiersz" type="HBoxContainer" parent="Pauza"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Tytul" type="Label" parent="Pauza/Wiersz"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "PAUZA"
+
+[node name="Informacja" type="Label" parent="."]
+layout_mode = 2
+text = "Wybierz akcję, a potem naciśnij klawisz."
+horizontal_alignment = 1
+
+[node name="Przywroc" type="Button" parent="."]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Przywróć domyślne"

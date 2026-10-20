@@ -1,0 +1,154 @@
+extends Node
+
+const PLIK_USTAWIEN = "user://ustawienia.cfg"
+
+var tryb = "bot"
+var arena_dwoch_graczy = false
+var trudnosc = "sredni"
+var charakter_bota = "defensywny"
+var limit_punktow = 5
+var trudnosc_klasyczna = "sredni"
+var limit_punktow_klasyczny = 5
+var trudnosc_areny = "sredni"
+var limit_punktow_areny = 5
+var rozmiar_planszy = "standardowa"
+var rekord_endless = 0
+
+var glosnosc_ogolna = 80.0
+var glosnosc_muzyki = 80.0
+var glosnosc_efektow = 80.0
+
+const KLAWISZE_DOMYSLNE = {
+	"lewy_gora": KEY_W,
+	"lewy_dol": KEY_S,
+	"prawy_gora": KEY_UP,
+	"prawy_dol": KEY_DOWN,
+	"pauza": KEY_ESCAPE
+}
+
+var klawisze = KLAWISZE_DOMYSLNE.duplicate()
+var czeka_na_klawisz = false
+
+var lewa_granica = 32.0
+var prawa_granica = 1120.0
+var gorna_granica = 100.0
+var dolna_granica = 620.0
+
+
+func ustaw_geometrie_planszy():
+	match rozmiar_planszy:
+		"mala":
+			lewa_granica = 256.0
+			prawa_granica = 896.0
+			gorna_granica = 164.0
+			dolna_granica = 484.0
+
+		"duza":
+			lewa_granica = 32.0
+			prawa_granica = 1120.0
+			gorna_granica = 72.0
+			dolna_granica = 576.0
+
+		_:
+			rozmiar_planszy = "standardowa"
+			lewa_granica = 150.0
+			prawa_granica = 1002.0
+			gorna_granica = 110.0
+			dolna_granica = 538.0
+
+
+func wczytaj():
+	var plik = ConfigFile.new()
+	var blad = plik.load(PLIK_USTAWIEN)
+
+	if blad != OK:
+		klawisze = KLAWISZE_DOMYSLNE.duplicate()
+		_zastosuj_klawisze()
+		ustaw_geometrie_planszy()
+		return
+
+	for akcja in KLAWISZE_DOMYSLNE:
+		klawisze[akcja] = int(plik.get_value("sterowanie", akcja, KLAWISZE_DOMYSLNE[akcja]))
+	_zastosuj_klawisze()
+
+	trudnosc = plik.get_value("gra", "trudnosc", trudnosc)
+	limit_punktow = plik.get_value("gra", "limit_punktow", limit_punktow)
+	trudnosc_klasyczna = plik.get_value("gra", "trudnosc_klasyczna", trudnosc)
+	limit_punktow_klasyczny = plik.get_value("gra", "limit_punktow_klasyczny", limit_punktow)
+	trudnosc_areny = plik.get_value("gra", "trudnosc_areny", trudnosc)
+	limit_punktow_areny = plik.get_value("gra", "limit_punktow_areny", limit_punktow)
+	rozmiar_planszy = plik.get_value("gra", "rozmiar_planszy", rozmiar_planszy)
+	rekord_endless = plik.get_value("endless", "rekord", rekord_endless)
+
+	glosnosc_ogolna = plik.get_value("audio", "ogolna", glosnosc_ogolna)
+	glosnosc_muzyki = plik.get_value("audio", "muzyka", glosnosc_muzyki)
+	glosnosc_efektow = plik.get_value("audio", "efekty", glosnosc_efektow)
+
+	ustaw_geometrie_planszy()
+
+
+func zapisz():
+	var plik = ConfigFile.new()
+
+	plik.set_value("gra", "trudnosc", trudnosc)
+	plik.set_value("gra", "limit_punktow", limit_punktow)
+	plik.set_value("gra", "trudnosc_klasyczna", trudnosc_klasyczna)
+	plik.set_value("gra", "limit_punktow_klasyczny", limit_punktow_klasyczny)
+	plik.set_value("gra", "trudnosc_areny", trudnosc_areny)
+	plik.set_value("gra", "limit_punktow_areny", limit_punktow_areny)
+	plik.set_value("gra", "rozmiar_planszy", rozmiar_planszy)
+	plik.set_value("endless", "rekord", rekord_endless)
+
+	plik.set_value("audio", "ogolna", glosnosc_ogolna)
+	plik.set_value("audio", "muzyka", glosnosc_muzyki)
+	plik.set_value("audio", "efekty", glosnosc_efektow)
+	for akcja in KLAWISZE_DOMYSLNE:
+		plik.set_value("sterowanie", akcja, int(klawisze[akcja]))
+
+	plik.save(PLIK_USTAWIEN)
+
+
+func _zastosuj_klawisze() -> void:
+	for akcja in KLAWISZE_DOMYSLNE:
+		if not InputMap.has_action(akcja):
+			InputMap.add_action(akcja)
+		InputMap.action_erase_events(akcja)
+		var zdarzenie = InputEventKey.new()
+		zdarzenie.physical_keycode = int(klawisze[akcja])
+		InputMap.action_add_event(akcja, zdarzenie)
+
+
+func ustaw_klawisz(akcja: String, kod_fizyczny: int) -> String:
+	if not KLAWISZE_DOMYSLNE.has(akcja) or kod_fizyczny == KEY_NONE:
+		return ""
+
+	var zamieniona_akcja = ""
+	var poprzedni_kod = int(klawisze[akcja])
+	for inna_akcja in KLAWISZE_DOMYSLNE:
+		if inna_akcja != akcja and int(klawisze[inna_akcja]) == kod_fizyczny:
+			klawisze[inna_akcja] = poprzedni_kod
+			zamieniona_akcja = str(inna_akcja)
+			break
+
+	klawisze[akcja] = kod_fizyczny
+	_zastosuj_klawisze()
+	zapisz()
+	return zamieniona_akcja
+
+
+func przywroc_klawisze() -> void:
+	klawisze = KLAWISZE_DOMYSLNE.duplicate()
+	_zastosuj_klawisze()
+	zapisz()
+
+
+func tekst_klawisza(akcja: String) -> String:
+	var zdarzenie = InputEventKey.new()
+	zdarzenie.physical_keycode = int(klawisze.get(akcja, KEY_NONE))
+	return zdarzenie.as_text_physical_keycode()
+
+
+func tekst_podpowiedzi() -> String:
+	var lewy = "%s/%s" % [tekst_klawisza("lewy_gora"), tekst_klawisza("lewy_dol")]
+	var prawy = "%s/%s" % [tekst_klawisza("prawy_gora"), tekst_klawisza("prawy_dol")]
+	return "1 gracz: %s lub %s\n2 graczy: lewy %s · prawy %s\nPauza: %s" % [lewy, prawy, lewy, prawy, tekst_klawisza("pauza")]

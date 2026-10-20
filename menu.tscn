@@ -1,0 +1,159 @@
+[gd_scene format=3 uid="uid://o8qe4bo8u06s"]
+
+[ext_resource type="Script" uid="uid://qm8c2y32p7g5" path="res://menu.gd" id="1_lti8b"]
+[ext_resource type="PackedScene" path="res://ustawienia_sterowania.tscn" id="2_sterowanie"]
+
+[node name="Menu" type="Control" unique_id=689527288]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lti8b")
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1188591512]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EkranGlowny" type="VBoxContainer" parent="CenterContainer" unique_id=1005482132]
+layout_mode = 2
+
+[node name="Tytuł" type="Label" parent="CenterContainer/EkranGlowny" unique_id=970095130]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "PONG"
+horizontal_alignment = 1
+
+[node name="Graj" type="Button" parent="CenterContainer/EkranGlowny" unique_id=1356362749]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Do 5 punktów"
+
+[node name="Ustawienia" type="Button" parent="CenterContainer/EkranGlowny" unique_id=1013953302]
+layout_mode = 2
+text = "2 graczy"
+
+[node name="WyborTrybu" type="VBoxContainer" parent="CenterContainer" unique_id=963563374]
+visible = false
+layout_mode = 2
+
+[node name="TytulTrybu" type="Label" parent="CenterContainer/WyborTrybu" unique_id=619155326]
+layout_mode = 2
+
+[node name="JedenGracz" type="Button" parent="CenterContainer/WyborTrybu" unique_id=1216259447]
+layout_mode = 2
+text = "1 Gracz"
+
+[node name="DwochGraczy" type="Button" parent="CenterContainer/WyborTrybu" unique_id=1032695797]
+layout_mode = 2
+text = "2 graczy"
+
+[node name="Wroc" type="Button" parent="CenterContainer/WyborTrybu" unique_id=452903193]
+layout_mode = 2
+text = "Wróć"
+
+[node name="OpcjeJedenGracz" type="VBoxContainer" parent="CenterContainer" unique_id=1726806803]
+layout_mode = 2
+
+[node name="TytulOpcjiJeden" type="Label" parent="CenterContainer/OpcjeJedenGracz" unique_id=1580691499]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="Trudnosc" type="OptionButton" parent="CenterContainer/OpcjeJedenGracz" unique_id=1907023781]
+layout_mode = 2
+alignment = 1
+
+[node name="EtykietaLimituJeden" type="Label" parent="CenterContainer/OpcjeJedenGracz" unique_id=481106651]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="LimitJeden" type="LineEdit" parent="CenterContainer/OpcjeJedenGracz" unique_id=937227003]
+layout_mode = 2
+placeholder_text = "Wpisz limit punktów:"
+alignment = 1
+
+[node name="EtykietaRozmiaruJeden" type="Label" parent="CenterContainer/OpcjeJedenGracz" unique_id=2098137000]
+layout_mode = 2
+text = "Wielkość planszy"
+horizontal_alignment = 1
+
+[node name="RozmiarPlanszyJeden" type="OptionButton" parent="CenterContainer/OpcjeJedenGracz" unique_id=1996343985]
+layout_mode = 2
+alignment = 1
+
+[node name="StartJeden" type="Button" parent="CenterContainer/OpcjeJedenGracz" unique_id=476817935]
+layout_mode = 2
+text = "Graj"
+
+[node name="WrocJeden" type="Button" parent="CenterContainer/OpcjeJedenGracz" unique_id=1668248540]
+layout_mode = 2
+text = "Wróć"
+
+[node name="OpcjeDwochGraczy" type="VBoxContainer" parent="CenterContainer" unique_id=1143236796]
+layout_mode = 2
+alignment = 1
+
+[node name="EtykietaLimituDwoch" type="Label" parent="CenterContainer/OpcjeDwochGraczy" unique_id=445758558]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="LimitDwoch" type="LineEdit" parent="CenterContainer/OpcjeDwochGraczy" unique_id=1420538308]
+layout_mode = 2
+placeholder_text = "Wpisz limit punktów:"
+alignment = 1
+
+[node name="EtykietaRozmiaruDwoch" type="Label" parent="CenterContainer/OpcjeDwochGraczy" unique_id=1615889700]
+layout_mode = 2
+text = "Wielkość planszy"
+horizontal_alignment = 1
+
+[node name="RozmiarPlanszyDwoch" type="OptionButton" parent="CenterContainer/OpcjeDwochGraczy" unique_id=1279777923]
+layout_mode = 2
+alignment = 1
+
+[node name="StartDwoch" type="Button" parent="CenterContainer/OpcjeDwochGraczy" unique_id=884970489]
+layout_mode = 2
+text = "Graj"
+
+[node name="WrocDwoch" type="Button" parent="CenterContainer/OpcjeDwochGraczy" unique_id=386820776]
+layout_mode = 2
+text = "Wróć"
+
+[node name="EkranUstawien" type="VBoxContainer" parent="CenterContainer" unique_id=1515873499]
+visible = false
+layout_mode = 2
+alignment = 1
+
+[node name="EtykietaOgolna" type="Label" parent="CenterContainer/EkranUstawien" unique_id=1648379712]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="GlosnoscOgolna" type="HSlider" parent="CenterContainer/EkranUstawien" unique_id=944033018]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="EtykietaMuzyka" type="Label" parent="CenterContainer/EkranUstawien" unique_id=842601454]
+layout_mode = 2
+
+[node name="GlosnoscMuzyki" type="HSlider" parent="CenterContainer/EkranUstawien" unique_id=864859439]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="EtykietaDzwieki" type="Label" parent="CenterContainer/EkranUstawien" unique_id=1354583480]
+layout_mode = 2
+
+[node name="GlosnoscDzwiekow" type="HSlider" parent="CenterContainer/EkranUstawien" unique_id=456103982]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="UstawieniaSterowania" parent="CenterContainer/EkranUstawien" instance=ExtResource("2_sterowanie")]
+layout_mode = 2
+
+[node name="WrocUstawienia" type="Button" parent="CenterContainer/EkranUstawien" unique_id=567808542]
+layout_mode = 2
+text = "Wróć"
