@@ -5,7 +5,8 @@ signal blad_polaczenia
 signal host_rozlaczyl
 signal gracz_polaczyl(id: int)
 signal gracz_rozlaczyl(id: int)
-signal otrzymano_tryb_meczu(tryb: String)
+signal otrzymano_ustawienia_meczu(ustawienia: Dictionary)
+signal nazwa_gracza_2_zmieniona(nazwa: String)
 
 const PORT = 24567
 const LIMIT_GRACZY = 2
@@ -15,6 +16,12 @@ var adres_hosta = ""
 var pauza_lokalna = false
 var runda_online = 0
 var tryb_online = "klasyczny"
+var nazwa_gracza_1 = "Gracz 1"
+var nazwa_gracza_2 = "Gracz 2"
+var warunek_meczu = "punkty"
+var limit_punktow_meczu = 5
+var limit_czasu_meczu = 180.0
+var pozostaly_czas_meczu = 180.0
 
 
 func _ready() -> void:
@@ -25,10 +32,16 @@ func _ready() -> void:
 	multiplayer.server_disconnected.connect(func(): host_rozlaczyl.emit())
 
 
-func utworz_serwer(wybrany_tryb: String = "klasyczny") -> Error:
+func utworz_serwer(wybrany_tryb: String = "klasyczny", nazwa_hosta: String = "Gracz 1", warunek: String = "punkty", wartosc_warunku: int = 5) -> Error:
 	rozlacz()
 	runda_online = 0
 	tryb_online = "arena" if wybrany_tryb == "arena" else "klasyczny"
+	nazwa_gracza_1 = _oczysc_nazwe(nazwa_hosta, "Gracz 1")
+	nazwa_gracza_2 = "Gracz 2"
+	warunek_meczu = "czas" if warunek == "czas" else "punkty"
+	limit_punktow_meczu = clampi(wartosc_warunku, 1, 50) if warunek_meczu == "punkty" else 5
+	limit_czasu_meczu = float(clampi(wartosc_warunku, 1, 60) * 60) if warunek_meczu == "czas" else 180.0
+	pozostaly_czas_meczu = limit_czasu_meczu
 	var peer = ENetMultiplayerPeer.new()
 	var blad = peer.create_server(PORT, LIMIT_GRACZY - 1)
 	if blad != OK:
@@ -68,27 +81,50 @@ func czy_klient() -> bool:
 	return rola == "klient" and multiplayer.multiplayer_peer != null
 
 
-func popros_o_tryb_meczu() -> void:
+func popros_o_ustawienia_meczu(nazwa_gracza: String) -> void:
 	if czy_klient() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
-		rpc_id(1, "online_wyslij_tryb_meczu")
+		nazwa_gracza_2 = _oczysc_nazwe(nazwa_gracza, "Gracz 2")
+		rpc_id(1, "online_wyslij_ustawienia_meczu", nazwa_gracza_2)
 
 
 @rpc("any_peer", "call_remote", "reliable")
-func online_wyslij_tryb_meczu() -> void:
+func online_wyslij_ustawienia_meczu(nazwa_gracza: String) -> void:
 	if not czy_host():
 		return
 	var nadawca = multiplayer.get_remote_sender_id()
 	if nadawca <= 0 or not multiplayer.get_peers().has(nadawca):
 		return
-	rpc_id(nadawca, "online_odbierz_tryb_meczu", tryb_online)
+	nazwa_gracza_2 = _oczysc_nazwe(nazwa_gracza, "Gracz 2")
+	nazwa_gracza_2_zmieniona.emit(nazwa_gracza_2)
+	rpc_id(nadawca, "online_odbierz_ustawienia_meczu", {
+		"tryb": tryb_online,
+		"nazwa_gracza_1": nazwa_gracza_1,
+		"nazwa_gracza_2": nazwa_gracza_2,
+		"warunek": warunek_meczu,
+		"limit_punktow": limit_punktow_meczu,
+		"limit_czasu": limit_czasu_meczu
+	})
 
 
 @rpc("authority", "call_remote", "reliable")
-func online_odbierz_tryb_meczu(otrzymany_tryb: String) -> void:
+func online_odbierz_ustawienia_meczu(ustawienia: Dictionary) -> void:
 	if not czy_klient():
 		return
-	tryb_online = "arena" if otrzymany_tryb == "arena" else "klasyczny"
-	otrzymano_tryb_meczu.emit(tryb_online)
+	tryb_online = "arena" if ustawienia.get("tryb", "klasyczny") == "arena" else "klasyczny"
+	nazwa_gracza_1 = _oczysc_nazwe(str(ustawienia.get("nazwa_gracza_1", "Gracz 1")), "Gracz 1")
+	nazwa_gracza_2 = _oczysc_nazwe(str(ustawienia.get("nazwa_gracza_2", nazwa_gracza_2)), "Gracz 2")
+	warunek_meczu = "czas" if ustawienia.get("warunek", "punkty") == "czas" else "punkty"
+	limit_punktow_meczu = clampi(int(ustawienia.get("limit_punktow", 5)), 1, 50)
+	limit_czasu_meczu = clampf(float(ustawienia.get("limit_czasu", 180.0)), 60.0, 3600.0)
+	pozostaly_czas_meczu = limit_czasu_meczu
+	otrzymano_ustawienia_meczu.emit(ustawienia)
+
+
+func _oczysc_nazwe(nazwa: String, domyslna: String) -> String:
+	var oczyszczona = nazwa.strip_edges().replace("\n", " ").replace("\r", " ")
+	if oczyszczona.is_empty():
+		return domyslna
+	return oczyszczona.substr(0, 16)
 
 
 func adresy_ipv4_lokalne() -> PackedStringArray:

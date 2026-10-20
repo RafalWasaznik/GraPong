@@ -105,7 +105,7 @@ func _styl_sekcji(akcent: Color) -> StyleBoxFlat:
 
 func _styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = tlo
+	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.82))
 	styl.border_color = obramowanie
 	styl.set_border_width_all(1)
 	styl.set_corner_radius_all(9)
@@ -114,6 +114,7 @@ func _styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 
 func _styl_przycisku(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	var styl = _styl_pola(tlo, obramowanie)
+	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.78))
 	styl.content_margin_left = 18
 	styl.content_margin_right = 18
 	styl.content_margin_top = 8

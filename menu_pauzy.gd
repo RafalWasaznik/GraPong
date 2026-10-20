@@ -59,7 +59,7 @@ func _styluj_interfejs():
 func _styluj_panel(panel: PanelContainer, akcent: Color):
 	panel.custom_minimum_size.x = 500.0
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color("#0c1628f7")
+	styl.bg_color = Color("#0c1628", 0.76)
 	styl.border_color = Color(akcent, 0.68)
 	styl.set_border_width_all(2)
 	styl.set_corner_radius_all(22)
@@ -104,7 +104,7 @@ func _animuj_najechanie(guzik: Control, aktywne: bool):
 
 func _styl_przycisku(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = tlo
+	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.78))
 	styl.border_color = obramowanie
 	styl.set_border_width_all(1)
 	styl.set_corner_radius_all(10)
@@ -117,7 +117,7 @@ func _styl_przycisku(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 
 func _styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = tlo
+	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.82))
 	styl.border_color = obramowanie
 	styl.draw_center = true
 	styl.set_border_width_all(1)

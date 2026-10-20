@@ -1,13 +1,14 @@
 extends Node
 
 const CZAS_OSTRZEZENIA = 3.0
-const CZAS_AKTYWNEGO_WYDARZENIA = 6.0
+const CZAS_AKTYWNEGO_WYDARZENIA = 5.5
 const CZAS_KROTSZYCH_PALETEK = 8.0
 const PRZESUNIECIE_SCIAN = 48.0
 const POSZERZENIE_ARENY_X = 40.0
 const POSZERZENIE_ARENY_Y = 32.0
 const PREDKOSC_ZAKRETU = 0.65
 const MNOZNIK_PREDKOSCI = 1.12
+const SILA_PRZYCIAGANIA_DO_SRODKA = 560.0
 const SZEROKOSC_STREFY = 104.0
 const MNOZNIK_STREFY = 1.05
 const MAKS_KAT_ZAKRETU = deg_to_rad(72.0)
@@ -21,18 +22,24 @@ const CZAS_ZANIKANIA_BRAMKI = 0.85
 const CZAS_WYGASZANIA_PO_PUNKCIE = 0.45
 const WYSOKOSC_PODWOJNEGO_OTWORU = 104.0
 const ODSTEP_PODWOJNYCH_OTWOROW = 166.0
+const PROMIEN_SCIANY_SRODKOWEJ = 54.0
+const SZEROKOSC_SCIANY_SRODKOWEJ = 10.0
+const LICZBA_SEGMENTOW_SCIANY_SRODKOWEJ = 48
 
-const WYDARZENIA = ["wiatr_gora", "wiatr_dol", "przyspieszenie", "waska_arena", "strefa_przyspieszenia", "krotsze_paletki", "mocne_sciany", "wieksza_arena", "ruchoma_bramka"]
-const PASUJACE_PARY = {
-	"wiatr_gora": ["krotsze_paletki", "strefa_przyspieszenia", "ruchoma_bramka"],
-	"wiatr_dol": ["krotsze_paletki", "strefa_przyspieszenia", "ruchoma_bramka"],
-	"przyspieszenie": ["krotsze_paletki", "ruchoma_bramka"],
-	"waska_arena": ["mocne_sciany"],
-	"strefa_przyspieszenia": ["wiatr_gora", "wiatr_dol", "krotsze_paletki"],
-	"krotsze_paletki": ["wiatr_gora", "wiatr_dol", "przyspieszenie", "strefa_przyspieszenia", "mocne_sciany"],
-	"mocne_sciany": ["waska_arena", "krotsze_paletki", "wieksza_arena"],
-	"wieksza_arena": ["wiatr_gora", "wiatr_dol", "przyspieszenie", "strefa_przyspieszenia", "krotsze_paletki", "mocne_sciany"],
-	"ruchoma_bramka": ["wiatr_gora", "wiatr_dol", "przyspieszenie"]
+const WYDARZENIA = ["wiatr_gora", "wiatr_dol", "przyspieszenie", "przyciaganie_srodka", "sciana_srodka", "waska_arena", "strefa_przyspieszenia", "krotsze_paletki", "duza_paletka", "duza_pilka", "mocne_sciany", "wieksza_arena", "ruchoma_bramka"]
+const NIEKOMPATYBILNE_PARY = {
+	# Przeciwne kierunki tego samego wiatru.
+	"wiatr_gora": ["wiatr_dol"],
+	"wiatr_dol": ["wiatr_gora"],
+	# Oba wydarzenia sterują tymi samymi granicami planszy.
+	"waska_arena": ["wieksza_arena"],
+	"wieksza_arena": ["waska_arena"],
+	# Oba wydarzenia używają jednego tweena wysokości paletek.
+	"krotsze_paletki": ["duza_paletka"],
+	"duza_paletka": ["krotsze_paletki"],
+	# Obie modyfikacje nakładają przeszkody w tej samej części planszy.
+	"sciana_srodka": ["ruchoma_bramka"],
+	"ruchoma_bramka": ["sciana_srodka"]
 }
 
 var gra: Node2D
@@ -59,6 +66,7 @@ var bramka_czas_wygaszania = 0.0
 var bramka_alfa_poczatkowa = 0.0
 var bramka_czas_wygaszania_docelowy = CZAS_ZANIKANIA_BRAMKI
 var wariant_bramki = ""
+var sciana_srodka: StaticBody2D
 
 
 func uruchom(gra_glowna: Node2D, zdalny: bool = false, oczekuj_na_gracza: bool = false) -> void:
@@ -71,7 +79,7 @@ func uruchom(gra_glowna: Node2D, zdalny: bool = false, oczekuj_na_gracza: bool =
 	stan = "oczekiwanie"
 	aktywne_wydarzenie = ""
 	drugie_wydarzenie = ""
-	czas_do_zmiany = randf_range(8.0, 12.0)
+	czas_do_zmiany = randf_range(7.0, 10.0)
 	set_process(not zdalny and not oczekuj_na_gracza)
 	set_physics_process(zdalny or not oczekuj_na_gracza)
 	gra.call("pokaz_informacje_graczowi", "TRYB ARENA", "Uważaj na zmieniające się warunki gry", Color("#72e0f2"), 4.0)
@@ -126,8 +134,6 @@ func ustaw_stan_zdalny(dane: Dictionary) -> void:
 		var tytul = _nazwa_wydarzenia(aktywne_wydarzenie)
 		if not drugie_wydarzenie.is_empty():
 			tytul += " + " + _nazwa_wydarzenia(drugie_wydarzenie)
-		if not wariant_bramki.is_empty():
-			tytul += " (" + _nazwa_wariantu_bramki() + ")"
 		gra.call("pokaz_informacje_graczowi", tytul, "", Color("#ffb454"), CZAS_OSTRZEZENIA)
 	if bool(dane.get("bramka", false)):
 		if not is_instance_valid(bramka_cialo):
@@ -156,6 +162,12 @@ func _zastosuj_modyfikatory_zdalne() -> void:
 		gra.call("animuj_strefe_przyspieszenia", true, 0.65)
 	if _czy_aktywne("krotsze_paletki"):
 		gra.call("animuj_wysokosc_paletek", 0.72, 0.45)
+	if _czy_aktywne("duza_paletka"):
+		gra.call("animuj_wysokosc_paletek", 1.28, 0.55)
+	if _czy_aktywne("duza_pilka"):
+		gra.call("animuj_rozmiar_pilki", 1.35, 0.65)
+	if _czy_aktywne("sciana_srodka"):
+		_utworz_sciane_srodka()
 
 
 func _process(delta: float) -> void:
@@ -171,6 +183,7 @@ func _process(delta: float) -> void:
 		"aktywne":
 			if czas_do_zmiany <= 0.0:
 				_zakoncz_wydarzenie()
+	_aktualizuj_sciane_srodka()
 
 
 func _physics_process(delta: float) -> void:
@@ -226,9 +239,12 @@ func _losuj_wydarzenie() -> String:
 func _zapowiedz_wydarzenie() -> void:
 	aktywne_wydarzenie = _losuj_wydarzenie()
 	drugie_wydarzenie = ""
-	if randf() < 0.15:
-		var mozliwe_drugie = PASUJACE_PARY.get(aktywne_wydarzenie, []).duplicate()
-		mozliwe_drugie.erase(poprzednie_wydarzenie)
+	if randf() < 0.30:
+		var mozliwe_drugie = WYDARZENIA.duplicate()
+		mozliwe_drugie.erase(aktywne_wydarzenie)
+		for kandydat in mozliwe_drugie.duplicate():
+			if not _czy_para_kompatybilna(aktywne_wydarzenie, str(kandydat)):
+				mozliwe_drugie.erase(kandydat)
 		if not mozliwe_drugie.is_empty():
 			drugie_wydarzenie = str(mozliwe_drugie.pick_random())
 	if aktywne_wydarzenie == "wiatr_gora" or drugie_wydarzenie == "wiatr_gora":
@@ -245,8 +261,6 @@ func _zapowiedz_wydarzenie() -> void:
 	var tytul = _nazwa_wydarzenia(aktywne_wydarzenie)
 	if not drugie_wydarzenie.is_empty():
 		tytul += " + " + _nazwa_wydarzenia(drugie_wydarzenie)
-	if not wariant_bramki.is_empty():
-		tytul += " (" + _nazwa_wariantu_bramki() + ")"
 	gra.call("pokaz_informacje_graczowi", tytul, "", Color("#ffb454"), CZAS_OSTRZEZENIA)
 
 
@@ -258,32 +272,37 @@ func _nazwa_wydarzenia(nazwa: String) -> String:
 			return "Podmuch w dół"
 		"przyspieszenie":
 			return "Przyspieszenie"
+		"przyciaganie_srodka":
+			return "Przyciąganie do środka"
 		"waska_arena":
 			return "Mała arena"
 		"strefa_przyspieszenia":
 			return "Strefa przyspieszenia"
 		"krotsze_paletki":
 			return "Krótsze paletki"
+		"duza_paletka":
+			return "Duża paletka"
+		"duza_pilka":
+			return "Duża piłka"
+		"sciana_srodka":
+			return "Ściana na środku"
 		"mocne_sciany":
 			return "Mocne odbicie od ściany"
 		"wieksza_arena":
 			return "Większa arena"
 		"ruchoma_bramka":
-			return "Ruchoma bramka"
+			return "Ruchoma ściana"
 	return ""
-
-
-func _nazwa_wariantu_bramki() -> String:
-	match wariant_bramki:
-		"podwojne_przejscie":
-			return "Podwójne przejście"
-		"pulsujace_przejscie":
-			return "Pulsujące przejście"
-	return "Fala"
 
 
 func _czy_aktywne(nazwa: String) -> bool:
 	return aktywne_wydarzenie == nazwa or drugie_wydarzenie == nazwa
+
+
+func _czy_para_kompatybilna(pierwsze: String, drugie: String) -> bool:
+	var niezgodne_pierwsze: Array = NIEKOMPATYBILNE_PARY.get(pierwsze, [])
+	var niezgodne_drugie: Array = NIEKOMPATYBILNE_PARY.get(drugie, [])
+	return drugie not in niezgodne_pierwsze and pierwsze not in niezgodne_drugie
 
 
 func _rozpocznij_wydarzenie() -> void:
@@ -314,6 +333,12 @@ func _rozpocznij_wydarzenie() -> void:
 		gra.call("animuj_strefe_przyspieszenia", true, 0.65)
 	if _czy_aktywne("krotsze_paletki"):
 		gra.call("animuj_wysokosc_paletek", 0.72, 0.45)
+	if _czy_aktywne("duza_paletka"):
+		gra.call("animuj_wysokosc_paletek", 1.28, 0.55)
+	if _czy_aktywne("duza_pilka"):
+		gra.call("animuj_rozmiar_pilki", 1.35, 0.65)
+	if _czy_aktywne("sciana_srodka"):
+		_utworz_sciane_srodka()
 	if _czy_aktywne("mocne_sciany"):
 		gra.call("_odswiez_rysowanie")
 	if _czy_aktywne("ruchoma_bramka"):
@@ -339,6 +364,12 @@ func _przywroc_efekty_modyfikatorow(czas_animacji: float) -> void:
 		gra.call("animuj_strefe_przyspieszenia", false, czas_animacji)
 	if _czy_aktywne("krotsze_paletki") and is_instance_valid(gra):
 		gra.call("animuj_wysokosc_paletek", 1.0, czas_animacji)
+	if _czy_aktywne("duza_paletka") and is_instance_valid(gra):
+		gra.call("animuj_wysokosc_paletek", 1.0, czas_animacji)
+	if _czy_aktywne("duza_pilka") and is_instance_valid(gra):
+		gra.call("animuj_rozmiar_pilki", 1.0, czas_animacji)
+	if _czy_aktywne("sciana_srodka"):
+		_usun_sciane_srodka()
 	if _czy_aktywne("mocne_sciany") and is_instance_valid(gra):
 		gra.call("_odswiez_rysowanie")
 	if _czy_aktywne("ruchoma_bramka") and is_instance_valid(bramka_cialo):
@@ -347,7 +378,7 @@ func _przywroc_efekty_modyfikatorow(czas_animacji: float) -> void:
 		gra.call("_odswiez_rysowanie")
 
 
-func _ustaw_nastepne_wydarzenie(minimum: float = 4.0, maksimum: float = 7.0) -> void:
+func _ustaw_nastepne_wydarzenie(minimum: float = 3.5, maksimum: float = 6.0) -> void:
 	if not aktywne_wydarzenie.is_empty():
 		poprzednie_wydarzenie = aktywne_wydarzenie
 	aktywne_wydarzenie = ""
@@ -360,7 +391,7 @@ func po_zdobyciu_punktu() -> void:
 	# Przerwij też zapowiedź, żeby modyfikator nie wystartował podczas nowej piłki.
 	if stan == "aktywne":
 		_przywroc_efekty_modyfikatorow(0.45)
-	_ustaw_nastepne_wydarzenie(7.0, 10.0)
+	_ustaw_nastepne_wydarzenie(6.0, 8.5)
 	if is_instance_valid(gra):
 		gra.call("ukryj_informacje_graczowi")
 
@@ -553,8 +584,16 @@ func przyspieszenie_y(predkosc_pozioma: float) -> float:
 
 
 func przygotuj_pilke(pilka: CharacterBody2D, delta: float) -> float:
+	if sciana_srodka_aktywna():
+		_aktualizuj_sciane_srodka()
 	if stan == "aktywne" and _czy_aktywne("strefa_przyspieszenia"):
 		_obsluz_strefe_przyspieszenia(pilka)
+	if stan == "aktywne" and _czy_aktywne("przyciaganie_srodka") and pilka.velocity.length_squared() > 0.0:
+		var predkosc = pilka.velocity.length()
+		var srodek = Vector2(_srodek_planszy_x(), (Ustawienia.gorna_granica + Ustawienia.dolna_granica) * 0.5)
+		var do_srodka = srodek - pilka.position
+		if do_srodka.length_squared() > 0.0:
+			pilka.velocity = (pilka.velocity + do_srodka.normalized() * SILA_PRZYCIAGANIA_DO_SRODKA * delta).normalized() * predkosc
 
 	if stan == "aktywne" and (_czy_aktywne("wiatr_gora") or _czy_aktywne("wiatr_dol")) and pilka.velocity.length_squared() > 0.0:
 		var predkosc = pilka.velocity.length()
@@ -590,6 +629,52 @@ func _srodek_planszy_x() -> float:
 	return (Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5
 
 
+func sciana_srodka_aktywna() -> bool:
+	return stan == "aktywne" and _czy_aktywne("sciana_srodka")
+
+
+func _utworz_sciane_srodka() -> void:
+	if is_instance_valid(sciana_srodka):
+		_aktualizuj_sciane_srodka()
+		return
+
+	sciana_srodka = StaticBody2D.new()
+	sciana_srodka.name = "ScianaSrodkaArena"
+	sciana_srodka.collision_layer = 1
+	sciana_srodka.collision_mask = 1
+	add_child(sciana_srodka)
+
+	var ksztalt_sciany_srodka = RectangleShape2D.new()
+	var dlugosc_segmentu = 2.0 * PROMIEN_SCIANY_SRODKOWEJ * sin(PI / LICZBA_SEGMENTOW_SCIANY_SRODKOWEJ)
+	ksztalt_sciany_srodka.size = Vector2(SZEROKOSC_SCIANY_SRODKOWEJ, dlugosc_segmentu + 3.0)
+	for i in range(LICZBA_SEGMENTOW_SCIANY_SRODKOWEJ):
+		var kat = TAU * float(i) / float(LICZBA_SEGMENTOW_SCIANY_SRODKOWEJ)
+		var kolizja = CollisionShape2D.new()
+		kolizja.shape = ksztalt_sciany_srodka
+		kolizja.position = Vector2(cos(kat), sin(kat)) * PROMIEN_SCIANY_SRODKOWEJ
+		kolizja.rotation = kat
+		sciana_srodka.add_child(kolizja)
+	_aktualizuj_sciane_srodka()
+	if is_instance_valid(gra):
+		gra.call("_odswiez_rysowanie")
+
+
+func _aktualizuj_sciane_srodka() -> void:
+	if not is_instance_valid(sciana_srodka):
+		return
+	var gora = Ustawienia.gorna_granica
+	var dol = Ustawienia.dolna_granica
+	var pozycja = Vector2(_srodek_planszy_x(), (gora + dol) * 0.5)
+	if sciana_srodka.position != pozycja:
+		sciana_srodka.position = pozycja
+
+
+func _usun_sciane_srodka() -> void:
+	if is_instance_valid(sciana_srodka):
+		sciana_srodka.queue_free()
+	sciana_srodka = null
+
+
 func zatrzymaj() -> void:
 	set_process(false)
 	set_physics_process(false)
@@ -601,6 +686,12 @@ func zatrzymaj() -> void:
 		gra.call("animuj_strefe_przyspieszenia", false, 0.3)
 	if _czy_aktywne("krotsze_paletki") and is_instance_valid(gra):
 		gra.call("animuj_wysokosc_paletek", 1.0, 0.3)
+	if _czy_aktywne("duza_paletka") and is_instance_valid(gra):
+		gra.call("animuj_wysokosc_paletek", 1.0, 0.3)
+	if _czy_aktywne("duza_pilka") and is_instance_valid(gra):
+		gra.call("animuj_rozmiar_pilki", 1.0, 0.3)
+	if _czy_aktywne("sciana_srodka"):
+		_usun_sciane_srodka()
 	if _czy_aktywne("ruchoma_bramka"):
 		_usun_bramke()
 	if is_instance_valid(gra):

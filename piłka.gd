@@ -9,6 +9,8 @@ signal runda_rozpoczeta
 
 const SPEED = 620.0
 const MAX_SPEED = 1120.0
+const MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE = 1.002
+const MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY = 1.30
 const CZAS_STARTU = 1.2
 const PROMIEN_OKREGU = 52.0
 const PROMIEN_PILKI = 13.0
@@ -25,11 +27,15 @@ const CZAS_ROZPADU = 0.38
 const LICZBA_FRAGMENTOW = 18
 
 var predkosc = SPEED
+var czas_rundy = 0.0
 var intro_aktywne = false
 var intro_czas = 0.0
 var srodek_intro = Vector2.ZERO
 var perfect_hit_czas = 0.0
 var efekt_strefy_czas = 0.0
+var mnoznik_rozmiaru = 1.0
+var promien_kolizji_bazowy = 10.0
+var animacja_rozmiaru: Tween
 var slady_pozycji: Array[Vector2] = []
 var deformacja_gumowa_pilki = 0.0
 var zglasza_kontakt_z_guma = false
@@ -41,6 +47,11 @@ var fragmenty_rozpadu: Array[Dictionary] = []
 
 func _ready():
 	add_to_group("pilki")
+	var ksztalt_kolizji = $CollisionShape2D.shape as CircleShape2D
+	if ksztalt_kolizji != null:
+		ksztalt_kolizji = ksztalt_kolizji.duplicate() as CircleShape2D
+		$CollisionShape2D.shape = ksztalt_kolizji
+		promien_kolizji_bazowy = ksztalt_kolizji.radius
 	set_process(false)
 	reset()
 
@@ -87,7 +98,7 @@ func _draw():
 	else:
 		var skala_x = 1.0 - deformacja_gumowa_pilki * 0.216
 		var skala_y = 1.0 + deformacja_gumowa_pilki * 0.168
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2(skala_x, skala_y))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(skala_x * mnoznik_rozmiaru, skala_y * mnoznik_rozmiaru))
 		draw_circle(Vector2.ZERO, 19.0, Color(0.25, 0.82, 0.96, 0.07))
 		draw_circle(Vector2.ZERO, 15.0, Color(0.03, 0.09, 0.14, 0.8))
 		draw_circle(Vector2.ZERO, 12.5, Color("#7ceaff"))
@@ -98,7 +109,7 @@ func _draw():
 
 	if perfect_hit_czas > 0.0:
 		var alfa = clamp(perfect_hit_czas / CZAS_EFEKTU_PERFECT_HIT, 0.0, 1.0)
-		var promien_odbicia = PROMIEN_PILKI + 5.0 + (1.0 - alfa) * 18.0
+		var promien_odbicia = _promien_pilki_aktualny() + 5.0 + (1.0 - alfa) * 18.0
 		draw_arc(
 			Vector2.ZERO,
 			promien_odbicia,
@@ -118,6 +129,7 @@ func _draw():
 func reset():
 	set_physics_process(true)
 	set_process(false)
+	czas_rundy = 0.0
 	rozpad_aktywny = false
 	fragmenty_rozpadu.clear()
 	strona_punktu = ""
@@ -155,6 +167,32 @@ func pokaz_efekt_strefy_przyspieszenia() -> void:
 	queue_redraw()
 
 
+func animuj_rozmiar(proporcja: float, czas: float = 0.55) -> void:
+	if is_instance_valid(animacja_rozmiaru):
+		animacja_rozmiaru.kill()
+	animacja_rozmiaru = create_tween()
+	animacja_rozmiaru.set_trans(Tween.TRANS_CUBIC)
+	animacja_rozmiaru.set_ease(Tween.EASE_IN_OUT)
+	animacja_rozmiaru.tween_method(
+		_ustaw_mnoznik_rozmiaru,
+		mnoznik_rozmiaru,
+		maxf(proporcja, 0.1),
+		maxf(czas, 0.01)
+	)
+
+
+func _ustaw_mnoznik_rozmiaru(nowy_mnoznik: float) -> void:
+	mnoznik_rozmiaru = maxf(nowy_mnoznik, 0.1)
+	var ksztalt_kolizji = $CollisionShape2D.shape as CircleShape2D
+	if ksztalt_kolizji != null:
+		ksztalt_kolizji.radius = promien_kolizji_bazowy * mnoznik_rozmiaru
+	queue_redraw()
+
+
+func _promien_pilki_aktualny() -> float:
+	return PROMIEN_PILKI * mnoznik_rozmiaru
+
+
 func pokaz_efekt_mocnego_odbicia() -> void:
 	efekt_strefy_czas = 0.35
 	queue_redraw()
@@ -180,14 +218,21 @@ func _physics_process(delta):
 		_aktualizuj_intro(delta)
 		return
 
+	czas_rundy += delta
+	var mnoznik_przyspieszenia_rundy = minf(
+		pow(MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE, czas_rundy),
+		MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY
+	)
+
 	var mnoznik_predkosci_areny = 1.0
 	if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
 		var manager_areny = get_parent().get_node_or_null("ArenaManager")
 		if manager_areny != null:
 			mnoznik_predkosci_areny = float(manager_areny.call("przygotuj_pilke", self, delta))
 
-	var collision = move_and_collide(velocity * delta * mnoznik_predkosci_areny)
-	_aktualizuj_kontakt_z_gumowa_sciana(mnoznik_predkosci_areny, delta)
+	var mnoznik_ruchu = mnoznik_predkosci_areny * mnoznik_przyspieszenia_rundy
+	var collision = move_and_collide(velocity * delta * mnoznik_ruchu)
+	_aktualizuj_kontakt_z_gumowa_sciana(mnoznik_ruchu, delta)
 
 	if collision:
 		var obiekt = collision.get_collider()
@@ -228,18 +273,19 @@ func _physics_process(delta):
 	_dodaj_probke_sladu()
 	queue_redraw()
 
-	if Ustawienia.tryb == "endless" and position.x + PROMIEN_PILKI >= Ustawienia.prawa_granica:
-		position.x = Ustawienia.prawa_granica - PROMIEN_PILKI
+	var promien_aktualny = _promien_pilki_aktualny()
+	if Ustawienia.tryb == "endless" and position.x + promien_aktualny >= Ustawienia.prawa_granica:
+		position.x = Ustawienia.prawa_granica - promien_aktualny
 		velocity.x = -absf(velocity.x)
 		$DzwiekSciana.play()
 		odbicie_sciany.emit()
 		return
 
-	if position.x + PROMIEN_PILKI <= Ustawienia.lewa_granica:
+	if position.x + promien_aktualny <= Ustawienia.lewa_granica:
 		_rozpocznij_rozpad_punktu("lewa")
 		return
 
-	if position.x - PROMIEN_PILKI >= Ustawienia.prawa_granica:
+	if position.x - promien_aktualny >= Ustawienia.prawa_granica:
 		_rozpocznij_rozpad_punktu("prawa")
 		return
 
@@ -298,11 +344,11 @@ func _aktualizuj_kontakt_z_gumowa_sciana(mnoznik_predkosci: float, delta: float)
 	var strona = 0
 	var wcisniecie = 0.0
 	if velocity.x < 0.0:
-		wcisniecie = Ustawienia.lewa_granica + PROMIEN_PILKI - position.x
+		wcisniecie = Ustawienia.lewa_granica + _promien_pilki_aktualny() - position.x
 		if wcisniecie > 0.0:
 			strona = -1
 	elif velocity.x > 0.0 and Ustawienia.tryb != "endless":
-		wcisniecie = position.x - (Ustawienia.prawa_granica - PROMIEN_PILKI)
+		wcisniecie = position.x - (Ustawienia.prawa_granica - _promien_pilki_aktualny())
 		if wcisniecie > 0.0:
 			strona = 1
 
@@ -313,7 +359,7 @@ func _aktualizuj_kontakt_z_gumowa_sciana(mnoznik_predkosci: float, delta: float)
 			maks_ugiecia = MAKS_UGIECIA_GUMA_WYSOKA
 		elif rzeczywista_predkosc >= SPEED * 1.25:
 			maks_ugiecia = MAKS_UGIECIA_GUMA_SREDNIA
-		var postep = clampf(wcisniecie / (PROMIEN_PILKI * 2.0), 0.0, 1.0)
+		var postep = clampf(wcisniecie / (_promien_pilki_aktualny() * 2.0), 0.0, 1.0)
 		var ugiecie = maks_ugiecia * postep
 		var nowa_deformacja = postep
 		if not is_equal_approx(deformacja_gumowa_pilki, nowa_deformacja):
@@ -403,7 +449,7 @@ func _aktualizuj_intro(delta):
 
 	var nastepna_pozycja = position + velocity * delta
 	var odleglosc = nastepna_pozycja.distance_to(srodek_intro)
-	var maksymalna_odleglosc = PROMIEN_OKREGU - PROMIEN_PILKI
+	var maksymalna_odleglosc = PROMIEN_OKREGU - _promien_pilki_aktualny()
 
 	if odleglosc >= maksymalna_odleglosc:
 		var normalna = (nastepna_pozycja - srodek_intro).normalized()

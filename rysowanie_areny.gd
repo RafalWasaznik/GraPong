@@ -67,15 +67,21 @@ func _draw():
 	draw_circle(Vector2(srodek_x, srodek_y), 3.0, Color(0.45, 0.67, 0.84, 0.3))
 	var y = Ustawienia.gorna_granica + 20.0
 	var koniec_linii = Ustawienia.dolna_granica - 10.0
-
-	while y < koniec_linii:
-		draw_line(
-			Vector2(srodek_x, y),
-			Vector2(srodek_x, min(y + 12.0, koniec_linii)),
-			KOLOR_LINII,
-			3.0
-		)
-		y += 24.0
+	var sciana_srodka_aktywna = _czy_tryb_areny() and gra.arena_manager != null and gra.arena_manager.call("sciana_srodka_aktywna")
+	if not sciana_srodka_aktywna:
+		while y < koniec_linii:
+			draw_line(
+				Vector2(srodek_x, y),
+				Vector2(srodek_x, min(y + 12.0, koniec_linii)),
+				KOLOR_LINII,
+				3.0
+			)
+			y += 24.0
+	else:
+		var srodek = Vector2(srodek_x, srodek_y)
+		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.69, 0.3, 0.14), 22.0, true)
+		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color("#ffb454"), 9.0, true)
+		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color("#fff2d8"), 2.0, true)
 	_rysuj_bramke_areny()
 
 	if not gra.mecz_zakonczony:
@@ -92,8 +98,8 @@ func _draw():
 			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, nazwa_gracza)
 			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, nazwa_przeciwnika)
 		elif Ustawienia.tryb == "online":
-			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, "GRACZ 1")
-			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, "GRACZ 2")
+			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, Siec.nazwa_gracza_1.to_upper())
+			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, Siec.nazwa_gracza_2.to_upper())
 		elif Ustawienia.tryb == "endless":
 			_rysuj_nazwe_wyniku(karta_gracza, "SERIA", KOLOR_GRACZA)
 			_rysuj_nazwe_wyniku(karta_ai, "REKORD", Color("#c4b5fd"))

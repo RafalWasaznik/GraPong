@@ -53,6 +53,9 @@ var online_czas_stanu = 0.0
 var online_poprzedni_stan: Dictionary = {}
 var online_aktualny_stan: Dictionary = {}
 var online_komunikat: Label
+var online_czas_etykieta: Label
+var online_czas_pozostaly = 0.0
+var online_tekst_konca = ""
 var online_powrot_zaplany = false
 var online_przewidywane_prawe_y = 0.0
 var online_licznik_odbic_paletka = 0
@@ -239,6 +242,12 @@ func _ustaw_wysokosci_paletek(wysokosci: Vector2) -> void:
 	$PaletkaAI.call("ustaw_wysokosc", wysokosci.y)
 
 
+func animuj_rozmiar_pilki(proporcja: float, czas: float = 0.55) -> void:
+	for pilka in get_tree().get_nodes_in_group("pilki"):
+		if pilka.has_method("animuj_rozmiar"):
+			pilka.call("animuj_rozmiar", proporcja, czas)
+
+
 func ustaw_ugiecie_gumowej_sciany(strona: int, y: float, ugiecie: float, kula_id: int) -> void:
 	if is_instance_valid(animacja_gumowej_sciany):
 		animacja_gumowej_sciany.kill()
@@ -306,6 +315,7 @@ func _ready():
 	)
 
 	if Ustawienia.tryb == "online":
+		online_czas_pozostaly = Siec.limit_czasu_meczu
 		if Ustawienia.online_arena:
 			$CzasBonusu.stop()
 			arena_manager = ARENA_MANAGER_SCRIPT.new()
@@ -482,10 +492,16 @@ func _prostokat_karty_wyniku(numer_karty: int) -> Rect2:
 	var szerokosc = 84.0
 	var wysokosc = clampf(Ustawienia.gorna_granica - 32.0, 38.0, 54.0)
 	var odstep = 6.0
+	if Ustawienia.tryb == "online":
+		szerokosc = 164.0
+		wysokosc = 68.0
+		odstep = 12.0
 	var srodek = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) / 2.0
 	var gora_karty = maxf(20.0, Ustawienia.gorna_granica - wysokosc - 24.0)
 	if _czy_tryb_areny():
 		gora_karty = maxf(12.0, Ustawienia.gorna_granica - wysokosc - 32.0)
+	if Ustawienia.tryb == "online":
+		gora_karty = maxf(8.0, Ustawienia.gorna_granica - wysokosc - 34.0)
 	if Ustawienia.tryb == "endless":
 		szerokosc = 150.0
 		wysokosc = clampf(Ustawienia.gorna_granica - 16.0, 56.0, 78.0)
@@ -568,10 +584,19 @@ func _on_punkt(strona):
 
 	var z_botem = Ustawienia.tryb == "bot" or (Ustawienia.tryb == "arena" and not Ustawienia.arena_dwoch_graczy)
 
-	if wynik_gracza >= Ustawienia.limit_punktow:
-		koniec_gry("Wygrałeś!" if z_botem else "Wygrywa gracz 1!")
+	if Ustawienia.tryb == "online" and Siec.warunek_meczu == "czas":
+		$Paletka.set_physics_process(true)
+		$PaletkaAI.set_physics_process(true)
+		pilka_glowna.set_physics_process(true)
+		pilka_glowna.reset()
+	elif Ustawienia.tryb == "online" and wynik_gracza >= Siec.limit_punktow_meczu:
+		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_1)
+	elif Ustawienia.tryb == "online" and wynik_ai >= Siec.limit_punktow_meczu:
+		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_2)
+	elif wynik_gracza >= Ustawienia.limit_punktow:
+		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_1 if Ustawienia.tryb == "online" else ("Wygrałeś!" if z_botem else "Wygrywa gracz 1!"))
 	elif wynik_ai >= Ustawienia.limit_punktow:
-		koniec_gry("Przegrałeś!" if z_botem else "Wygrywa gracz 2!")
+		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_2 if Ustawienia.tryb == "online" else ("Przegrałeś!" if z_botem else "Wygrywa gracz 2!"))
 	else:
 		$Paletka.set_physics_process(true)
 		$PaletkaAI.set_physics_process(true)
@@ -664,6 +689,7 @@ func _zakoncz_endless():
 func dodaj_dodatkowa_pilke(pilka_zrodlowa, pozycja_bonusu: Vector2):
 	var nowa_pilka = SCENA_PILKI.instantiate()
 	add_child(nowa_pilka)
+	nowa_pilka.czas_rundy = pilka_zrodlowa.czas_rundy
 
 	var kierunek = pilka_zrodlowa.velocity.normalized()
 	if kierunek.length_squared() < 0.001:
@@ -692,6 +718,8 @@ func dodaj_dodatkowa_pilke(pilka_zrodlowa, pozycja_bonusu: Vector2):
 
 func koniec_gry(tekst: String) -> void:
 	mecz_zakonczony = true
+	if Ustawienia.tryb == "online":
+		online_tekst_konca = tekst
 	$WynikGracza.hide()
 	$WynikAI.hide()
 	var dane_podsumowania = {
@@ -727,6 +755,12 @@ func _process(delta: float) -> void:
 	if not mecz_zakonczony:
 		czas_meczu += delta
 	if Ustawienia.tryb == "online":
+		if Siec.czy_host() and Siec.warunek_meczu == "czas" and not multiplayer.get_peers().is_empty() and not mecz_zakonczony:
+			Siec.pozostaly_czas_meczu = maxf(0.0, Siec.pozostaly_czas_meczu - delta)
+			online_czas_pozostaly = Siec.pozostaly_czas_meczu
+			if online_czas_pozostaly <= 0.0:
+				koniec_gry(_tekst_wyniku_po_czasie())
+		_odswiez_etykiete_czasu_online()
 		_online_obsluz(delta)
 
 
@@ -736,6 +770,7 @@ func _inicjalizuj_online() -> void:
 	Siec.gracz_rozlaczyl.connect(_online_gracz_rozlaczyl)
 	Siec.polaczono_z_hostem.connect(_online_polaczono)
 	Siec.host_rozlaczyl.connect(_online_host_rozlaczyl)
+	Siec.nazwa_gracza_2_zmieniona.connect(_online_zmieniono_nazwe_gracza)
 
 	$Paletka.set_physics_process(false)
 	$PaletkaAI.set_physics_process(false)
@@ -770,6 +805,37 @@ func _utworz_komunikat_online() -> void:
 	online_komunikat.add_theme_font_size_override("font_size", 13)
 	online_komunikat.add_theme_color_override("font_color", Color("#55e7ff"))
 	warstwa.add_child(online_komunikat)
+	online_czas_etykieta = Label.new()
+	online_czas_etykieta.name = "WarunekMeczuOnline"
+	online_czas_etykieta.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	online_czas_etykieta.offset_top = 78.0
+	online_czas_etykieta.offset_bottom = 106.0
+	online_czas_etykieta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	online_czas_etykieta.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	online_czas_etykieta.add_theme_font_override("font", FONT_ARCADE)
+	online_czas_etykieta.add_theme_font_size_override("font_size", 20)
+	online_czas_etykieta.add_theme_color_override("font_color", Color("#ffd27a"))
+	warstwa.add_child(online_czas_etykieta)
+	_odswiez_etykiete_czasu_online()
+
+
+func _odswiez_etykiete_czasu_online() -> void:
+	if not is_instance_valid(online_czas_etykieta):
+		return
+	if Siec.warunek_meczu == "czas":
+		var sekundy = maxi(0, ceili(online_czas_pozostaly))
+		var minuty = floori(float(sekundy) / 60.0)
+		online_czas_etykieta.text = "%02d:%02d" % [minuty, sekundy % 60]
+	else:
+		online_czas_etykieta.text = "Do %d punktów" % Siec.limit_punktow_meczu
+
+
+func _tekst_wyniku_po_czasie() -> String:
+	if wynik_gracza > wynik_ai:
+		return "Koniec czasu — wygrywa %s!" % Siec.nazwa_gracza_1
+	if wynik_ai > wynik_gracza:
+		return "Koniec czasu — wygrywa %s!" % Siec.nazwa_gracza_2
+	return "Koniec czasu — remis!"
 
 
 func _online_ustaw_komunikat(tekst: String, kolor: Color = Color("#55e7ff")) -> void:
@@ -794,6 +860,10 @@ func _online_gracz_polaczyl(id: int) -> void:
 		arena_manager.call("rozpocznij")
 	$"Piłka".reset()
 	$"Piłka".set_physics_process(true)
+
+
+func _online_zmieniono_nazwe_gracza(_nazwa: String) -> void:
+	_odswiez_rysowanie()
 
 
 func _online_gracz_rozlaczyl(id: int) -> void:
@@ -882,6 +952,8 @@ func _online_obsluz(delta: float) -> void:
 		"wynik_gracza": wynik_gracza,
 		"wynik_ai": wynik_ai,
 		"koniec": mecz_zakonczony,
+		"komunikat_konca": online_tekst_konca,
+		"czas_pozostaly": Siec.pozostaly_czas_meczu,
 		"runda_online": Siec.runda_online,
 		"odbicia_paletki": online_licznik_odbic_paletka,
 		"odbicia_sciany": online_licznik_odbic_sciana,
@@ -918,6 +990,7 @@ func online_zadaj_ponowne() -> void:
 	if not Siec.czy_host() or not _online_nadawca_jest_graczem() or not mecz_zakonczony:
 		return
 	Siec.runda_online += 1
+	Siec.pozostaly_czas_meczu = Siec.limit_czasu_meczu
 	get_tree().reload_current_scene()
 
 
@@ -956,6 +1029,8 @@ func online_odbierz_stan(stan: Dictionary) -> void:
 	online_czas_stanu = 0.0
 	$WynikGracza.text = str(stan["wynik_gracza"])
 	$WynikAI.text = str(stan["wynik_ai"])
+	online_czas_pozostaly = float(stan.get("czas_pozostaly", online_czas_pozostaly))
+	_odswiez_etykiete_czasu_online()
 	$Paletka.dash_odnowienie = float(stan["dash_lewy"])
 	$PaletkaAI.dash_odnowienie = float(stan["dash_prawy"])
 	if poprzedni_cooldown_gracza <= 0.0 and $Paletka.dash_odnowienie > 0.0:
@@ -980,7 +1055,7 @@ func online_odbierz_stan(stan: Dictionary) -> void:
 	if int(stan["wynik_gracza"]) != poprzedni_wynik_gracza or int(stan["wynik_ai"]) != poprzedni_wynik_ai:
 		dzwiek_punktu.play()
 	if stan["koniec"] and not mecz_zakonczony:
-		koniec_gry("Koniec meczu — wynik %d : %d" % [stan["wynik_gracza"], stan["wynik_ai"]])
+		koniec_gry(str(stan.get("komunikat_konca", "Koniec meczu — wynik %d : %d" % [stan["wynik_gracza"], stan["wynik_ai"]])))
 
 
 func _on_przycisk_menu():
@@ -1000,4 +1075,5 @@ func _on_przycisk_ponownie():
 			return
 		if Siec.czy_host():
 			Siec.runda_online += 1
+			Siec.pozostaly_czas_meczu = Siec.limit_czasu_meczu
 	get_tree().reload_current_scene()

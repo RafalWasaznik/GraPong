@@ -6,10 +6,10 @@
 [ext_resource type="PackedScene" uid="uid://hjfo7y4yt0gs" path="res://paletka_ai.tscn" id="3_p5xgf"]
 [ext_resource type="Script" uid="uid://cqmd1ck0s0bk" path="res://menu_pauzy.gd" id="5_c8em3"]
 [ext_resource type="Script" uid="uid://bov8c7uqrjmm1" path="res://bonus_manager.gd" id="6_57rfe"]
-[ext_resource type="PackedScene" path="res://ustawienia_menu.tscn" id="11_ustawienia"]
 [ext_resource type="Script" uid="uid://bgpjucodt2r2x" path="res://rysowanie_areny.gd" id="8_rysowanie"]
 [ext_resource type="PackedScene" path="res://ekran_konca.tscn" id="9_ekran_konca"]
 [ext_resource type="Script" uid="uid://bhlafvlwpd62i" path="res://wskazniki_dasha.gd" id="10_dash_ui"]
+[ext_resource type="PackedScene" path="res://ustawienia_menu.tscn" id="11_ustawienia"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_618dn"]
 size = Vector2(1152, 20)
@@ -112,7 +112,7 @@ text = "Wróć do menu"
 custom_minimum_size = Vector2(540, 0)
 layout_mode = 2
 
-[node name="EkranUstawien" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien" instance=ExtResource("11_ustawienia")]
+[node name="EkranUstawien" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien" unique_id=494934947 instance=ExtResource("11_ustawienia")]
 layout_mode = 2
 
 [node name="BonusManager" type="Node" parent="." unique_id=1157479977]
