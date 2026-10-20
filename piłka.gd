@@ -3,6 +3,7 @@ extends CharacterBody2D
 signal punkt(strona)
 signal odbicie_gracza(perfect_hit: bool)
 signal odbicie_paletki
+signal odbicie_sciany
 signal statystyki_odbicia(strona: String, mocne: bool)
 signal runda_rozpoczeta
 
@@ -180,7 +181,7 @@ func _physics_process(delta):
 		return
 
 	var mnoznik_predkosci_areny = 1.0
-	if Ustawienia.tryb == "arena":
+	if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
 		var manager_areny = get_parent().get_node_or_null("ArenaManager")
 		if manager_areny != null:
 			mnoznik_predkosci_areny = float(manager_areny.call("przygotuj_pilke", self, delta))
@@ -217,11 +218,12 @@ func _physics_process(delta):
 
 		else:
 			velocity = velocity.bounce(normalna)
-			if Ustawienia.tryb == "arena":
+			if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
 				var manager_areny = get_parent().get_node_or_null("ArenaManager")
 				if manager_areny != null:
 					manager_areny.call("wzmocnij_odbicie_od_sciany", self, str(obiekt.name))
 			$DzwiekSciana.play()
+			odbicie_sciany.emit()
 
 	_dodaj_probke_sladu()
 	queue_redraw()
@@ -230,6 +232,7 @@ func _physics_process(delta):
 		position.x = Ustawienia.prawa_granica - PROMIEN_PILKI
 		velocity.x = -absf(velocity.x)
 		$DzwiekSciana.play()
+		odbicie_sciany.emit()
 		return
 
 	if position.x + PROMIEN_PILKI <= Ustawienia.lewa_granica:

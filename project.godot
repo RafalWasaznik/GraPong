@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 Ustawienia="*uid://6v761sr21332"
 MuzykaGry="*res://muzyka.gd"
+Siec="*res://siec.gd"
 
 [display]
 

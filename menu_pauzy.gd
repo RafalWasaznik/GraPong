@@ -148,6 +148,18 @@ func _input(event):
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.is_action_pressed("pauza"):
 		get_viewport().set_input_as_handled()
+		if Ustawienia.tryb == "online":
+			if not przyciemnienie.visible:
+				Siec.pauza_lokalna = true
+				przyciemnienie.show()
+				panel_pauzy.show()
+				panel_ustawien.hide()
+				_animuj_wejscie(panel_pauzy)
+			elif panel_ustawien.visible:
+				_wroc_do_pauzy()
+			else:
+				_wroc_do_gry()
+			return
 
 		if not get_tree().paused:
 			get_tree().paused = true
@@ -163,7 +175,10 @@ func _input(event):
 
 func _wroc_do_gry():
 	przyciemnienie.hide()
-	get_tree().paused = false
+	if Ustawienia.tryb == "online":
+		Siec.pauza_lokalna = false
+	else:
+		get_tree().paused = false
 
 
 func _otworz_ustawienia():
@@ -191,4 +206,6 @@ func _wroc_do_pauzy():
 
 func _wroc_do_menu():
 	get_tree().paused = false
+	if Ustawienia.tryb == "online":
+		Siec.rozlacz()
 	get_tree().change_scene_to_file("res://menu.tscn")

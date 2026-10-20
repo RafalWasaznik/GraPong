@@ -4,6 +4,7 @@ const PLIK_USTAWIEN = "user://ustawienia.cfg"
 
 var tryb = "bot"
 var arena_dwoch_graczy = false
+var online_arena = false
 var trudnosc = "sredni"
 var charakter_bota = "defensywny"
 var limit_punktow = 5

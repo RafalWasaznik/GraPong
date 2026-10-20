@@ -48,6 +48,18 @@ var gumowa_sciana_ugiecie = 0.0
 var gumowa_sciana_kula_id = 0
 var rozpad_punktu_trwa = false
 var mecz_zakonczony = false
+var online_czas_wejscia = 0.0
+var online_czas_stanu = 0.0
+var online_poprzedni_stan: Dictionary = {}
+var online_aktualny_stan: Dictionary = {}
+var online_komunikat: Label
+var online_powrot_zaplany = false
+var online_przewidywane_prawe_y = 0.0
+var online_licznik_odbic_paletka = 0
+var online_licznik_odbic_sciana = 0
+var online_odebrane_odbicia_paletka = 0
+var online_odebrane_odbicia_sciana = 0
+var online_otrzymano_pierwszy_stan = false
 
 
 func _enter_tree():
@@ -271,6 +283,8 @@ func _ready():
 	$"Piłka".punkt.connect(_on_punkt)
 	$"Piłka".odbicie_gracza.connect(_on_odbicie_gracza)
 	$"Piłka".statystyki_odbicia.connect(_zarejestruj_odbicie)
+	$"Piłka".odbicie_paletki.connect(_online_odnotuj_odbicie_paletki)
+	$"Piłka".odbicie_sciany.connect(_online_odnotuj_odbicie_sciany)
 	ekran_konca.connect("menu_pressed", _on_przycisk_menu)
 	ekran_konca.connect("replay_pressed", _on_przycisk_ponownie)
 
@@ -291,7 +305,15 @@ func _ready():
 		-7.0
 	)
 
-	if Ustawienia.tryb == "endless":
+	if Ustawienia.tryb == "online":
+		if Ustawienia.online_arena:
+			$CzasBonusu.stop()
+			arena_manager = ARENA_MANAGER_SCRIPT.new()
+			arena_manager.name = "ArenaManager"
+			add_child(arena_manager)
+			arena_manager.call("uruchom", self, Siec.czy_klient(), true)
+		_inicjalizuj_online()
+	elif Ustawienia.tryb == "endless":
 		$PaletkaAI.hide()
 		$PaletkaAI.set_physics_process(false)
 		$PaletkaAI/CollisionShape2D.set_deferred("disabled", true)
@@ -462,7 +484,7 @@ func _prostokat_karty_wyniku(numer_karty: int) -> Rect2:
 	var odstep = 6.0
 	var srodek = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) / 2.0
 	var gora_karty = maxf(20.0, Ustawienia.gorna_granica - wysokosc - 24.0)
-	if Ustawienia.tryb == "arena":
+	if _czy_tryb_areny():
 		gora_karty = maxf(12.0, Ustawienia.gorna_granica - wysokosc - 32.0)
 	if Ustawienia.tryb == "endless":
 		szerokosc = 150.0
@@ -475,8 +497,12 @@ func _prostokat_karty_wyniku(numer_karty: int) -> Rect2:
 	return Rect2(Vector2(x, gora_karty), Vector2(szerokosc, wysokosc))
 
 
+func _czy_tryb_areny() -> bool:
+	return Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena)
+
+
 func _ustaw_etykiety_wyniku():
-	if Ustawienia.tryb == "arena":
+	if Ustawienia.tryb in ["arena", "online"]:
 		$WynikGracza.hide()
 		$WynikAI.hide()
 		return
@@ -528,7 +554,8 @@ func _on_punkt(strona):
 	$WynikGracza.text = str(wynik_gracza)
 	$WynikAI.text = str(wynik_ai)
 	_odswiez_rysowanie()
-	$BonusManager.wyczysc_po_punkcie()
+	if Ustawienia.tryb != "online":
+		$BonusManager.wyczysc_po_punkcie()
 	_odswiez_rysowanie()
 	if arena_manager != null:
 		arena_manager.call("po_zdobyciu_punktu")
@@ -699,12 +726,278 @@ func _odswiez_rysowanie() -> void:
 func _process(delta: float) -> void:
 	if not mecz_zakonczony:
 		czas_meczu += delta
+	if Ustawienia.tryb == "online":
+		_online_obsluz(delta)
+
+
+func _inicjalizuj_online() -> void:
+	_utworz_komunikat_online()
+	Siec.gracz_polaczyl.connect(_online_gracz_polaczyl)
+	Siec.gracz_rozlaczyl.connect(_online_gracz_rozlaczyl)
+	Siec.polaczono_z_hostem.connect(_online_polaczono)
+	Siec.host_rozlaczyl.connect(_online_host_rozlaczyl)
+
+	$Paletka.set_physics_process(false)
+	$PaletkaAI.set_physics_process(false)
+	$"Piłka".set_physics_process(false)
+	$BonusManager.set_process(false)
+	$BonusManager.set_physics_process(false)
+
+	if Siec.czy_host():
+		_online_ustaw_komunikat("Oczekiwanie na drugiego gracza", Color("#55e7ff"))
+		var polaczeni = multiplayer.get_peers()
+		if not polaczeni.is_empty():
+			_online_gracz_polaczyl(polaczeni[0])
+	else:
+		online_przewidywane_prawe_y = $PaletkaAI.position.y
+		_online_ustaw_komunikat("Łączenie z hostem…", Color("#55e7ff"))
+		if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+			_online_polaczono()
+
+
+func _utworz_komunikat_online() -> void:
+	var warstwa = CanvasLayer.new()
+	warstwa.name = "WarstwaStatusuOnline"
+	warstwa.layer = 20
+	add_child(warstwa)
+	online_komunikat = Label.new()
+	online_komunikat.name = "StatusOnline"
+	online_komunikat.position = Vector2(0.0, 0.0)
+	online_komunikat.size = Vector2(get_viewport_rect().size.x, 26.0)
+	online_komunikat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	online_komunikat.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	online_komunikat.add_theme_font_override("font", FONT_ARCADE)
+	online_komunikat.add_theme_font_size_override("font_size", 13)
+	online_komunikat.add_theme_color_override("font_color", Color("#55e7ff"))
+	warstwa.add_child(online_komunikat)
+
+
+func _online_ustaw_komunikat(tekst: String, kolor: Color = Color("#55e7ff")) -> void:
+	if not is_instance_valid(online_komunikat):
+		return
+	online_komunikat.text = tekst
+	online_komunikat.add_theme_color_override("font_color", kolor)
+	online_komunikat.show()
+
+
+func _online_gracz_polaczyl(id: int) -> void:
+	if not Siec.czy_host() or not multiplayer.get_peers().has(id):
+		return
+	_online_ustaw_komunikat("Gracz dołączył — powodzenia!", Color("#55e7ff"))
+	get_tree().create_timer(2.0).timeout.connect(func():
+		if is_instance_valid(online_komunikat) and online_komunikat.text == "Gracz dołączył — powodzenia!":
+			online_komunikat.hide()
+	)
+	$Paletka.set_physics_process(true)
+	$PaletkaAI.set_physics_process(true)
+	if arena_manager != null:
+		arena_manager.call("rozpocznij")
+	$"Piłka".reset()
+	$"Piłka".set_physics_process(true)
+
+
+func _online_gracz_rozlaczyl(id: int) -> void:
+	if not Siec.czy_host():
+		return
+	$PaletkaAI.sieciowy_kierunek = 0.0
+	$PaletkaAI.sieciowy_dash_zadany = false
+	$Paletka.set_physics_process(false)
+	$PaletkaAI.set_physics_process(false)
+	$"Piłka".set_physics_process(false)
+	if arena_manager != null:
+		arena_manager.set_process(false)
+		arena_manager.set_physics_process(false)
+	_online_ustaw_komunikat("Gracz rozłączony — oczekiwanie na kolejnego", Color("#ffb454"))
+
+
+func _online_polaczono() -> void:
+	if Siec.czy_klient():
+		_online_ustaw_komunikat("Połączono z hostem", Color("#55e7ff"))
+
+
+func _online_host_rozlaczyl() -> void:
+	if not Siec.czy_klient() or online_powrot_zaplany:
+		return
+	online_powrot_zaplany = true
+	_online_ustaw_komunikat("Host zakończył połączenie — wracam do menu…", Color("#ff647a"))
+	get_tree().create_timer(2.0).timeout.connect(_online_wroc_do_menu)
+
+
+func _online_wroc_do_menu() -> void:
+	Siec.rozlacz()
+	Ustawienia.tryb = "bot"
+	get_tree().change_scene_to_file("res://menu.tscn")
+
+
+func _online_obsluz(delta: float) -> void:
+	if Siec.czy_klient():
+		if online_komunikat.text == "Połączono z hostem":
+			online_komunikat.hide()
+		var kierunek = 0.0 if Siec.pauza_lokalna else Input.get_axis("lewy_gora", "lewy_dol")
+		online_czas_wejscia += delta
+		if online_czas_wejscia >= 1.0 / 30.0 and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+			online_czas_wejscia = 0.0
+			rpc_id(1, "online_ustaw_kierunek", kierunek)
+		if not Siec.pauza_lokalna and Input.is_action_just_pressed("dash_gracza_1") and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+			rpc_id(1, "online_zadaj_dash")
+			if $PaletkaAI.dash_odnowienie <= 0.0:
+				var dash_kierunek = signf(kierunek) if not is_zero_approx(kierunek) else $PaletkaAI.ostatni_kierunek
+				$PaletkaAI._rozpocznij_dash(dash_kierunek)
+		if not Siec.pauza_lokalna and not is_zero_approx(kierunek):
+			$PaletkaAI.ostatni_kierunek = signf(kierunek)
+		if $PaletkaAI.dash_aktywne:
+			$PaletkaAI._aktualizuj_dash(delta)
+			$PaletkaAI.position.y += $PaletkaAI.velocity.y * delta
+			$PaletkaAI._ogranicz_pozycje_y()
+			online_przewidywane_prawe_y = $PaletkaAI.position.y
+		else:
+			var polowa_paletki = $PaletkaAI._polowa_wysokosci_paletki()
+			online_przewidywane_prawe_y = clampf(
+				online_przewidywane_prawe_y + kierunek * 400.0 * delta,
+				Ustawienia.gorna_granica + polowa_paletki,
+				Ustawienia.dolna_granica - polowa_paletki
+			)
+			$PaletkaAI.position.y = online_przewidywane_prawe_y
+		if not online_aktualny_stan.is_empty():
+			online_czas_stanu += delta
+			var postep = clampf(online_czas_stanu / 0.1, 0.0, 1.0)
+			var poprzednia_pilka: Vector2 = online_poprzedni_stan["pilka"]
+			var aktualna_pilka: Vector2 = online_aktualny_stan["pilka"]
+			$"Piłka".position = poprzednia_pilka.lerp(aktualna_pilka, postep)
+			$Paletka.position.y = lerpf(float(online_poprzedni_stan["lewa_y"]), float(online_aktualny_stan["lewa_y"]), postep)
+		return
+	if not Siec.czy_host() or multiplayer.get_peers().is_empty():
+		return
+	online_czas_wejscia += delta
+	if online_czas_wejscia < 1.0 / 30.0:
+		return
+	online_czas_wejscia = 0.0
+	var dane_areny: Dictionary = arena_manager.call("dane_sieciowe") if arena_manager != null else {}
+	rpc("online_odbierz_stan", {
+		"pilka": $"Piłka".position,
+		"lewa_y": $Paletka.position.y,
+		"prawa_y": $PaletkaAI.position.y,
+		"dash_lewy": $Paletka.dash_odnowienie,
+		"dash_prawy": $PaletkaAI.dash_odnowienie,
+		"wynik_gracza": wynik_gracza,
+		"wynik_ai": wynik_ai,
+		"koniec": mecz_zakonczony,
+		"runda_online": Siec.runda_online,
+		"odbicia_paletki": online_licznik_odbic_paletka,
+		"odbicia_sciany": online_licznik_odbic_sciana,
+		"arena": dane_areny
+	})
+
+
+func _online_odnotuj_odbicie_paletki() -> void:
+	if Ustawienia.tryb == "online" and Siec.czy_host():
+		online_licznik_odbic_paletka += 1
+
+
+func _online_odnotuj_odbicie_sciany() -> void:
+	if Ustawienia.tryb == "online" and Siec.czy_host():
+		online_licznik_odbic_sciana += 1
+
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func online_ustaw_kierunek(kierunek: float) -> void:
+	if not Siec.czy_host() or not _online_nadawca_jest_graczem():
+		return
+	$PaletkaAI.sieciowy_kierunek = clampf(kierunek, -1.0, 1.0)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func online_zadaj_dash() -> void:
+	if not Siec.czy_host() or not _online_nadawca_jest_graczem():
+		return
+	$PaletkaAI.sieciowy_dash_zadany = true
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func online_zadaj_ponowne() -> void:
+	if not Siec.czy_host() or not _online_nadawca_jest_graczem() or not mecz_zakonczony:
+		return
+	Siec.runda_online += 1
+	get_tree().reload_current_scene()
+
+
+func _online_nadawca_jest_graczem() -> bool:
+	var polaczeni = multiplayer.get_peers()
+	return not polaczeni.is_empty() and multiplayer.get_remote_sender_id() == polaczeni[0]
+
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func online_odbierz_stan(stan: Dictionary) -> void:
+	if not Siec.czy_klient():
+		return
+	if arena_manager != null and stan.has("arena"):
+		arena_manager.call("ustaw_stan_zdalny", stan["arena"])
+	if int(stan["runda_online"]) != Siec.runda_online:
+		Siec.runda_online = int(stan["runda_online"])
+		get_tree().reload_current_scene()
+		return
+	if not online_otrzymano_pierwszy_stan:
+		online_odebrane_odbicia_paletka = int(stan["odbicia_paletki"])
+		online_odebrane_odbicia_sciana = int(stan["odbicia_sciany"])
+		online_otrzymano_pierwszy_stan = true
+	var poprzedni_wynik_gracza = int(online_aktualny_stan.get("wynik_gracza", stan["wynik_gracza"]))
+	var poprzedni_wynik_ai = int(online_aktualny_stan.get("wynik_ai", stan["wynik_ai"]))
+	var nowe_odbicia_paletki = int(stan["odbicia_paletki"]) - online_odebrane_odbicia_paletka
+	var nowe_odbicia_sciany = int(stan["odbicia_sciany"]) - online_odebrane_odbicia_sciana
+	var poprzedni_cooldown_gracza = $Paletka.dash_odnowienie
+	var poprzedni_cooldown_dasha = $PaletkaAI.dash_odnowienie
+	var autorytatywna_pozycja_prawej = float(stan["prawa_y"])
+	online_przewidywane_prawe_y += clampf(autorytatywna_pozycja_prawej - online_przewidywane_prawe_y, -65.0, 65.0) * 0.4
+	if not online_aktualny_stan.is_empty():
+		online_poprzedni_stan = online_aktualny_stan.duplicate()
+	else:
+		online_poprzedni_stan = stan.duplicate()
+	online_aktualny_stan = stan
+	online_czas_stanu = 0.0
+	$WynikGracza.text = str(stan["wynik_gracza"])
+	$WynikAI.text = str(stan["wynik_ai"])
+	$Paletka.dash_odnowienie = float(stan["dash_lewy"])
+	$PaletkaAI.dash_odnowienie = float(stan["dash_prawy"])
+	if poprzedni_cooldown_gracza <= 0.0 and $Paletka.dash_odnowienie > 0.0:
+		if not online_poprzedni_stan.is_empty():
+			$Paletka.dash_efekt_kierunek = signf(float(stan["lewa_y"]) - float(online_poprzedni_stan["lewa_y"]))
+		$Paletka.dash_efekt_czas = 0.28
+		$Paletka.dzwiek_dasha.play()
+		$Paletka.queue_redraw()
+	if poprzedni_cooldown_dasha <= 0.0 and $PaletkaAI.dash_odnowienie > 0.0:
+		if not online_poprzedni_stan.is_empty():
+			$PaletkaAI.dash_efekt_kierunek = signf(float(stan["prawa_y"]) - float(online_poprzedni_stan["prawa_y"]))
+		$PaletkaAI.dash_efekt_czas = 0.28
+		$PaletkaAI.dzwiek_dasha.play()
+		$PaletkaAI.queue_redraw()
+	$WskaznikiDasha.queue_redraw()
+	if nowe_odbicia_paletki > 0:
+		$"Piłka"/DzwiekPaletka.play()
+	if nowe_odbicia_sciany > 0:
+		$"Piłka"/DzwiekSciana.play()
+	online_odebrane_odbicia_paletka = int(stan["odbicia_paletki"])
+	online_odebrane_odbicia_sciana = int(stan["odbicia_sciany"])
+	if int(stan["wynik_gracza"]) != poprzedni_wynik_gracza or int(stan["wynik_ai"]) != poprzedni_wynik_ai:
+		dzwiek_punktu.play()
+	if stan["koniec"] and not mecz_zakonczony:
+		koniec_gry("Koniec meczu — wynik %d : %d" % [stan["wynik_gracza"], stan["wynik_ai"]])
 
 
 func _on_przycisk_menu():
+	if Ustawienia.tryb == "online":
+		Siec.rozlacz()
+		Ustawienia.tryb = "bot"
 	get_tree().change_scene_to_file("res://menu.tscn")
 
 
 func _on_przycisk_ponownie():
 	get_tree().paused = false
+	if Ustawienia.tryb == "online":
+		Siec.pauza_lokalna = false
+		if Siec.czy_klient():
+			_online_ustaw_komunikat("Prośba o ponowne rozpoczęcie meczu…", Color("#55e7ff"))
+			rpc_id(1, "online_zadaj_ponowne")
+			return
+		if Siec.czy_host():
+			Siec.runda_online += 1
 	get_tree().reload_current_scene()

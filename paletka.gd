@@ -104,12 +104,13 @@ func ustaw_pozycje_x(nowa_pozycja: float) -> void:
 	position.x = nowa_pozycja
 
 func _physics_process(_delta):
-	var kierunek = Input.get_axis("lewy_gora", "lewy_dol")
+	var lokalna_pauza_online = Ustawienia.tryb == "online" and Siec.pauza_lokalna
+	var kierunek = 0.0 if lokalna_pauza_online else Input.get_axis("lewy_gora", "lewy_dol")
 	if Ustawienia.tryb == "bot" or (Ustawienia.tryb == "arena" and not Ustawienia.arena_dwoch_graczy):
 		kierunek += Input.get_axis("prawy_gora", "prawy_dol")
 	if not is_zero_approx(kierunek):
 		ostatni_kierunek = signf(kierunek)
-	if Input.is_action_just_pressed("dash_gracza_1") and dash_odnowienie <= 0.0:
+	if not lokalna_pauza_online and Input.is_action_just_pressed("dash_gracza_1") and dash_odnowienie <= 0.0:
 		var kierunek_dashu = signf(kierunek) if not is_zero_approx(kierunek) else ostatni_kierunek
 		_rozpocznij_dash(kierunek_dashu)
 	var odnowienie_przed_klatka = dash_odnowienie

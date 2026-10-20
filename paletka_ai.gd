@@ -23,6 +23,8 @@ var dash_efekt_czas = 0.0
 var dash_efekt_kierunek = 0.0
 var ostatni_kierunek = -1.0
 var dzwiek_dasha: AudioStreamPlayer
+var sieciowy_kierunek = 0.0
+var sieciowy_dash_zadany = false
 
 
 func _ready() -> void:
@@ -109,6 +111,27 @@ func ustaw_pozycje_x(nowa_pozycja: float) -> void:
 
 
 func _physics_process(delta):
+	if Ustawienia.tryb == "online":
+		if not Siec.czy_host():
+			return
+		var kierunek_online = sieciowy_kierunek
+		if not is_zero_approx(kierunek_online):
+			ostatni_kierunek = signf(kierunek_online)
+		if sieciowy_dash_zadany and dash_odnowienie <= 0.0:
+			var kierunek_dashu_online = signf(kierunek_online) if not is_zero_approx(kierunek_online) else ostatni_kierunek
+			_rozpocznij_dash(kierunek_dashu_online)
+		sieciowy_dash_zadany = false
+		_odlicz_cooldown_dash(delta)
+		if _aktualizuj_dash(delta):
+			move_and_slide()
+			_ogranicz_pozycje_y()
+			position.x = start_x
+			return
+		velocity.y = kierunek_online * SPEED_GRACZA
+		move_and_slide()
+		_ogranicz_pozycje_y()
+		position.x = start_x
+		return
 	if Ustawienia.tryb == "2graczy" or (Ustawienia.tryb == "arena" and Ustawienia.arena_dwoch_graczy):
 		var kierunek = Input.get_axis("prawy_gora", "prawy_dol")
 		if not is_zero_approx(kierunek):

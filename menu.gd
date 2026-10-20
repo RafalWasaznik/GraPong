@@ -17,6 +17,18 @@ const DZWIEK_MENU_GENERATOR = preload("res://dzwiek_menu.gd")
 
 var wybor_gier_jeden: VBoxContainer
 var wybor_gier_dwoch: VBoxContainer
+var ekran_online: VBoxContainer
+var zawartosc_online: VBoxContainer
+var tytul_online: Label
+var adres_online: LineEdit
+var status_online: Label
+var adresy_hosta_label: Label
+var kopiuj_adres_hosta: Button
+var tryb_online_arena = false
+var przycisk_tryb_online_klasyczny: Button
+var przycisk_tryb_online_arena: Button
+var adres_hosta_do_skopiowania = ""
+var instrukcje_polaczenia: Label
 var aktywne_ustawienia_bota = "klasyczna"
 var dzwiek_klikniecia: AudioStreamPlayer
 
@@ -44,7 +56,10 @@ func _enter_tree():
 
 func _ready():
 	_utworz_ekrany_wyboru_gier()
+	_utworz_ekran_online()
 	_styluj_menu()
+	ekran_online.custom_minimum_size.x = 500.0
+	instrukcje_polaczenia.add_theme_font_size_override("font_size", 16)
 	dzwiek_klikniecia = AudioStreamPlayer.new()
 	dzwiek_klikniecia.name = "DzwiekKliknieciaMenu"
 	dzwiek_klikniecia.stream = DZWIEK_MENU_GENERATOR.utworz_plumkniecie()
@@ -105,6 +120,13 @@ func _ready():
 	$CenterContainer/WyborTrybu/DwochGraczy.text = "2 graczy"
 	_dodaj_opis_trybu($CenterContainer/WyborTrybu/JedenGracz, "1 GRACZ", "", KOLOR_TURKUS_NEON)
 	_dodaj_opis_trybu($CenterContainer/WyborTrybu/DwochGraczy, "2 GRACZY", "", KOLOR_ROZ_NEON)
+	var przycisk_multiplayer = Button.new()
+	przycisk_multiplayer.name = "Multiplayer"
+	wybor_trybu.add_child(przycisk_multiplayer)
+	wybor_trybu.move_child(przycisk_multiplayer, $CenterContainer/WyborTrybu/Wroc.get_index())
+	_styluj_przycisk(przycisk_multiplayer)
+	_dodaj_opis_trybu(przycisk_multiplayer, "Multiplayer", "", KOLOR_TURKUS_NEON)
+	przycisk_multiplayer.pressed.connect(_pokaz_ekran_online)
 	$CenterContainer/WyborTrybu/Wroc.text = "Wróć"
 
 	$CenterContainer/OpcjeJedenGracz/TytulOpcjiJeden.text = "Gra z botem"
@@ -237,7 +259,7 @@ func _styluj_menu():
 	add_child(karta)
 	move_child(karta, 0)
 
-	for ekran in [ekran_glowny, wybor_trybu, wybor_gier_jeden, wybor_gier_dwoch, opcje_jeden_gracz, opcje_dwoch_graczy]:
+	for ekran in [ekran_glowny, wybor_trybu, wybor_gier_jeden, wybor_gier_dwoch, ekran_online, opcje_jeden_gracz, opcje_dwoch_graczy]:
 		ekran.custom_minimum_size = Vector2(420.0, 0.0)
 		ekran.add_theme_constant_override("separation", 14)
 		_wycentruj_teksty(ekran)
@@ -267,6 +289,15 @@ func _styluj_menu():
 		ekran_wyboru.get_node("Tytul").add_theme_font_size_override("font_size", 28)
 		ekran_wyboru.get_node("Tytul").add_theme_font_override("font", FONT_ARCADE)
 		ekran_wyboru.get_node("Tytul").add_theme_color_override("font_color", KOLOR_TURKUS_NEON)
+	for element in zawartosc_online.get_children():
+		if element is Control:
+			element.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if element is Label:
+			element.add_theme_font_size_override("font_size", 18)
+			element.add_theme_color_override("font_color", Color("#e8f4ff"))
+	tytul_online.add_theme_font_size_override("font_size", 28)
+	tytul_online.add_theme_font_override("font", FONT_ARCADE)
+	tytul_online.add_theme_color_override("font_color", KOLOR_TURKUS_NEON)
 
 	for guzik in [
 		$CenterContainer/EkranGlowny/Graj,
@@ -463,6 +494,256 @@ func _dodaj_ekran_wyboru_gier(ekran: VBoxContainer, tekst_tytulu: String):
 	ekran.add_child(tytul)
 
 
+func _utworz_ekran_online() -> void:
+	ekran_online = VBoxContainer.new()
+	ekran_online.name = "EkranOnline"
+	ekran_online.alignment = BoxContainer.ALIGNMENT_CENTER
+	ekran_online.custom_minimum_size = Vector2(500.0, 0.0)
+	center_container.add_child(ekran_online)
+	ekran_online.hide()
+	var przewijanie = ScrollContainer.new()
+	przewijanie.name = "PrzewijanieMultiplayer"
+	przewijanie.custom_minimum_size = Vector2(500.0, 460.0)
+	przewijanie.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	przewijanie.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	przewijanie.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	ekran_online.add_child(przewijanie)
+	var odstep_paska = MarginContainer.new()
+	odstep_paska.add_theme_constant_override("margin_left", 18)
+	odstep_paska.add_theme_constant_override("margin_right", 24)
+	odstep_paska.add_theme_constant_override("margin_top", 18)
+	odstep_paska.add_theme_constant_override("margin_bottom", 18)
+	odstep_paska.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	przewijanie.add_child(odstep_paska)
+	zawartosc_online = VBoxContainer.new()
+	zawartosc_online.name = "ZawartoscMultiplayer"
+	zawartosc_online.add_theme_constant_override("separation", 24)
+	zawartosc_online.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	odstep_paska.add_child(zawartosc_online)
+
+	tytul_online = Label.new()
+	tytul_online.name = "TytulOnline"
+	tytul_online.text = "Gra online"
+	tytul_online.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	zawartosc_online.add_child(tytul_online)
+
+	var opis_hosta = Label.new()
+	opis_hosta.name = "InstrukcjePolaczenia"
+	instrukcje_polaczenia = opis_hosta
+	opis_hosta.text = "Połączcie oba komputery przez Tailscale. Host kopiuje swój adres, wybiera tryb Klasyczny lub Arena i tworzy mecz. Drugi gracz wpisuje otrzymany adres w polu poniżej i dołącza — zagra w tym samym trybie co host."
+	opis_hosta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opis_hosta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	zawartosc_online.add_child(opis_hosta)
+	adresy_hosta_label = Label.new()
+	adresy_hosta_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	adresy_hosta_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	zawartosc_online.add_child(adresy_hosta_label)
+	kopiuj_adres_hosta = Button.new()
+	kopiuj_adres_hosta.custom_minimum_size.y = 48.0
+	_styluj_przycisk(kopiuj_adres_hosta)
+	kopiuj_adres_hosta.pressed.connect(_kopiuj_adres_hosta)
+	zawartosc_online.add_child(kopiuj_adres_hosta)
+
+	var hostuj = Button.new()
+	var etykieta_trybu = Label.new()
+	etykieta_trybu.text = "TRYB MECZU - WYBIERA HOST"
+	etykieta_trybu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	etykieta_trybu.add_theme_font_override("font", FONT_ARCADE)
+	etykieta_trybu.add_theme_font_size_override("font_size", 20)
+	etykieta_trybu.add_theme_color_override("font_color", KOLOR_TURKUS_NEON)
+	zawartosc_online.add_child(etykieta_trybu)
+	var wybory_trybu = HBoxContainer.new()
+	wybory_trybu.add_theme_constant_override("separation", 12)
+	zawartosc_online.add_child(wybory_trybu)
+	var grupa_trybu = ButtonGroup.new()
+	przycisk_tryb_online_klasyczny = Button.new()
+	przycisk_tryb_online_klasyczny.text = "Klasyczny"
+	przycisk_tryb_online_klasyczny.toggle_mode = true
+	przycisk_tryb_online_klasyczny.button_group = grupa_trybu
+	przycisk_tryb_online_klasyczny.button_pressed = true
+	przycisk_tryb_online_klasyczny.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	przycisk_tryb_online_klasyczny.custom_minimum_size = Vector2(0.0, 54.0)
+	_styluj_przycisk(przycisk_tryb_online_klasyczny)
+	przycisk_tryb_online_klasyczny.custom_minimum_size.x = 0.0
+	przycisk_tryb_online_klasyczny.toggled.connect(func(wybrany: bool):
+		if wybrany:
+			tryb_online_arena = false
+	)
+	wybory_trybu.add_child(przycisk_tryb_online_klasyczny)
+	przycisk_tryb_online_arena = Button.new()
+	przycisk_tryb_online_arena.text = "Arena"
+	przycisk_tryb_online_arena.toggle_mode = true
+	przycisk_tryb_online_arena.button_group = grupa_trybu
+	przycisk_tryb_online_arena.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	przycisk_tryb_online_arena.custom_minimum_size = Vector2(0.0, 54.0)
+	_styluj_przycisk(przycisk_tryb_online_arena)
+	przycisk_tryb_online_arena.custom_minimum_size.x = 0.0
+	przycisk_tryb_online_arena.add_theme_stylebox_override("pressed", _nowy_styl_przycisku(Color("#302616"), Color("#ffb454")))
+	przycisk_tryb_online_arena.add_theme_stylebox_override("hover", _nowy_styl_przycisku(Color("#2c251d"), Color("#ffb454")))
+	przycisk_tryb_online_arena.toggled.connect(func(wybrany: bool):
+		if wybrany:
+			tryb_online_arena = true
+	)
+	wybory_trybu.add_child(przycisk_tryb_online_arena)
+
+	hostuj.text = "Utwórz mecz jako host"
+	hostuj.custom_minimum_size.y = 58.0
+	_styluj_przycisk(hostuj)
+	hostuj.pressed.connect(_utworz_mecz_online)
+	zawartosc_online.add_child(hostuj)
+
+	var opis_adresu = Label.new()
+	opis_adresu.text = "Adres Tailscale hosta (np. 100.x.x.x) lub adres lokalny w tej samej sieci"
+	opis_adresu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opis_adresu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	zawartosc_online.add_child(opis_adresu)
+
+	adres_online = LineEdit.new()
+	adres_online.placeholder_text = "IP hosta, np. 100.80.12.34"
+	adres_online.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	zawartosc_online.add_child(adres_online)
+	var wskazowka = Label.new()
+	wskazowka.text = "Obaj gracze używają własnych klawiszy gracza 1: góra, dół i dash."
+	wskazowka.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wskazowka.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	wskazowka.add_theme_color_override("font_color", Color("#b9cde2"))
+	zawartosc_online.add_child(wskazowka)
+
+	var dolacz = Button.new()
+	dolacz.text = "Dołącz do meczu"
+	dolacz.custom_minimum_size.y = 58.0
+	_styluj_przycisk(dolacz)
+	dolacz.pressed.connect(_dolacz_do_meczu_online)
+	zawartosc_online.add_child(dolacz)
+
+	status_online = Label.new()
+	status_online.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_online.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_online.add_theme_color_override("font_color", Color("#b9cde2"))
+	zawartosc_online.add_child(status_online)
+
+	var wroc = Button.new()
+	wroc.text = "Wróć"
+	wroc.custom_minimum_size.y = 54.0
+	_styluj_przycisk(wroc)
+	wroc.pressed.connect(_wroc_z_ekranu_online)
+	ekran_online.add_child(wroc)
+	_styluj_scrollbar_multiplayer(przewijanie.get_v_scroll_bar())
+
+	Siec.polaczono_z_hostem.connect(_online_polaczono_z_hostem)
+	Siec.otrzymano_tryb_meczu.connect(_online_tryb_meczu_otrzymany)
+	Siec.blad_polaczenia.connect(_online_blad_polaczenia)
+
+
+func _styluj_scrollbar_multiplayer(pasek: VScrollBar) -> void:
+	pasek.custom_minimum_size.x = 14
+	pasek.add_theme_constant_override("grabber_min_size", 52)
+	var tor = StyleBoxFlat.new()
+	tor.bg_color = Color("#081321", 0.9)
+	tor.border_color = Color(KOLOR_TURKUS_NEON, 0.14)
+	tor.set_border_width_all(1)
+	tor.set_corner_radius_all(7)
+	pasek.add_theme_stylebox_override("scroll", tor)
+	pasek.add_theme_stylebox_override("scroll_focus", tor)
+	var uchwyt = StyleBoxFlat.new()
+	uchwyt.bg_color = Color("#315b70")
+	uchwyt.border_color = Color(KOLOR_TURKUS_NEON, 0.62)
+	uchwyt.set_border_width_all(1)
+	uchwyt.set_corner_radius_all(7)
+	uchwyt.shadow_color = Color(KOLOR_TURKUS_NEON, 0.12)
+	uchwyt.shadow_size = 4
+	pasek.add_theme_stylebox_override("grabber", uchwyt)
+	var hover = uchwyt.duplicate()
+	hover.bg_color = Color("#3f8298")
+	hover.border_color = Color(KOLOR_TURKUS_NEON, 0.92)
+	hover.shadow_color = Color(KOLOR_TURKUS_NEON, 0.28)
+	hover.shadow_size = 7
+	pasek.add_theme_stylebox_override("grabber_highlight", hover)
+
+
+func _odswiez_adresy_hosta() -> void:
+	var adresy_tailscale = Siec.adresy_tailscale()
+	var adresy_lokalne = Siec.adresy_ipv4_lokalne()
+	kopiuj_adres_hosta.disabled = false
+	var tekst_tailscale = ", ".join(adresy_tailscale) if not adresy_tailscale.is_empty() else "niedostępny — uruchom Tailscale"
+	var tekst_lokalny = ", ".join(adresy_lokalne) if not adresy_lokalne.is_empty() else "brak"
+	adresy_hosta_label.text = "Adresy do udostępnienia jako host\nTailscale: %s\nSieć lokalna: %s" % [tekst_tailscale, tekst_lokalny]
+	if not adresy_tailscale.is_empty():
+		adres_hosta_do_skopiowania = adresy_tailscale[0]
+		kopiuj_adres_hosta.text = "Kopiuj adres Tailscale"
+	elif not adresy_lokalne.is_empty():
+		adres_hosta_do_skopiowania = adresy_lokalne[0]
+		kopiuj_adres_hosta.text = "Kopiuj adres lokalny"
+	else:
+		adres_hosta_do_skopiowania = ""
+		kopiuj_adres_hosta.text = "Brak adresu do skopiowania"
+		kopiuj_adres_hosta.disabled = true
+	return
+
+
+func _kopiuj_adres_hosta() -> void:
+	if adres_hosta_do_skopiowania.is_empty():
+		return
+	DisplayServer.clipboard_set(adres_hosta_do_skopiowania)
+	status_online.text = "Skopiowano adres: %s" % adres_hosta_do_skopiowania
+
+
+func _utworz_mecz_online() -> void:
+	var tryb = "arena" if tryb_online_arena else "klasyczny"
+	var blad = Siec.utworz_serwer(tryb)
+	if blad != OK:
+		status_online.text = "Nie udało się uruchomić hosta. Zamknij inne uruchomione mecze i spróbuj ponownie."
+		return
+	_przygotuj_tryb_online(tryb_online_arena)
+	get_tree().change_scene_to_file("res://scena_główna.tscn")
+
+
+func _dolacz_do_meczu_online() -> void:
+	var blad = Siec.dolacz_do_serwera(adres_online.text)
+	if blad != OK:
+		status_online.text = "Nie udało się rozpocząć połączenia. Sprawdź adres IP."
+		return
+	status_online.text = "Łączenie z hostem…"
+
+
+func _online_polaczono_z_hostem() -> void:
+	if not is_inside_tree() or not ekran_online.visible:
+		return
+	status_online.text = "Pobieranie trybu meczu od hosta…"
+	Siec.popros_o_tryb_meczu()
+
+
+func _online_tryb_meczu_otrzymany(tryb: String) -> void:
+	if not is_inside_tree() or not ekran_online.visible:
+		return
+	_przygotuj_tryb_online(tryb == "arena")
+	get_tree().change_scene_to_file("res://scena_główna.tscn")
+
+
+func _online_blad_polaczenia() -> void:
+	if not is_inside_tree():
+		return
+	Siec.rozlacz()
+	if is_instance_valid(status_online):
+		status_online.text = "Nie udało się połączyć. Sprawdź IP, zaporę i dostępność hosta."
+
+
+func _przygotuj_tryb_online(arena: bool) -> void:
+	Ustawienia.tryb = "online"
+	Ustawienia.arena_dwoch_graczy = false
+	Ustawienia.online_arena = arena
+	Ustawienia.rozmiar_planszy = "standardowa"
+	Ustawienia.limit_punktow = 5
+	Ustawienia.ustaw_geometrie_planszy()
+	Siec.pauza_lokalna = false
+
+
+func _wroc_z_ekranu_online() -> void:
+	if Siec.czy_klient():
+		Siec.rozlacz()
+	_pokaz_wybor_trybu()
+
+
 func _dodaj_karte_wyboru(ekran: VBoxContainer, tytul: String, opis: String, akcent: Color, akcja: Callable, tylko_przycisk: bool = false):
 	var przycisk = Button.new()
 	przycisk.name = "Wybor" + str(ekran.get_child_count())
@@ -559,6 +840,8 @@ func _pokaz_ekran(ekran):
 	wybor_trybu.hide()
 	wybor_gier_jeden.hide()
 	wybor_gier_dwoch.hide()
+	if is_instance_valid(ekran_online):
+		ekran_online.hide()
 	opcje_jeden_gracz.hide()
 	opcje_dwoch_graczy.hide()
 	ekran_ustawien.hide()
@@ -583,6 +866,12 @@ func _pokaz_wybor_gier_jeden():
 
 func _pokaz_wybor_gier_dwoch():
 	_pokaz_ekran(wybor_gier_dwoch)
+
+
+func _pokaz_ekran_online():
+	status_online.text = ""
+	_odswiez_adresy_hosta()
+	_pokaz_ekran(ekran_online)
 
 
 func _pokaz_opcje_jednego_gracza():

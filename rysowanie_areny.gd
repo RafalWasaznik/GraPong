@@ -12,6 +12,10 @@ const KOLOR_AI = Color("#ff647a")
 var gra: Variant
 
 
+func _czy_tryb_areny() -> bool:
+	return Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena)
+
+
 func _ready() -> void:
 	gra = get_parent()
 
@@ -32,12 +36,12 @@ func _draw():
 	draw_rect(plansza, KOLOR_RAMKI, false, 3.0)
 	draw_rect(plansza.grow(-10.0), Color(0.24, 0.39, 0.54, 0.2), false, 1.0)
 	_rysuj_gumowe_sciany()
-	if Ustawienia.tryb == "arena" and gra.arena_manager != null and gra.arena_manager.call("wieksza_arena_aktywna"):
+	if _czy_tryb_areny() and gra.arena_manager != null and gra.arena_manager.call("wieksza_arena_aktywna"):
 		draw_rect(plansza, Color(0.65, 0.84, 1.0, 0.78), false, 3.0)
 
 	var srodek_x = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) / 2.0
 	var srodek_y = (Ustawienia.gorna_granica + Ustawienia.dolna_granica) / 2.0
-	if Ustawienia.tryb == "arena" and gra.postep_animacji_strefy > 0.001:
+	if _czy_tryb_areny() and gra.postep_animacji_strefy > 0.001:
 		var szerokosc_strefy = 104.0 * gra.postep_animacji_strefy
 		var strefa = Rect2(
 			Vector2(srodek_x - szerokosc_strefy * 0.5, Ustawienia.gorna_granica),
@@ -47,7 +51,7 @@ func _draw():
 		var kolor_krawedzi = Color(1.0, 0.79, 0.34, 0.72 * gra.postep_animacji_strefy)
 		draw_line(strefa.position, Vector2(strefa.position.x, strefa.end.y), kolor_krawedzi, 2.0)
 		draw_line(Vector2(strefa.end.x, strefa.position.y), strefa.end, kolor_krawedzi, 2.0)
-	if Ustawienia.tryb == "arena" and gra.arena_manager != null and gra.arena_manager.call("mocne_sciany_aktywne"):
+	if _czy_tryb_areny() and gra.arena_manager != null and gra.arena_manager.call("mocne_sciany_aktywne"):
 		var kolor_scian = Color(1.0, 0.78, 0.3, 0.8)
 		draw_line(Vector2(Ustawienia.lewa_granica, Ustawienia.gorna_granica), Vector2(Ustawienia.prawa_granica, Ustawienia.gorna_granica), kolor_scian, 4.0)
 		draw_line(Vector2(Ustawienia.lewa_granica, Ustawienia.dolna_granica), Vector2(Ustawienia.prawa_granica, Ustawienia.dolna_granica), kolor_scian, 4.0)
@@ -87,6 +91,9 @@ func _draw():
 			var nazwa_przeciwnika = "GRACZ 2" if Ustawienia.arena_dwoch_graczy else "BOT"
 			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, nazwa_gracza)
 			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, nazwa_przeciwnika)
+		elif Ustawienia.tryb == "online":
+			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, "GRACZ 1")
+			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, "GRACZ 2")
 		elif Ustawienia.tryb == "endless":
 			_rysuj_nazwe_wyniku(karta_gracza, "SERIA", KOLOR_GRACZA)
 			_rysuj_nazwe_wyniku(karta_ai, "REKORD", Color("#c4b5fd"))
@@ -123,7 +130,7 @@ func _rysuj_gumowe_sciany() -> void:
 
 
 func _rysuj_bramke_areny() -> void:
-	if Ustawienia.tryb != "arena" or gra.arena_manager == null:
+	if not _czy_tryb_areny() or gra.arena_manager == null:
 		return
 	if not bool(gra.arena_manager.call("bramka_aktywna")):
 		return

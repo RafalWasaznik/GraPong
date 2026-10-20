@@ -36,6 +36,7 @@ const PASUJACE_PARY = {
 }
 
 var gra: Node2D
+var tryb_zdalny = false
 var stan = "oczekiwanie"
 var czas_do_zmiany = 0.0
 var aktywne_wydarzenie = ""
@@ -60,8 +61,9 @@ var bramka_czas_wygaszania_docelowy = CZAS_ZANIKANIA_BRAMKI
 var wariant_bramki = ""
 
 
-func uruchom(gra_glowna: Node2D) -> void:
+func uruchom(gra_glowna: Node2D, zdalny: bool = false, oczekuj_na_gracza: bool = false) -> void:
 	gra = gra_glowna
+	tryb_zdalny = zdalny
 	bazowa_gora = Ustawienia.gorna_granica
 	bazowy_dol = Ustawienia.dolna_granica
 	bazowa_lewa = Ustawienia.lewa_granica
@@ -70,9 +72,90 @@ func uruchom(gra_glowna: Node2D) -> void:
 	aktywne_wydarzenie = ""
 	drugie_wydarzenie = ""
 	czas_do_zmiany = randf_range(8.0, 12.0)
+	set_process(not zdalny and not oczekuj_na_gracza)
+	set_physics_process(zdalny or not oczekuj_na_gracza)
+	gra.call("pokaz_informacje_graczowi", "TRYB ARENA", "Uważaj na zmieniające się warunki gry", Color("#72e0f2"), 4.0)
+
+
+func rozpocznij() -> void:
+	if tryb_zdalny:
+		return
 	set_process(true)
 	set_physics_process(true)
-	gra.call("pokaz_informacje_graczowi", "TRYB ARENA", "Uważaj na zmieniające się warunki gry", Color("#72e0f2"), 4.0)
+
+
+func dane_sieciowe() -> Dictionary:
+	return {
+		"stan": stan,
+		"czas": czas_do_zmiany,
+		"wydarzenie": aktywne_wydarzenie,
+		"drugie": drugie_wydarzenie,
+		"wiatr": kierunek_wiatru,
+		"wariant_bramki": wariant_bramki,
+		"bramka": is_instance_valid(bramka_cialo),
+		"bramka_faza": bramka_faza,
+		"bramka_czas": bramka_czas_aktywna,
+		"bramka_postep": bramka_postep,
+		"bramka_wygaszanie": bramka_wygaszanie,
+		"bramka_czas_wygaszania": bramka_czas_wygaszania,
+		"bramka_alfa_poczatkowa": bramka_alfa_poczatkowa,
+		"bramka_czas_docelowy": bramka_czas_wygaszania_docelowy
+	}
+
+
+func ustaw_stan_zdalny(dane: Dictionary) -> void:
+	if not tryb_zdalny:
+		return
+	var nowy_stan = str(dane.get("stan", "oczekiwanie"))
+	var nowe_wydarzenie = str(dane.get("wydarzenie", ""))
+	var nowe_drugie = str(dane.get("drugie", ""))
+	var nowy_wariant = str(dane.get("wariant_bramki", ""))
+	var zmieniono_wydarzenie = stan != nowy_stan or aktywne_wydarzenie != nowe_wydarzenie or drugie_wydarzenie != nowe_drugie or wariant_bramki != nowy_wariant
+	if zmieniono_wydarzenie and stan == "aktywne":
+		_przywroc_efekty_modyfikatorow(0.8)
+	stan = nowy_stan
+	aktywne_wydarzenie = nowe_wydarzenie
+	drugie_wydarzenie = nowe_drugie
+	wariant_bramki = nowy_wariant
+	kierunek_wiatru = float(dane.get("wiatr", 1.0))
+	czas_do_zmiany = float(dane.get("czas", 0.0))
+	if zmieniono_wydarzenie and stan == "aktywne":
+		gra.call("odtworz_dzwiek_modyfikatora")
+		_zastosuj_modyfikatory_zdalne()
+	if zmieniono_wydarzenie and stan == "ostrzezenie":
+		var tytul = _nazwa_wydarzenia(aktywne_wydarzenie)
+		if not drugie_wydarzenie.is_empty():
+			tytul += " + " + _nazwa_wydarzenia(drugie_wydarzenie)
+		if not wariant_bramki.is_empty():
+			tytul += " (" + _nazwa_wariantu_bramki() + ")"
+		gra.call("pokaz_informacje_graczowi", tytul, "", Color("#ffb454"), CZAS_OSTRZEZENIA)
+	if bool(dane.get("bramka", false)):
+		if not is_instance_valid(bramka_cialo):
+			_utworz_bramke()
+		bramka_faza = float(dane.get("bramka_faza", 0.0))
+		bramka_czas_aktywna = float(dane.get("bramka_czas", 0.0))
+		bramka_postep = float(dane.get("bramka_postep", 0.0))
+		bramka_wygaszanie = bool(dane.get("bramka_wygaszanie", false))
+		bramka_czas_wygaszania = float(dane.get("bramka_czas_wygaszania", 0.0))
+		bramka_alfa_poczatkowa = float(dane.get("bramka_alfa_poczatkowa", bramka_postep))
+		bramka_czas_wygaszania_docelowy = float(dane.get("bramka_czas_docelowy", CZAS_ZANIKANIA_BRAMKI))
+		bramka_kolizje_wlaczone = false
+		_ustaw_pozycje_bramki()
+	elif is_instance_valid(bramka_cialo):
+		_usun_bramke()
+	set_physics_process(tryb_zdalny and is_instance_valid(bramka_cialo))
+	gra.call("_odswiez_rysowanie")
+
+
+func _zastosuj_modyfikatory_zdalne() -> void:
+	if _czy_aktywne("waska_arena"):
+		gra.call("animuj_granice_areny", bazowa_gora + PRZESUNIECIE_SCIAN, bazowy_dol - PRZESUNIECIE_SCIAN, 0.8)
+	if _czy_aktywne("wieksza_arena"):
+		gra.call("animuj_wymiary_areny", bazowa_lewa - POSZERZENIE_ARENY_X, bazowa_prawa + POSZERZENIE_ARENY_X, bazowa_gora - POSZERZENIE_ARENY_Y, bazowy_dol + POSZERZENIE_ARENY_Y, 0.8)
+	if _czy_aktywne("strefa_przyspieszenia"):
+		gra.call("animuj_strefe_przyspieszenia", true, 0.65)
+	if _czy_aktywne("krotsze_paletki"):
+		gra.call("animuj_wysokosc_paletek", 0.72, 0.45)
 
 
 func _process(delta: float) -> void:
@@ -91,6 +174,24 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if tryb_zdalny:
+		if not is_instance_valid(bramka_cialo):
+			set_physics_process(false)
+			return
+		bramka_faza += delta * PREDKOSC_RUCHU_BRAMKI
+		if bramka_wygaszanie:
+			bramka_czas_wygaszania += delta
+			bramka_postep = bramka_alfa_poczatkowa * clampf(1.0 - bramka_czas_wygaszania / bramka_czas_wygaszania_docelowy, 0.0, 1.0)
+			if bramka_postep <= 0.0:
+				_usun_bramke()
+				return
+		else:
+			bramka_czas_aktywna += delta
+			bramka_postep = clampf(bramka_czas_aktywna / CZAS_POJAWIENIA_BRAMKI, 0.0, 1.0)
+		_ustaw_pozycje_bramki()
+		if is_instance_valid(gra):
+			gra.call("_odswiez_rysowanie")
+		return
 	if not is_instance_valid(bramka_cialo):
 		return
 	if bramka_wygaszanie:
