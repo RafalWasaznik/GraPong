@@ -25,7 +25,6 @@ func _ready():
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry.text = "Wróć do gry"
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia.text = "Ustawienia"
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu.text = "Menu główne"
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/PodpowiedzSterowania.text = Ustawienia.tekst_podpowiedzi()
 
 	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/TytulUstawien.text = "Ustawienia"
 	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/EtykietaOgolna.text = "Głośność ogólna"
@@ -33,9 +32,6 @@ func _ready():
 	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/EtykietaDzwieki.text = "Głośność dźwięków"
 	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/WrocDoPauzy.text = "Wróć"
 	_styluj_interfejs()
-	var podpowiedz_sterowania = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/PodpowiedzSterowania
-	podpowiedz_sterowania.add_theme_font_size_override("font_size", 15)
-	podpowiedz_sterowania.add_theme_color_override("font_color", Color("#b9cde2"))
 
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry.pressed.connect(_wroc_do_gry)
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia.pressed.connect(_otworz_ustawienia)
@@ -211,7 +207,6 @@ func _input(event):
 		get_viewport().set_input_as_handled()
 
 		if not get_tree().paused:
-			$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/PodpowiedzSterowania.text = Ustawienia.tekst_podpowiedzi()
 			get_tree().paused = true
 			przyciemnienie.show()
 			panel_pauzy.show()

@@ -1,0 +1,264 @@
+extends CanvasLayer
+
+signal menu_pressed
+signal replay_pressed
+
+const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
+
+var etykiety_nazw_statystyk: Array[Label] = []
+var etykiety_wartosci_statystyk: Array[Label] = []
+
+
+func _ready() -> void:
+	var przyciemnienie_konca = ColorRect.new()
+	przyciemnienie_konca.name = "PrzyciemnienieKoniecGry"
+	przyciemnienie_konca.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	przyciemnienie_konca.color = Color(0.015, 0.025, 0.06, 0.7)
+	przyciemnienie_konca.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	przyciemnienie_konca.z_index = 5
+	add_child(przyciemnienie_konca)
+	przyciemnienie_konca.hide()
+
+	var karta = Panel.new()
+	karta.name = "KartaKoniecGry"
+	karta.custom_minimum_size = Vector2(620.0, 520.0)
+	karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	karta.z_index = 10
+	var styl = StyleBoxFlat.new()
+	styl.bg_color = Color("#0c1628f7")
+	styl.border_color = Color("#55e7ff")
+	styl.set_border_width_all(2)
+	styl.set_corner_radius_all(22)
+	styl.content_margin_left = 30.0
+	styl.content_margin_right = 30.0
+	styl.content_margin_top = 30.0
+	styl.content_margin_bottom = 30.0
+	styl.shadow_color = Color("#55e7ff30")
+	styl.shadow_size = 26
+	styl.shadow_offset = Vector2(0.0, 10.0)
+	karta.add_theme_stylebox_override("panel", styl)
+	add_child(karta)
+	karta.hide()
+	_utworz_podsumowanie_statystyk()
+
+	var komunikat = Label.new()
+	komunikat.name = "Komunikat"
+	add_child(komunikat)
+	komunikat.hide()
+	komunikat.add_theme_font_override("font", FONT_ARCADE)
+	komunikat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	komunikat.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	komunikat.add_theme_font_size_override("font_size", 40)
+	komunikat.add_theme_color_override("font_color", Color("#55e7ff"))
+	komunikat.z_index = 11
+	var wynik_koncowy = Label.new()
+	wynik_koncowy.name = "WynikKoncowy"
+	wynik_koncowy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wynik_koncowy.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	wynik_koncowy.add_theme_font_override("font", FONT_ARCADE)
+	wynik_koncowy.add_theme_font_size_override("font_size", 35)
+	wynik_koncowy.add_theme_color_override("font_color", Color("#e8f4ff"))
+	wynik_koncowy.z_index = 11
+	add_child(wynik_koncowy)
+	wynik_koncowy.hide()
+
+	var przycisk = Button.new()
+	przycisk.name = "PrzyciskMenu"
+	add_child(przycisk)
+	przycisk.hide()
+	przycisk.text = "Wróć do menu"
+	przycisk.custom_minimum_size = Vector2(300.0, 56.0)
+	przycisk.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	przycisk.add_theme_font_size_override("font_size", 20)
+	przycisk.add_theme_color_override("font_color", Color("#e8f4ff"))
+	przycisk.add_theme_color_override("font_hover_color", Color.WHITE)
+	przycisk.add_theme_stylebox_override("normal", _styl_przycisku(Color("#111e32"), Color("#344d64")))
+	przycisk.add_theme_stylebox_override("hover", _styl_przycisku(Color("#192d45"), Color("#ad83ff")))
+	przycisk.add_theme_stylebox_override("pressed", _styl_przycisku(Color("#102638"), Color("#7958c7")))
+	przycisk.add_theme_stylebox_override("focus", _styl_przycisku(Color("#111e32"), Color("#ad83ff")))
+	przycisk.z_index = 11
+	przycisk.pivot_offset = przycisk.custom_minimum_size * 0.5
+	przycisk.resized.connect(func(): przycisk.pivot_offset = przycisk.size * 0.5)
+	przycisk.mouse_entered.connect(_animuj_przycisk.bind(przycisk, true))
+	przycisk.mouse_exited.connect(_animuj_przycisk.bind(przycisk, false))
+	przycisk.pressed.connect(func(): menu_pressed.emit())
+	var przycisk_ponownie = Button.new()
+	przycisk_ponownie.name = "PrzyciskPonownie"
+	przycisk_ponownie.text = "Zagraj ponownie"
+	przycisk_ponownie.custom_minimum_size = Vector2(300.0, 52.0)
+	przycisk_ponownie.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	przycisk_ponownie.add_theme_font_size_override("font_size", 20)
+	przycisk_ponownie.add_theme_color_override("font_color", Color("#e8f4ff"))
+	przycisk_ponownie.add_theme_color_override("font_hover_color", Color.WHITE)
+	przycisk_ponownie.add_theme_stylebox_override("normal", _styl_przycisku(Color("#102838"), Color("#258fa5")))
+	przycisk_ponownie.add_theme_stylebox_override("hover", _styl_przycisku(Color("#123b4a"), Color("#55e7ff")))
+	przycisk_ponownie.add_theme_stylebox_override("pressed", _styl_przycisku(Color("#0e2d39"), Color("#35bcd5")))
+	przycisk_ponownie.add_theme_stylebox_override("focus", _styl_przycisku(Color("#102838"), Color("#55e7ff")))
+	przycisk_ponownie.z_index = 11
+	przycisk_ponownie.pivot_offset = przycisk_ponownie.custom_minimum_size * 0.5
+	przycisk_ponownie.resized.connect(func(): przycisk_ponownie.pivot_offset = przycisk_ponownie.size * 0.5)
+	przycisk_ponownie.mouse_entered.connect(_animuj_przycisk.bind(przycisk_ponownie, true))
+	przycisk_ponownie.mouse_exited.connect(_animuj_przycisk.bind(przycisk_ponownie, false))
+	przycisk_ponownie.pressed.connect(func(): replay_pressed.emit())
+	add_child(przycisk_ponownie)
+	przycisk_ponownie.hide()
+	get_viewport().size_changed.connect(_ustaw_pozycje_ekranu_konca)
+	_ustaw_pozycje_ekranu_konca()
+
+
+func _ustaw_pozycje_ekranu_konca():
+	var wymiar = get_viewport().get_visible_rect().size
+	var srodek = wymiar * 0.5
+	var karta = $KartaKoniecGry
+	karta.position = srodek - Vector2(310.0, 260.0)
+	karta.size = Vector2(620.0, 520.0)
+	$Komunikat.position = srodek + Vector2(-270.0, -228.0)
+	$Komunikat.size = Vector2(540.0, 96.0)
+	$WynikKoncowy.position = srodek + Vector2(-270.0, -132.0)
+	$WynikKoncowy.size = Vector2(540.0, 48.0)
+	$PodsumowanieStatystyk.position = srodek + Vector2(-255.0, -70.0)
+	$PodsumowanieStatystyk.size = Vector2(508.0, 200.0)
+	$PrzyciskPonownie.position = srodek + Vector2(-150.0, 139.0)
+	$PrzyciskPonownie.size = Vector2(300.0, 52.0)
+	$PrzyciskMenu.position = srodek + Vector2(-150.0, 198.0)
+	$PrzyciskMenu.size = Vector2(300.0, 52.0)
+
+
+func _utworz_podsumowanie_statystyk() -> void:
+	var siatka = GridContainer.new()
+	siatka.name = "PodsumowanieStatystyk"
+	siatka.columns = 2
+	siatka.custom_minimum_size = Vector2(508.0, 200.0)
+	siatka.size = Vector2(508.0, 200.0)
+	siatka.add_theme_constant_override("h_separation", 12)
+	siatka.add_theme_constant_override("v_separation", 12)
+	siatka.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	siatka.z_index = 11
+	add_child(siatka)
+	siatka.hide()
+
+	for i in range(4):
+		var uklad_statystyki = VBoxContainer.new()
+		uklad_statystyki.custom_minimum_size = Vector2(248.0, 94.0)
+		uklad_statystyki.add_theme_constant_override("separation", 4)
+		uklad_statystyki.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		siatka.add_child(uklad_statystyki)
+
+		var nazwa = Label.new()
+		nazwa.custom_minimum_size = Vector2(248.0, 28.0)
+		nazwa.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		nazwa.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		nazwa.add_theme_font_size_override("font_size", 16)
+		nazwa.add_theme_color_override("font_color", Color("#c5d8ed"))
+		nazwa.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		uklad_statystyki.add_child(nazwa)
+		etykiety_nazw_statystyk.append(nazwa)
+
+		var karta = PanelContainer.new()
+		karta.custom_minimum_size = Vector2(248.0, 62.0)
+		karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var styl = StyleBoxFlat.new()
+		styl.bg_color = Color("#101f34")
+		styl.border_color = Color("#315270")
+		styl.set_border_width_all(2)
+		styl.set_corner_radius_all(12)
+		styl.shadow_color = Color("#55e7ff12")
+		styl.shadow_size = 8
+		styl.content_margin_left = 10.0
+		styl.content_margin_right = 10.0
+		styl.content_margin_top = 4.0
+		styl.content_margin_bottom = 4.0
+		karta.add_theme_stylebox_override("panel", styl)
+		uklad_statystyki.add_child(karta)
+
+		var wartosc = Label.new()
+		wartosc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		wartosc.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		wartosc.add_theme_font_size_override("font_size", 31)
+		wartosc.add_theme_font_override("font", FONT_ARCADE)
+		wartosc.add_theme_color_override("font_color", Color("#55e7ff"))
+		wartosc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		karta.add_child(wartosc)
+		etykiety_wartosci_statystyk.append(wartosc)
+
+
+func _odswiez_statystyki_koncowe(dane: Dictionary) -> void:
+	var czas = maxi(0, roundi(float(dane.get("czas_meczu", 0.0))))
+	var tekst_czasu = "%02d:%02d" % [floori(float(czas) / 60.0), czas % 60]
+	var nazwy: Array[String]
+	var wartosci: Array[String]
+	if str(dane.get("tryb", "")) == "endless":
+		$WynikKoncowy.text = "WYNIK  ·  %d" % int(dane.get("wynik_gracza", 0))
+	else:
+		$WynikKoncowy.text = "%d     :     %d" % [int(dane.get("wynik_gracza", 0)), int(dane.get("wynik_ai", 0))]
+
+	if str(dane.get("tryb", "")) == "endless":
+		nazwy = ["Czas próby", "Odbicia łącznie", "Mocne odbicia łącznie", "Rekord osobisty"]
+		wartosci = [tekst_czasu, str(int(dane.get("odbicia_lacznie", 0))), str(int(dane.get("mocne_odbicia_lacznie", 0))), str(int(dane.get("rekord_endless", 0)))]
+	else:
+		nazwy = ["Czas meczu", "Odbicia łącznie", "Mocne odbicia łącznie", "Najdłuższa wymiana"]
+		wartosci = [
+			tekst_czasu,
+			str(int(dane.get("odbicia_lacznie", 0))),
+			str(int(dane.get("mocne_odbicia_lacznie", 0))),
+			str(int(dane.get("najdluzsza_wymiana", 0)))
+		]
+
+	for i in range(4):
+		etykiety_nazw_statystyk[i].text = nazwy[i]
+		etykiety_wartosci_statystyk[i].text = wartosci[i]
+
+
+func pokaz(tekst: String, dane: Dictionary) -> void:
+	$Komunikat.text = tekst
+	$Komunikat.show()
+	$PrzyciskMenu.show()
+	$PrzyciskPonownie.show()
+	$PrzyciemnienieKoniecGry.show()
+	$KartaKoniecGry.show()
+	_odswiez_statystyki_koncowe(dane)
+	$WynikKoncowy.show()
+	$PodsumowanieStatystyk.show()
+	_animuj_pokaz_podsumowania()
+
+
+func _animuj_pokaz_podsumowania() -> void:
+	var warstwy: Array[Control] = [
+		$PrzyciemnienieKoniecGry,
+		$KartaKoniecGry,
+		$Komunikat,
+		$WynikKoncowy,
+		$PodsumowanieStatystyk,
+		$PrzyciskPonownie,
+		$PrzyciskMenu
+	]
+	for warstwa in warstwy:
+		warstwa.modulate.a = 0.0
+	var animacja = create_tween()
+	animacja.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	for warstwa in warstwy:
+		animacja.parallel().tween_property(warstwa, "modulate:a", 1.0, 0.22)
+
+
+func _animuj_przycisk(przycisk: Control, aktywne: bool) -> void:
+	if przycisk.has_meta("animacja_najechania"):
+		var poprzednia = przycisk.get_meta("animacja_najechania")
+		if is_instance_valid(poprzednia):
+			poprzednia.kill()
+	var animacja = create_tween()
+	przycisk.set_meta("animacja_najechania", animacja)
+	animacja.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	animacja.tween_property(przycisk, "scale", Vector2(1.035, 1.035) if aktywne else Vector2.ONE, 0.14)
+
+
+func _styl_przycisku(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
+	var styl = StyleBoxFlat.new()
+	styl.bg_color = tlo
+	styl.border_color = obramowanie
+	styl.set_border_width_all(1)
+	styl.set_corner_radius_all(10)
+	styl.content_margin_left = 18.0
+	styl.content_margin_right = 18.0
+	styl.content_margin_top = 8.0
+	styl.content_margin_bottom = 8.0
+	return styl

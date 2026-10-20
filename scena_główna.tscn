@@ -7,12 +7,17 @@
 [ext_resource type="Script" uid="uid://cqmd1ck0s0bk" path="res://menu_pauzy.gd" id="5_c8em3"]
 [ext_resource type="Script" uid="uid://bov8c7uqrjmm1" path="res://bonus_manager.gd" id="6_57rfe"]
 [ext_resource type="PackedScene" path="res://ustawienia_sterowania.tscn" id="7_sterowanie"]
+[ext_resource type="Script" path="res://rysowanie_areny.gd" id="8_rysowanie"]
+[ext_resource type="PackedScene" path="res://ekran_konca.tscn" id="9_ekran_konca"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_618dn"]
 size = Vector2(1152, 20)
 
 [node name="Scena Główna" type="Node2D" unique_id=1496715320]
 script = ExtResource("1_u1wac")
+
+[node name="RysowanieAreny" type="Node2D" parent="."]
+script = ExtResource("8_rysowanie")
 
 [node name="Paletka" parent="." unique_id=184993052 instance=ExtResource("1_82ry8")]
 position = Vector2(50, 360)
@@ -53,20 +58,6 @@ theme_override_font_sizes/font_size = 48
 text = "0"
 horizontal_alignment = 1
 
-[node name="Komunikat" type="Label" parent="." unique_id=1453380441]
-offset_top = 220.0
-offset_right = 1152.0
-offset_bottom = 310.0
-theme_override_font_sizes/font_size = 64
-horizontal_alignment = 1
-
-[node name="PrzyciskMenu" type="Button" parent="." unique_id=942302896]
-offset_left = 500.0
-offset_top = 340.0
-offset_right = 621.0
-offset_bottom = 371.0
-text = "Wróć do menu"
-
 [node name="CzasBonusu" type="Timer" parent="." unique_id=653987158]
 wait_time = 8.0
 
@@ -99,13 +90,6 @@ alignment = 1
 [node name="TytulPauzy" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=1387406901]
 layout_mode = 2
 text = "Pauza"
-horizontal_alignment = 1
-
-[node name="PodpowiedzSterowania" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=1986107588]
-custom_minimum_size = Vector2(0, 56)
-layout_mode = 2
-text = "1 gracz: W/S lub ↑/↓
-2 graczy: lewy W/S • prawy ↑/↓"
 horizontal_alignment = 1
 
 [node name="WrocDoGry" type="Button" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer" unique_id=503298699]
@@ -165,3 +149,6 @@ text = "Powrót"
 
 [node name="BonusManager" type="Node" parent="." unique_id=1157479977]
 script = ExtResource("6_57rfe")
+
+[node name="EkranKonca" parent="." instance=ExtResource("9_ekran_konca")]
+layer = 2
