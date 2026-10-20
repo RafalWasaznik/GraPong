@@ -3,23 +3,50 @@ extends CharacterBody2D
 const SPEED_GRACZA = 400.0
 const PROMIEN_PILKI = 13.0
 const KOLOR_PALETKI = Color("#ff647a")
+const CZAS_DASHU = 0.16
+const CZAS_ODNOWIENIA_DASHU = 3.0
+const ODLEGLOSC_DASHU = 190.0
+const DZWIEK_DASH_GENERATOR = preload("res://dzwiek_dash.gd")
 
 @onready var start_x = position.x
 
 var nieprzewidywalny_czas = 0.0
 var nieprzewidywalne_odchylenie = 0.0
 var czas_blysku = 0.0
+var idealne_odbicie = false
+var dash_aktywne = false
+var dash_czas = 0.0
+var dash_start_y = 0.0
+var dash_cel_y = 0.0
+var dash_odnowienie = 0.0
+var dash_efekt_czas = 0.0
+var dash_efekt_kierunek = 0.0
+var ostatni_kierunek = -1.0
+var dzwiek_dasha: AudioStreamPlayer
 
 
 func _ready() -> void:
 	$Obrys.hide()
 	$ColorRect.hide()
+	dzwiek_dasha = AudioStreamPlayer.new()
+	dzwiek_dasha.name = "DzwiekDasha"
+	dzwiek_dasha.stream = DZWIEK_DASH_GENERATOR.utworz_stream()
+	dzwiek_dasha.volume_db = -9.0
+	dzwiek_dasha.pitch_scale = 0.92
+	dzwiek_dasha.bus = &"Efekty"
+	add_child(dzwiek_dasha)
 	queue_redraw()
 
 
 func _process(delta: float) -> void:
+	var odswiez = false
 	if czas_blysku > 0.0:
 		czas_blysku = maxf(0.0, czas_blysku - delta)
+		odswiez = true
+	if dash_efekt_czas > 0.0:
+		dash_efekt_czas = maxf(0.0, dash_efekt_czas - delta)
+		odswiez = true
+	if odswiez:
 		queue_redraw()
 
 
@@ -28,7 +55,16 @@ func _draw() -> void:
 	var ksztalt = $CollisionShape2D.shape as RectangleShape2D
 	if ksztalt != null:
 		wysokosc = ksztalt.size.y
-	var blysk = clampf(czas_blysku / 0.14, 0.0, 1.0)
+	var czas_pelnego_blysku = 0.28 if idealne_odbicie else 0.14
+	var blysk = clampf(czas_blysku / czas_pelnego_blysku, 0.0, 1.0)
+	if dash_efekt_czas > 0.0:
+		for i in range(3):
+			var slad = StyleBoxFlat.new()
+			var alfa_sladu = (0.28 - float(i) * 0.075) * dash_efekt_czas / 0.28
+			slad.bg_color = Color(KOLOR_PALETKI.r, KOLOR_PALETKI.g, KOLOR_PALETKI.b, alfa_sladu)
+			slad.set_corner_radius_all(5)
+			var przesuniecie = -dash_efekt_kierunek * float(i + 1) * 30.0
+			draw_style_box(slad, Rect2(-9.0, -wysokosc * 0.5 + przesuniecie, 18.0, wysokosc))
 
 	var poswiata = StyleBoxFlat.new()
 	poswiata.bg_color = Color(KOLOR_PALETKI.r, KOLOR_PALETKI.g, KOLOR_PALETKI.b, 0.08 + blysk * 0.12)
@@ -43,9 +79,11 @@ func _draw() -> void:
 	draw_style_box(obrys, Rect2(-12.0, -wysokosc * 0.5 - 3.0, 24.0, wysokosc + 6.0))
 
 	var wypelnienie = StyleBoxFlat.new()
-	wypelnienie.bg_color = KOLOR_PALETKI.lerp(Color.WHITE, blysk * 0.45)
+	wypelnienie.bg_color = KOLOR_PALETKI.lerp(Color.WHITE, blysk * (0.72 if idealne_odbicie else 0.45))
 	wypelnienie.set_corner_radius_all(5)
 	draw_style_box(wypelnienie, Rect2(-9.0, -wysokosc * 0.5, 18.0, wysokosc))
+	if idealne_odbicie and czas_blysku > 0.0:
+		draw_line(Vector2(-6.0, 0.0), Vector2(6.0, 0.0), Color(1.0, 1.0, 1.0, blysk), 2.0)
 
 	var wysokosc_strefy = wysokosc * 0.175
 	var ciemniejszy_kolor = wypelnienie.bg_color.darkened(0.36)
@@ -59,10 +97,9 @@ func _draw() -> void:
 
 	var wysokosc_blysku = maxf(wysokosc - 2.0 * (wysokosc_strefy + 5.0), 1.0)
 	draw_rect(Rect2(-6.0, -wysokosc * 0.5 + wysokosc_strefy + 5.0, 3.0, wysokosc_blysku), Color(1.0, 1.0, 1.0, 0.22 + blysk * 0.2), true)
-
-
-func efekt_odbicia() -> void:
-	czas_blysku = 0.14
+func efekt_odbicia(perfect_hit: bool = false) -> void:
+	idealne_odbicie = perfect_hit
+	czas_blysku = 0.28 if perfect_hit else 0.14
 	queue_redraw()
 
 
@@ -73,7 +110,19 @@ func ustaw_pozycje_x(nowa_pozycja: float) -> void:
 
 func _physics_process(delta):
 	if Ustawienia.tryb == "2graczy" or (Ustawienia.tryb == "arena" and Ustawienia.arena_dwoch_graczy):
-		velocity.y = Input.get_axis("prawy_gora", "prawy_dol") * SPEED_GRACZA
+		var kierunek = Input.get_axis("prawy_gora", "prawy_dol")
+		if not is_zero_approx(kierunek):
+			ostatni_kierunek = signf(kierunek)
+		if Input.is_action_just_pressed("dash_gracza_2") and dash_odnowienie <= 0.0:
+			var kierunek_dashu = signf(kierunek) if not is_zero_approx(kierunek) else ostatni_kierunek
+			_rozpocznij_dash(kierunek_dashu)
+		_odlicz_cooldown_dash(delta)
+		if _aktualizuj_dash(delta):
+			move_and_slide()
+			_ogranicz_pozycje_y()
+			position.x = start_x
+			return
+		velocity.y = kierunek * SPEED_GRACZA
 	else:
 		var predkosc_bota = 500.0
 		var margines = 5.0
@@ -136,6 +185,11 @@ func _physics_process(delta):
 		var polowa_paletki = _polowa_wysokosci_paletki()
 		cel_y = clampf(cel_y, Ustawienia.gorna_granica + polowa_paletki, Ustawienia.dolna_granica - polowa_paletki)
 		var roznica = cel_y - position.y
+		if nadlatuje and dash_odnowienie <= 0.0:
+			var czas_do_paletki = maxf(0.0, (position.x - pilka_cel.position.x) / maxf(pilka_cel.velocity.x * _mnoznik_predkosci_areny(), 1.0))
+			var prog_dasha = polowa_paletki + predkosc_bota * czas_do_paletki + 35.0
+			if czas_do_paletki > CZAS_DASHU * 1.5 and czas_do_paletki < 0.65 and absf(roznica) > prog_dasha:
+				_rozpocznij_dash(signf(roznica))
 
 		if abs(roznica) > margines:
 			var predkosc_ruchu = min(
@@ -146,8 +200,63 @@ func _physics_process(delta):
 		else:
 			velocity.y = 0.0
 
+	_odlicz_cooldown_dash(delta)
+	if _aktualizuj_dash(delta):
+		move_and_slide()
+		_ogranicz_pozycje_y()
+		position.x = start_x
+		return
 	move_and_slide()
+	_ogranicz_pozycje_y()
 	position.x = start_x
+
+
+func _rozpocznij_dash(kierunek: float) -> void:
+	if is_zero_approx(kierunek):
+		return
+	var polowa_wysokosci = _polowa_wysokosci_paletki()
+	var minimum_y = Ustawienia.gorna_granica + polowa_wysokosci
+	var maksimum_y = Ustawienia.dolna_granica - polowa_wysokosci
+	var zasieg = minf(ODLEGLOSC_DASHU, (maksimum_y - minimum_y) * 0.8)
+	var cel = clampf(position.y + signf(kierunek) * zasieg, minimum_y, maksimum_y)
+	if is_equal_approx(cel, position.y):
+		cel = clampf(position.y - signf(kierunek) * zasieg, minimum_y, maksimum_y)
+		if is_equal_approx(cel, position.y):
+			return
+	dash_aktywne = true
+	dash_czas = 0.0
+	dash_start_y = position.y
+	dash_cel_y = cel
+	dash_efekt_kierunek = signf(kierunek)
+	dash_efekt_czas = 0.28
+	dash_odnowienie = CZAS_ODNOWIENIA_DASHU
+	dzwiek_dasha.play()
+	queue_redraw()
+
+
+func _odlicz_cooldown_dash(delta: float) -> void:
+	var odnowienie_przed_klatka = dash_odnowienie
+	dash_odnowienie = maxf(0.0, dash_odnowienie - delta)
+	if not is_equal_approx(odnowienie_przed_klatka, dash_odnowienie):
+		queue_redraw()
+
+
+func _aktualizuj_dash(delta: float) -> bool:
+	if not dash_aktywne:
+		return false
+	dash_czas = minf(dash_czas + delta, CZAS_DASHU)
+	var postep = clampf(dash_czas / CZAS_DASHU, 0.0, 1.0)
+	var wygladzenie = postep * postep * (3.0 - 2.0 * postep)
+	var pozycja_docelowa = lerpf(dash_start_y, dash_cel_y, wygladzenie)
+	velocity.y = (pozycja_docelowa - position.y) / maxf(delta, 0.0001)
+	if postep >= 1.0:
+		dash_aktywne = false
+	return true
+
+
+func _ogranicz_pozycje_y() -> void:
+	var polowa_wysokosci = _polowa_wysokosci_paletki()
+	position.y = clampf(position.y, Ustawienia.gorna_granica + polowa_wysokosci, Ustawienia.dolna_granica - polowa_wysokosci)
 
 
 func _polowa_wysokosci_paletki() -> float:

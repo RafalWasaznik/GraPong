@@ -87,7 +87,6 @@ func _draw():
 			var nazwa_przeciwnika = "GRACZ 2" if Ustawienia.arena_dwoch_graczy else "BOT"
 			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, nazwa_gracza)
 			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, nazwa_przeciwnika)
-			_rysuj_licznik_odbic_areny()
 		elif Ustawienia.tryb == "endless":
 			_rysuj_nazwe_wyniku(karta_gracza, "SERIA", KOLOR_GRACZA)
 			_rysuj_nazwe_wyniku(karta_ai, "REKORD", Color("#c4b5fd"))
@@ -121,64 +120,6 @@ func _rysuj_gumowe_sciany() -> void:
 		))
 		draw_polyline(punkty, Color(kolor, 0.2), 8.0, true)
 		draw_polyline(punkty, Color(kolor, 0.82), 2.5, true)
-
-
-func _rysuj_licznik_odbic_areny() -> void:
-	var font = FONT_ARCADE
-	var srodek_x = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5
-	var karta_wyniku = gra.call("_prostokat_karty_wyniku", 0)
-	var dol_karty_wyniku = karta_wyniku.end.y
-	var odstep = Ustawienia.gorna_granica - dol_karty_wyniku
-	# Licznik ma własną przestrzeń nad boiskiem; jego obrys nie może wejść za górną linię areny.
-	var wysokosc = minf(30.0, maxf(0.0, odstep - 4.0))
-	if wysokosc < 12.0:
-		return
-	var plakietka = Rect2(
-		Vector2(srodek_x - 110.0, dol_karty_wyniku + 2.0),
-		Vector2(220.0, wysokosc)
-	)
-	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color("#0b1725")
-	styl.border_color = Color("#55d8f2")
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(11)
-	draw_style_box(styl, plakietka)
-
-	var rozmiar_etykiety = 17
-	var rozmiar_wartosci = 22
-	var etykieta = "ODBICIA"
-	var wartosc = str(gra.odbicia_areny)
-	var szerokosc_etykiety = font.get_string_size(etykieta, HORIZONTAL_ALIGNMENT_LEFT, -1, rozmiar_etykiety).x
-	var szerokosc_wartosci = font.get_string_size(wartosc, HORIZONTAL_ALIGNMENT_LEFT, -1, rozmiar_wartosci).x
-	var odstep_tekstu = 14.0
-	var szerokosc_tekstu = szerokosc_etykiety + odstep_tekstu + szerokosc_wartosci
-	var poczatek_x = srodek_x - szerokosc_tekstu * 0.5
-	var linia_bazowa = plakietka.position.y + (plakietka.size.y + font.get_ascent(rozmiar_wartosci) - font.get_descent(rozmiar_wartosci)) * 0.5
-	var pozycja_separatora = poczatek_x + szerokosc_etykiety + odstep_tekstu * 0.5
-	draw_line(
-		Vector2(pozycja_separatora, plakietka.position.y + 7.0),
-		Vector2(pozycja_separatora, plakietka.end.y - 7.0),
-		Color("#426176"),
-		1.0
-	)
-	draw_string(
-		font,
-		Vector2(poczatek_x, linia_bazowa),
-		etykieta,
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1.0,
-		rozmiar_etykiety,
-		Color("#d2e3f3")
-	)
-	draw_string(
-		font,
-		Vector2(pozycja_separatora + odstep_tekstu * 0.5, linia_bazowa),
-		wartosc,
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1.0,
-		rozmiar_wartosci,
-		Color("#55e7ff")
-	)
 
 
 func _rysuj_bramke_areny() -> void:

@@ -13,9 +13,10 @@ const PROMIEN_OKREGU = 52.0
 const PROMIEN_PILKI = 13.0
 const MAKS_PROBEK_SLADU = 9
 const ODLEGLOSC_PROBEK_SLADU = 4.0
-const CZAS_EFEKTU_PERFECT_HIT = 0.3
+const CZAS_EFEKTU_PERFECT_HIT = 0.42
 const GRANICA_PERFECT_HIT = 0.65
 const MAKSYMALNY_KAT_ODBICIA = 65.0
+const MAKSYMALNY_SPIN_PALETKI = 12.0
 const MAKS_UGIECIA_GUMA_NISKA = 8.4
 const MAKS_UGIECIA_GUMA_SREDNIA = 15.6
 const MAKS_UGIECIA_GUMA_WYSOKA = 24.0
@@ -96,14 +97,15 @@ func _draw():
 
 	if perfect_hit_czas > 0.0:
 		var alfa = clamp(perfect_hit_czas / CZAS_EFEKTU_PERFECT_HIT, 0.0, 1.0)
+		var promien_odbicia = PROMIEN_PILKI + 5.0 + (1.0 - alfa) * 18.0
 		draw_arc(
 			Vector2.ZERO,
-			PROMIEN_PILKI + 16.0,
+			promien_odbicia,
 			0.0,
 			TAU,
 			48,
-			Color(0.3, 1.0, 1.0, alfa),
-			4.0,
+			Color(0.3, 1.0, 1.0, alfa * 0.9),
+			3.5,
 			true
 		)
 
@@ -200,7 +202,7 @@ func _physics_process(delta):
 				collision.get_position()
 			)
 			if obiekt.has_method("efekt_odbicia"):
-				obiekt.call("efekt_odbicia")
+				obiekt.call("efekt_odbicia", perfect_hit)
 			odbicie_paletki.emit()
 			statystyki_odbicia.emit("gracz" if obiekt.name == "Paletka" else "rywal", perfect_hit)
 			if Ustawienia.tryb == "endless" and obiekt.name == "Paletka":
@@ -359,6 +361,9 @@ func _odbicie_od_paletki(
 		1.0
 	)
 	var kat = deg_to_rad(trafienie * MAKSYMALNY_KAT_ODBICIA)
+	var spin_paletki = clampf(paletka.velocity.y / 400.0, -1.0, 1.0)
+	kat += deg_to_rad(spin_paletki * MAKSYMALNY_SPIN_PALETKI)
+	kat = clampf(kat, deg_to_rad(-72.0), deg_to_rad(72.0))
 	var kierunek_x = 1.0 if global_position.x > paletka.global_position.x else -1.0
 	velocity = Vector2(kierunek_x * cos(kat), sin(kat)).normalized() * predkosc
 	position.x += kierunek_x * 0.5

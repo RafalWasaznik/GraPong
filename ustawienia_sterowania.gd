@@ -7,8 +7,10 @@ const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 const MAPOWANIA = [
 	{"akcja": "lewy_gora", "gracz": 1, "opis": "Ruch w górę", "kolor": KOLOR_TURKUS},
 	{"akcja": "lewy_dol", "gracz": 1, "opis": "Ruch w dół", "kolor": KOLOR_TURKUS},
+	{"akcja": "dash_gracza_1", "gracz": 1, "opis": "Dash", "kolor": KOLOR_TURKUS},
 	{"akcja": "prawy_gora", "gracz": 2, "opis": "Ruch w górę", "kolor": KOLOR_ROZ},
 	{"akcja": "prawy_dol", "gracz": 2, "opis": "Ruch w dół", "kolor": KOLOR_ROZ},
+	{"akcja": "dash_gracza_2", "gracz": 2, "opis": "Dash", "kolor": KOLOR_ROZ},
 	{"akcja": "pauza", "gracz": 0, "opis": "Wstrzymaj grę", "kolor": KOLOR_FIOLET}
 ]
 
@@ -21,11 +23,13 @@ var aktywna_akcja = ""
 
 
 func _ready() -> void:
-	custom_minimum_size.x = 460.0
+	custom_minimum_size.x = 445.0
 	add_theme_constant_override("separation", 6)
 	gracze.add_theme_constant_override("separation", 10)
 	$Gracze/Gracz1.add_theme_stylebox_override("panel", _styl_panelu(KOLOR_TURKUS))
 	$Gracze/Gracz2.add_theme_stylebox_override("panel", _styl_panelu(KOLOR_ROZ))
+	$InneUstawienia.add_theme_font_override("font", FONT_ARCADE)
+	$InneUstawienia.add_theme_color_override("font_color", KOLOR_TURKUS)
 	$Pauza.add_theme_stylebox_override("panel", _styl_panelu(KOLOR_FIOLET))
 	$Pauza.custom_minimum_size.x = 190.0
 	$Pauza.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -52,7 +56,7 @@ func _ready() -> void:
 	informacja.add_theme_color_override("font_color", Color("#b9cde2"))
 	informacja.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	informacja.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	informacja.text = "Kliknij klawisz, aby zmienić przypisanie."
+	informacja.hide()
 	
 	przywroc.add_theme_font_size_override("font_size", 16)
 	przywroc.add_theme_color_override("font_color", Color("#dceaff"))
@@ -77,7 +81,7 @@ func _utworz_wiersz(mapowanie: Dictionary) -> HBoxContainer:
 
 	var kafelek = Button.new()
 	kafelek.name = "Klawisz"
-	kafelek.custom_minimum_size = Vector2(92.0, 38.0)
+	kafelek.custom_minimum_size = Vector2(90.0, 38.0)
 	kafelek.size_flags_horizontal = Control.SIZE_SHRINK_END
 	kafelek.add_theme_font_size_override("font_size", 16)
 	kafelek.add_theme_color_override("font_color", Color("#f2f7ff"))
@@ -94,6 +98,7 @@ func _utworz_wiersz(mapowanie: Dictionary) -> HBoxContainer:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree():
 		_anuluj_przypisywanie()
+		informacja.hide()
 
 
 func _exit_tree() -> void:
@@ -139,6 +144,7 @@ func _input(event: InputEvent) -> void:
 func _rozpocznij_przypisywanie(akcja: String) -> void:
 	aktywna_akcja = akcja
 	Ustawienia.czeka_na_klawisz = true
+	informacja.show()
 	var skrot = "Esc ustawi pauzę." if akcja == "pauza" else "Esc anuluje."
 	informacja.text = "Naciśnij klawisz: %s. %s" % [_nazwa_akcji(akcja), skrot]
 	_odswiez_kafelki()

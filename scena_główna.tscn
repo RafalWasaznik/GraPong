@@ -6,9 +6,10 @@
 [ext_resource type="PackedScene" uid="uid://hjfo7y4yt0gs" path="res://paletka_ai.tscn" id="3_p5xgf"]
 [ext_resource type="Script" uid="uid://cqmd1ck0s0bk" path="res://menu_pauzy.gd" id="5_c8em3"]
 [ext_resource type="Script" uid="uid://bov8c7uqrjmm1" path="res://bonus_manager.gd" id="6_57rfe"]
-[ext_resource type="PackedScene" path="res://ustawienia_sterowania.tscn" id="7_sterowanie"]
-[ext_resource type="Script" path="res://rysowanie_areny.gd" id="8_rysowanie"]
+[ext_resource type="PackedScene" path="res://ustawienia_menu.tscn" id="11_ustawienia"]
+[ext_resource type="Script" uid="uid://bgpjucodt2r2x" path="res://rysowanie_areny.gd" id="8_rysowanie"]
 [ext_resource type="PackedScene" path="res://ekran_konca.tscn" id="9_ekran_konca"]
+[ext_resource type="Script" uid="uid://bhlafvlwpd62i" path="res://wskazniki_dasha.gd" id="10_dash_ui"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_618dn"]
 size = Vector2(1152, 20)
@@ -16,7 +17,7 @@ size = Vector2(1152, 20)
 [node name="Scena Główna" type="Node2D" unique_id=1496715320]
 script = ExtResource("1_u1wac")
 
-[node name="RysowanieAreny" type="Node2D" parent="."]
+[node name="RysowanieAreny" type="Node2D" parent="." unique_id=314974593]
 script = ExtResource("8_rysowanie")
 
 [node name="Paletka" parent="." unique_id=184993052 instance=ExtResource("1_82ry8")]
@@ -39,6 +40,9 @@ shape = SubResource("RectangleShape2D_618dn")
 
 [node name="PaletkaAI" parent="." unique_id=948163822 instance=ExtResource("3_p5xgf")]
 position = Vector2(1102, 360)
+
+[node name="WskaznikiDasha" type="Node2D" parent="." unique_id=508832479]
+script = ExtResource("10_dash_ui")
 
 [node name="WynikGracza" type="Label" parent="." unique_id=275067296]
 offset_left = 500.0
@@ -105,50 +109,13 @@ layout_mode = 2
 text = "Wróć do menu"
 
 [node name="PanelUstawien" type="PanelContainer" parent="MenuPauzy/Przyciemnienie/CenterContainer" unique_id=649110049]
-custom_minimum_size = Vector2(500, 616)
+custom_minimum_size = Vector2(540, 0)
 layout_mode = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien" unique_id=1850894159]
+[node name="EkranUstawien" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien" instance=ExtResource("11_ustawienia")]
 layout_mode = 2
-alignment = 1
-
-[node name="TytulUstawien" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=885444904]
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="EtykietaOgolna" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=492619942]
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="GlosnoscOgolna" type="HSlider" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=1085309905]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-
-[node name="EtykietaMuzyka" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=171640888]
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="GlosnoscMuzyki" type="HSlider" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=1348839136]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-
-[node name="EtykietaDzwieki" type="Label" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=840731449]
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="GlosnoscDzwiekow" type="HSlider" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=118961314]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-
-[node name="UstawieniaSterowania" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=882133345 instance=ExtResource("7_sterowanie")]
-layout_mode = 2
-
-[node name="WrocDoPauzy" type="Button" parent="MenuPauzy/Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer" unique_id=262051386]
-layout_mode = 2
-text = "Powrót"
 
 [node name="BonusManager" type="Node" parent="." unique_id=1157479977]
 script = ExtResource("6_57rfe")
 
-[node name="EkranKonca" parent="." instance=ExtResource("9_ekran_konca")]
-layer = 2
+[node name="EkranKonca" parent="." unique_id=123991594 instance=ExtResource("9_ekran_konca")]

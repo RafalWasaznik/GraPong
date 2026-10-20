@@ -1,0 +1,107 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://ustawienia_menu.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://ustawienia_sterowania.tscn" id="2_sterowanie"]
+
+[node name="EkranUstawien" type="VBoxContainer"]
+custom_minimum_size = Vector2(500, 0)
+alignment = 1
+script = ExtResource("1_script")
+
+[node name="PrzewijanieUstawien" type="ScrollContainer" parent="."]
+custom_minimum_size = Vector2(500, 460)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="OdstepPaska" type="MarginContainer" parent="PrzewijanieUstawien"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_right = 24
+
+[node name="ZawartoscUstawien" type="VBoxContainer" parent="PrzewijanieUstawien/OdstepPaska"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 24
+
+[node name="UstawieniaDzwieku" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+layout_mode = 2
+text = "USTAWIENIA DŹWIĘKU"
+horizontal_alignment = 1
+
+[node name="SegmentDzwieku" type="PanelContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+layout_mode = 2
+
+[node name="UkladDzwieku" type="VBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="WierszOgolny" type="HBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EtykietaOgolna" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszOgolny"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Ogólne"
+
+[node name="GlosnoscOgolna" type="HSlider" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszOgolny"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WierszMuzyka" type="HBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EtykietaMuzyka" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszMuzyka"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Muzyka"
+
+[node name="GlosnoscMuzyki" type="HSlider" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszMuzyka"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WierszDzwieki" type="HBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EtykietaDzwieki" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszDzwieki"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Dźwięki"
+
+[node name="GlosnoscDzwiekow" type="HSlider" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszDzwieki"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="UstawieniaEkranu" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+layout_mode = 2
+text = "USTAWIENIA EKRANU"
+horizontal_alignment = 1
+
+[node name="SegmentEkran" type="PanelContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+layout_mode = 2
+
+[node name="PelnyEkran" type="CheckButton" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentEkran"]
+layout_mode = 2
+text = "Pełny ekran"
+
+[node name="UstawieniaSterowaniaNaglowek" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+layout_mode = 2
+text = "STEROWANIE"
+horizontal_alignment = 1
+
+[node name="SegmentSterowanie" type="PanelContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+layout_mode = 2
+
+[node name="UstawieniaSterowania" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentSterowanie" instance=ExtResource("2_sterowanie")]
+layout_mode = 2
+
+[node name="WrocUstawienia" type="Button" parent="."]
+layout_mode = 2
+text = "Wróć"

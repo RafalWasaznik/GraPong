@@ -17,12 +17,15 @@ var rekord_endless = 0
 var glosnosc_ogolna = 80.0
 var glosnosc_muzyki = 80.0
 var glosnosc_efektow = 80.0
+var pelny_ekran = true
 
 const KLAWISZE_DOMYSLNE = {
 	"lewy_gora": KEY_W,
 	"lewy_dol": KEY_S,
+	"dash_gracza_1": KEY_SPACE,
 	"prawy_gora": KEY_UP,
 	"prawy_dol": KEY_DOWN,
+	"dash_gracza_2": KEY_ENTER,
 	"pauza": KEY_ESCAPE
 }
 
@@ -65,6 +68,7 @@ func wczytaj():
 		klawisze = KLAWISZE_DOMYSLNE.duplicate()
 		_zastosuj_klawisze()
 		ustaw_geometrie_planszy()
+		_zastosuj_tryb_okna()
 		return
 
 	for akcja in KLAWISZE_DOMYSLNE:
@@ -83,8 +87,10 @@ func wczytaj():
 	glosnosc_ogolna = plik.get_value("audio", "ogolna", glosnosc_ogolna)
 	glosnosc_muzyki = plik.get_value("audio", "muzyka", glosnosc_muzyki)
 	glosnosc_efektow = plik.get_value("audio", "efekty", glosnosc_efektow)
+	pelny_ekran = plik.get_value("ekran", "pelny_ekran", pelny_ekran)
 
 	ustaw_geometrie_planszy()
+	_zastosuj_tryb_okna()
 
 
 func zapisz():
@@ -102,10 +108,22 @@ func zapisz():
 	plik.set_value("audio", "ogolna", glosnosc_ogolna)
 	plik.set_value("audio", "muzyka", glosnosc_muzyki)
 	plik.set_value("audio", "efekty", glosnosc_efektow)
+	plik.set_value("ekran", "pelny_ekran", pelny_ekran)
 	for akcja in KLAWISZE_DOMYSLNE:
 		plik.set_value("sterowanie", akcja, int(klawisze[akcja]))
 
 	plik.save(PLIK_USTAWIEN)
+
+
+func _zastosuj_tryb_okna() -> void:
+	var tryb_okna = DisplayServer.WINDOW_MODE_FULLSCREEN if pelny_ekran else DisplayServer.WINDOW_MODE_WINDOWED
+	DisplayServer.window_set_mode(tryb_okna)
+
+
+func ustaw_tryb_okna(wartosc: bool) -> void:
+	pelny_ekran = wartosc
+	_zastosuj_tryb_okna()
+	zapisz()
 
 
 func _zastosuj_klawisze() -> void:
@@ -151,4 +169,4 @@ func tekst_klawisza(akcja: String) -> String:
 func tekst_podpowiedzi() -> String:
 	var lewy = "%s/%s" % [tekst_klawisza("lewy_gora"), tekst_klawisza("lewy_dol")]
 	var prawy = "%s/%s" % [tekst_klawisza("prawy_gora"), tekst_klawisza("prawy_dol")]
-	return "1 gracz: %s lub %s\n2 graczy: lewy %s · prawy %s\nPauza: %s" % [lewy, prawy, lewy, prawy, tekst_klawisza("pauza")]
+	return "1 gracz: %s lub %s · dash: %s\n2 graczy: lewy %s/%s · prawy %s/%s\nPauza: %s" % [lewy, prawy, tekst_klawisza("dash_gracza_1"), lewy, tekst_klawisza("dash_gracza_1"), prawy, tekst_klawisza("dash_gracza_2"), tekst_klawisza("pauza")]

@@ -6,6 +6,7 @@ const KOLOR_TURKUS_NEON = Color("#55e7ff")
 const KOLOR_FIOLET_NEON = Color("#ad83ff")
 const KOLOR_ROZ_NEON = Color("#ff5fb7")
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
+const DZWIEK_MENU_GENERATOR = preload("res://dzwiek_menu.gd")
 
 @onready var ekran_glowny = $CenterContainer/EkranGlowny
 @onready var center_container = $CenterContainer
@@ -17,6 +18,7 @@ const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 var wybor_gier_jeden: VBoxContainer
 var wybor_gier_dwoch: VBoxContainer
 var aktywne_ustawienia_bota = "klasyczna"
+var dzwiek_klikniecia: AudioStreamPlayer
 
 @onready var trudnosc = $CenterContainer/OpcjeJedenGracz/Trudnosc
 @onready var limit_jeden = $CenterContainer/OpcjeJedenGracz/LimitJeden
@@ -25,12 +27,9 @@ var aktywne_ustawienia_bota = "klasyczna"
 @onready var rozmiar_jeden = $CenterContainer/OpcjeJedenGracz/RozmiarPlanszyJeden
 @onready var rozmiar_dwoch = $CenterContainer/OpcjeDwochGraczy/RozmiarPlanszyDwoch
 
-@onready var glosnosc_ogolna = $CenterContainer/EkranUstawien/GlosnoscOgolna
-@onready var glosnosc_muzyki = $CenterContainer/EkranUstawien/GlosnoscMuzyki
-@onready var glosnosc_dzwiekow = $CenterContainer/EkranUstawien/GlosnoscDzwiekow
 
 var demo_pilka = Vector2.ZERO
-var demo_predkosc = Vector2(255.0, 145.0)
+var demo_predkosc = Vector2(460.0, 260.0)
 var demo_slady: Array[Vector2] = []
 var demo_lewa_y = 0.0
 var demo_prawa_y = 0.0
@@ -39,13 +38,23 @@ var przyciemnienie_tla = 0.0
 var docelowe_przyciemnienie = 0.0
 
 
-func _ready():
+func _enter_tree():
 	Ustawienia.wczytaj()
+
+
+func _ready():
 	_utworz_ekrany_wyboru_gier()
 	_styluj_menu()
+	dzwiek_klikniecia = AudioStreamPlayer.new()
+	dzwiek_klikniecia.name = "DzwiekKliknieciaMenu"
+	dzwiek_klikniecia.stream = DZWIEK_MENU_GENERATOR.utworz_plumkniecie()
+	dzwiek_klikniecia.volume_db = -8.0
+	dzwiek_klikniecia.bus = &"Efekty"
+	add_child(dzwiek_klikniecia)
 
 	$CenterContainer/EkranGlowny/Graj.pressed.connect(_pokaz_wybor_trybu)
 	$CenterContainer/EkranGlowny/Ustawienia.pressed.connect(_pokaz_ustawienia)
+	$CenterContainer/EkranGlowny/Wyjdz.pressed.connect(_wyjdz_z_gry)
 
 	$CenterContainer/WyborTrybu/JedenGracz.pressed.connect(_pokaz_wybor_gier_jeden)
 	$CenterContainer/WyborTrybu/DwochGraczy.pressed.connect(_pokaz_wybor_gier_dwoch)
@@ -57,7 +66,7 @@ func _ready():
 	$CenterContainer/OpcjeDwochGraczy/StartDwoch.pressed.connect(_start_dwoch_graczy)
 	$CenterContainer/OpcjeDwochGraczy/WrocDwoch.pressed.connect(_pokaz_wybor_gier_dwoch)
 
-	$CenterContainer/EkranUstawien/WrocUstawienia.pressed.connect(_pokaz_ekran_glowny)
+	ekran_ustawien.back_requested.connect(_pokaz_ekran_glowny)
 
 	trudnosc.add_item("Bot Jawor (Łatwy)", 0)
 	trudnosc.add_item("Bot Rafał (Średni)", 1)
@@ -85,34 +94,17 @@ func _ready():
 	$CenterContainer/OpcjeJedenGracz/EtykietaRozmiaruJeden.text = "Wielkość planszy"
 	$CenterContainer/OpcjeDwochGraczy/EtykietaRozmiaruDwoch.text = "Wielkość planszy"
 
-	glosnosc_ogolna.min_value = 0
-	glosnosc_ogolna.max_value = 100
-	glosnosc_ogolna.step = 1
-	glosnosc_ogolna.value = Ustawienia.glosnosc_ogolna
-
-	glosnosc_muzyki.min_value = 0
-	glosnosc_muzyki.max_value = 100
-	glosnosc_muzyki.step = 1
-	glosnosc_muzyki.value = Ustawienia.glosnosc_muzyki
-
-	glosnosc_dzwiekow.min_value = 0
-	glosnosc_dzwiekow.max_value = 100
-	glosnosc_dzwiekow.step = 1
-	glosnosc_dzwiekow.value = Ustawienia.glosnosc_efektow
-
-	glosnosc_ogolna.value_changed.connect(_zmien_glosnosc_ogolna)
-	glosnosc_muzyki.value_changed.connect(_zmien_glosnosc_muzyki)
-	glosnosc_dzwiekow.value_changed.connect(_zmien_glosnosc_dzwiekow)
 
 	$CenterContainer/EkranGlowny/Tytuł.text = "PONG"
 	$CenterContainer/EkranGlowny/Graj.text = "Graj"
 	$CenterContainer/EkranGlowny/Ustawienia.text = "Ustawienia"
+	$CenterContainer/EkranGlowny/Wyjdz.text = "Wyjdź z gry"
 
 	$CenterContainer/WyborTrybu/TytulTrybu.text = "Wybierz tryb"
 	$CenterContainer/WyborTrybu/JedenGracz.text = "1 gracz"
 	$CenterContainer/WyborTrybu/DwochGraczy.text = "2 graczy"
-	_dodaj_opis_trybu($CenterContainer/WyborTrybu/JedenGracz, "1 GRACZ", "Zagraj przeciwko botowi", KOLOR_TURKUS_NEON)
-	_dodaj_opis_trybu($CenterContainer/WyborTrybu/DwochGraczy, "2 GRACZY", "Mecz dla dwóch osób przy jednej klawiaturze", KOLOR_ROZ_NEON)
+	_dodaj_opis_trybu($CenterContainer/WyborTrybu/JedenGracz, "1 GRACZ", "", KOLOR_TURKUS_NEON)
+	_dodaj_opis_trybu($CenterContainer/WyborTrybu/DwochGraczy, "2 GRACZY", "", KOLOR_ROZ_NEON)
 	$CenterContainer/WyborTrybu/Wroc.text = "Wróć"
 
 	$CenterContainer/OpcjeJedenGracz/TytulOpcjiJeden.text = "Gra z botem"
@@ -124,15 +116,21 @@ func _ready():
 	$CenterContainer/OpcjeDwochGraczy/StartDwoch.text = "Graj"
 	$CenterContainer/OpcjeDwochGraczy/WrocDwoch.text = "Wróć"
 
-	$CenterContainer/EkranUstawien/EtykietaOgolna.text = "Głośność ogólna"
-	$CenterContainer/EkranUstawien/EtykietaMuzyka.text = "Głośność muzyki"
-	$CenterContainer/EkranUstawien/EtykietaDzwieki.text = "Głośność dźwięków"
 
 	_pokaz_ekran_glowny()
-	_ustaw_glosnosc("Master", glosnosc_ogolna.value)
-	_ustaw_glosnosc("Muzyka", glosnosc_muzyki.value)
-	_ustaw_glosnosc("Efekty", glosnosc_dzwiekow.value)
+	_podlacz_dzwiek_klikniecia($CenterContainer)
 	queue_redraw()
+
+
+func _podlacz_dzwiek_klikniecia(wezel: Node) -> void:
+	if wezel is BaseButton:
+		wezel.pressed.connect(_odtworz_dzwiek_klikniecia)
+	for dziecko in wezel.get_children():
+		_podlacz_dzwiek_klikniecia(dziecko)
+
+
+func _odtworz_dzwiek_klikniecia() -> void:
+	dzwiek_klikniecia.play()
 
 
 func _process(delta):
@@ -154,38 +152,31 @@ func _draw():
 	draw_circle(Vector2(size.x * 0.12, size.y * 0.18), size.y * 0.42, Color(0.08, 0.72, 0.93, 0.035))
 	draw_circle(Vector2(size.x * 0.88, size.y * 0.82), size.y * 0.48, Color(0.55, 0.22, 0.94, 0.04))
 	var boisko = _prostokat_boisko()
-	draw_rect(boisko, Color("#0b1728", 0.62), true)
-	draw_rect(boisko, Color(KOLOR_TURKUS_NEON, 0.43), false, 2.0)
-	draw_rect(boisko.grow(-10.0), Color(KOLOR_FIOLET_NEON, 0.13), false, 1.0)
-	draw_circle(boisko.get_center(), minf(boisko.size.y * 0.15, 78.0), Color(KOLOR_TURKUS_NEON, 0.2), false, 2.0)
-	var y = boisko.position.y + 16.0
-	while y < boisko.end.y - 16.0:
-		var kolor_linii = Color(KOLOR_TURKUS_NEON, 0.48) if int(y / 28.0) % 2 == 0 else Color(KOLOR_FIOLET_NEON, 0.48)
-		draw_line(Vector2(boisko.get_center().x, y), Vector2(boisko.get_center().x, minf(y + 14.0, boisko.end.y - 16.0)), kolor_linii, 3.0)
-		y += 28.0
+	# Animowana partia zajmuje całe tło. Nie rysujemy obramowania boiska,
+	# które wcześniej tworzyło drugi, nachodzący na menu prostokąt.
 	var paletka_w = clampf(boisko.size.x * 0.012, 12.0, 20.0)
 	var paletka_h = clampf(boisko.size.y * 0.22, 66.0, 116.0)
 	var lewa = Rect2(Vector2(boisko.position.x + 14.0, demo_lewa_y - paletka_h * 0.5), Vector2(paletka_w, paletka_h))
 	var prawa = Rect2(Vector2(boisko.end.x - 14.0 - paletka_w, demo_prawa_y - paletka_h * 0.5), Vector2(paletka_w, paletka_h))
-	draw_rect(lewa.grow(5.0), Color(KOLOR_TURKUS_NEON, 0.1), true)
+	draw_rect(lewa.grow(8.0), Color(KOLOR_TURKUS_NEON, 0.2), true)
 	draw_rect(lewa, Color("#40dff5"), true)
 	draw_rect(lewa, Color("#c7faff"), false, 2.0)
-	draw_rect(prawa.grow(5.0), Color(KOLOR_ROZ_NEON, 0.11), true)
+	draw_rect(prawa.grow(8.0), Color(KOLOR_ROZ_NEON, 0.22), true)
 	draw_rect(prawa, Color("#ff4fa3"), true)
 	draw_rect(prawa, Color("#ffe0f1"), false, 2.0)
 	for i in range(demo_slady.size()):
 		var udzial = float(i + 1) / float(demo_slady.size() + 1)
-		draw_circle(demo_slady[i], lerpf(2.0, 6.0, udzial), Color(KOLOR_TURKUS_NEON, udzial * 0.3))
-	draw_circle(demo_pilka, 13.0, Color(KOLOR_TURKUS_NEON, 0.13))
-	draw_circle(demo_pilka, 8.0, KOLOR_TURKUS_NEON)
-	draw_circle(demo_pilka, 4.5, Color("#ffffff"))
+		draw_circle(demo_slady[i], lerpf(2.0, 7.0, udzial), Color(KOLOR_TURKUS_NEON, udzial * 0.55))
+	draw_circle(demo_pilka, 19.0, Color(KOLOR_TURKUS_NEON, 0.32))
+	draw_circle(demo_pilka, 10.0, KOLOR_TURKUS_NEON)
+	draw_circle(demo_pilka, 5.5, Color("#ffffff"))
 	if przyciemnienie_tla > 0.01:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.015, 0.03, 0.055, przyciemnienie_tla), true)
 
 
 func _prostokat_boisko() -> Rect2:
-	var margines_x = size.x * 0.095
-	var margines_y = size.y * 0.15
+	var margines_x = size.x * 0.045
+	var margines_y = size.y * 0.08
 	return Rect2(Vector2(margines_x, margines_y), Vector2(maxf(size.x - margines_x * 2.0, 1.0), maxf(size.y - margines_y * 2.0, 1.0)))
 
 
@@ -211,16 +202,16 @@ func _symuluj_tlo(delta):
 	if nowa_pozycja.x < boisko.position.x + 5.0 or nowa_pozycja.x > boisko.end.x - 5.0:
 		demo_predkosc.x *= -1.0
 		nowa_pozycja.x = clampf(nowa_pozycja.x, boisko.position.x + 5.0, boisko.end.x - 5.0)
-	demo_predkosc = demo_predkosc.normalized() * 255.0
-	if demo_slady.is_empty() or demo_pilka.distance_to(demo_slady.back()) > 4.0:
+	demo_predkosc = demo_predkosc.normalized() * 460.0
+	if demo_slady.is_empty() or demo_pilka.distance_to(demo_slady.back()) > 2.5:
 		demo_slady.append(stara_pozycja)
-		if demo_slady.size() > 10:
+		if demo_slady.size() > 16:
 			demo_slady.pop_front()
 	demo_pilka = nowa_pozycja
 	var cel_lewej = demo_pilka.y if demo_predkosc.x < 0.0 else boisko.get_center().y
 	var cel_prawej = demo_pilka.y if demo_predkosc.x > 0.0 else boisko.get_center().y
-	demo_lewa_y = move_toward(demo_lewa_y, cel_lewej, 155.0 * delta)
-	demo_prawa_y = move_toward(demo_prawa_y, cel_prawej, 155.0 * delta)
+	demo_lewa_y = move_toward(demo_lewa_y, cel_lewej, 300.0 * delta)
+	demo_prawa_y = move_toward(demo_prawa_y, cel_prawej, 300.0 * delta)
 	demo_lewa_y = clampf(demo_lewa_y, boisko.position.y + paletka_h * 0.5, boisko.end.y - paletka_h * 0.5)
 	demo_prawa_y = clampf(demo_prawa_y, boisko.position.y + paletka_h * 0.5, boisko.end.y - paletka_h * 0.5)
 
@@ -228,21 +219,25 @@ func _symuluj_tlo(delta):
 func _styluj_menu():
 	var karta = Panel.new()
 	karta.name = "KartaMenu"
-	karta.custom_minimum_size = Vector2(600.0, 620.0)
+	karta.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	karta.offset_left = 24.0
+	karta.offset_top = 24.0
+	karta.offset_right = -24.0
+	karta.offset_bottom = -24.0
 	karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var styl_karty = StyleBoxFlat.new()
-	styl_karty.bg_color = Color("#0c1628", 0.96)
-	styl_karty.border_color = Color("#28627a")
-	styl_karty.set_border_width_all(2)
-	styl_karty.set_corner_radius_all(22)
-	styl_karty.shadow_color = Color(KOLOR_TURKUS_NEON, 0.12)
-	styl_karty.shadow_size = 25
+	styl_karty.bg_color = Color("#0c1628", 0.56)
+	styl_karty.border_color = Color(KOLOR_TURKUS_NEON, 0.28)
+	styl_karty.set_border_width_all(1)
+	styl_karty.set_corner_radius_all(20)
+	styl_karty.shadow_color = Color(KOLOR_TURKUS_NEON, 0.08)
+	styl_karty.shadow_size = 18
 	styl_karty.shadow_offset = Vector2.ZERO
 	karta.add_theme_stylebox_override("panel", styl_karty)
-	center_container.add_child(karta)
-	center_container.move_child(karta, 0)
+	add_child(karta)
+	move_child(karta, 0)
 
-	for ekran in [ekran_glowny, wybor_trybu, wybor_gier_jeden, wybor_gier_dwoch, opcje_jeden_gracz, opcje_dwoch_graczy, ekran_ustawien]:
+	for ekran in [ekran_glowny, wybor_trybu, wybor_gier_jeden, wybor_gier_dwoch, opcje_jeden_gracz, opcje_dwoch_graczy]:
 		ekran.custom_minimum_size = Vector2(420.0, 0.0)
 		ekran.add_theme_constant_override("separation", 14)
 		_wycentruj_teksty(ekran)
@@ -268,9 +263,6 @@ func _styluj_menu():
 	$CenterContainer/OpcjeJedenGracz/TytulOpcjiJeden.add_theme_font_size_override("font_size", 28)
 	$CenterContainer/OpcjeJedenGracz/TytulOpcjiJeden.add_theme_font_override("font", FONT_ARCADE)
 	$CenterContainer/OpcjeJedenGracz/TytulOpcjiJeden.add_theme_color_override("font_color", Color("#69edff"))
-	$CenterContainer/EkranUstawien/EtykietaOgolna.add_theme_color_override("font_color", KOLOR_TURKUS_NEON)
-	$CenterContainer/EkranUstawien/EtykietaMuzyka.add_theme_color_override("font_color", KOLOR_FIOLET_NEON)
-	$CenterContainer/EkranUstawien/EtykietaDzwieki.add_theme_color_override("font_color", KOLOR_ROZ_NEON)
 	for ekran_wyboru in [wybor_gier_jeden, wybor_gier_dwoch]:
 		ekran_wyboru.get_node("Tytul").add_theme_font_size_override("font_size", 28)
 		ekran_wyboru.get_node("Tytul").add_theme_font_override("font", FONT_ARCADE)
@@ -279,6 +271,7 @@ func _styluj_menu():
 	for guzik in [
 		$CenterContainer/EkranGlowny/Graj,
 		$CenterContainer/EkranGlowny/Ustawienia,
+		$CenterContainer/EkranGlowny/Wyjdz,
 		$CenterContainer/WyborTrybu/JedenGracz,
 		$CenterContainer/WyborTrybu/DwochGraczy,
 		$CenterContainer/WyborTrybu/Wroc,
@@ -286,7 +279,6 @@ func _styluj_menu():
 		$CenterContainer/OpcjeJedenGracz/WrocJeden,
 		$CenterContainer/OpcjeDwochGraczy/StartDwoch,
 		$CenterContainer/OpcjeDwochGraczy/WrocDwoch,
-		$CenterContainer/EkranUstawien/WrocUstawienia
 	]:
 		_styluj_przycisk(guzik)
 
@@ -304,11 +296,11 @@ func _styluj_menu():
 	styl_graj_hover.shadow_size = 17
 	guzik_graj.add_theme_stylebox_override("hover", styl_graj_hover)
 	$CenterContainer/EkranGlowny/Ustawienia.set_meta("neon_akcent", KOLOR_FIOLET_NEON)
+	$CenterContainer/EkranGlowny/Wyjdz.set_meta("neon_akcent", KOLOR_ROZ_NEON)
 	for guzik_powrotu in [
 		$CenterContainer/WyborTrybu/Wroc,
 		$CenterContainer/OpcjeJedenGracz/WrocJeden,
 		$CenterContainer/OpcjeDwochGraczy/WrocDwoch,
-		$CenterContainer/EkranUstawien/WrocUstawienia
 	]:
 		guzik_powrotu.set_meta("neon_akcent", KOLOR_FIOLET_NEON)
 
@@ -341,19 +333,6 @@ func _styluj_menu():
 		pole.add_theme_stylebox_override("normal", _nowy_styl_pola(Color("#0a1323"), Color("#304b68")))
 		pole.add_theme_stylebox_override("focus", _nowy_styl_pola(Color("#0a1323"), KOLOR_TURKUS_NEON))
 
-	var akcenty_suwakow = [KOLOR_TURKUS_NEON, KOLOR_FIOLET_NEON, KOLOR_ROZ_NEON]
-	var suwaki = [glosnosc_ogolna, glosnosc_muzyki, glosnosc_dzwiekow]
-	for i in range(suwaki.size()):
-		var suwak = suwaki[i]
-		var akcent: Color = akcenty_suwakow[i]
-		suwak.custom_minimum_size = Vector2(420.0, 42.0)
-		suwak.add_theme_stylebox_override("slider", _nowy_styl_pola(Color("#1a2a3e"), Color("#1a2a3e")))
-		suwak.add_theme_stylebox_override("grabber_area", _nowy_styl_pola(Color(akcent, 0.5), Color(akcent, 0.5)))
-		suwak.add_theme_stylebox_override("grabber_area_highlight", _nowy_styl_pola(Color(akcent, 0.8), Color(akcent, 0.8)))
-		var uchwyt = _stworz_teksture_uchwytu(akcent)
-		suwak.add_theme_icon_override("grabber", uchwyt)
-		suwak.add_theme_icon_override("grabber_highlight", uchwyt)
-		suwak.add_theme_icon_override("grabber_disabled", uchwyt)
 
 
 func _styluj_przycisk(guzik: Button):
@@ -395,7 +374,7 @@ func _animuj_najechanie(guzik: Control, aktywne: bool):
 
 func _dodaj_opis_trybu(przycisk: Button, tytul: String, opis: String, akcent: Color):
 	przycisk.text = ""
-	przycisk.custom_minimum_size = Vector2(420.0, 88.0)
+	przycisk.custom_minimum_size = Vector2(420.0, 72.0 if opis.is_empty() else 88.0)
 	przycisk.tooltip_text = opis
 	przycisk.set_meta("neon_akcent", akcent)
 	var styl_karty = _nowy_styl_przycisku(Color("#101d31"), Color(akcent, 0.42))
@@ -414,6 +393,18 @@ func _dodaj_opis_trybu(przycisk: Button, tytul: String, opis: String, akcent: Co
 	pasek.offset_left = 0.0
 	pasek.offset_right = 5.0
 	przycisk.add_child(pasek)
+	if opis.is_empty():
+		var etykieta = Label.new()
+		etykieta.text = tytul
+		etykieta.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		etykieta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		etykieta.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		etykieta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		etykieta.add_theme_font_override("font", FONT_ARCADE)
+		etykieta.add_theme_font_size_override("font_size", 26)
+		etykieta.add_theme_color_override("font_color", Color("#f2f8ff"))
+		przycisk.add_child(etykieta)
+		return
 	var uklad = VBoxContainer.new()
 	uklad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	uklad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -448,9 +439,9 @@ func _utworz_ekrany_wyboru_gier():
 	center_container.add_child(wybor_gier_jeden)
 	wybor_gier_jeden.hide()
 	_dodaj_ekran_wyboru_gier(wybor_gier_jeden, "Tryb dla jednego gracza")
-	_dodaj_karte_wyboru(wybor_gier_jeden, "KLASYCZNY", "Klasyczny mecz przeciwko botowi", KOLOR_TURKUS_NEON, _pokaz_opcje_jednego_gracza)
-	_dodaj_karte_wyboru(wybor_gier_jeden, "ENDLESS RALLY", "Jedna paletka, seria i rosnące wyzwanie", KOLOR_FIOLET_NEON, _start_endless_rally)
-	_dodaj_karte_wyboru(wybor_gier_jeden, "ARENA", "Mecz z botem i losowymi modyfikacjami planszy", Color("#ffb454"), _pokaz_opcje_areny)
+	_dodaj_karte_wyboru(wybor_gier_jeden, "Klasyczny", "", KOLOR_TURKUS_NEON, _pokaz_opcje_jednego_gracza)
+	_dodaj_karte_wyboru(wybor_gier_jeden, "Nieskończony", "", KOLOR_FIOLET_NEON, _start_endless_rally)
+	_dodaj_karte_wyboru(wybor_gier_jeden, "Arena", "", Color("#ffb454"), _pokaz_opcje_areny)
 	_dodaj_karte_wyboru(wybor_gier_jeden, "Wróć", "", Color("#7892ad"), _pokaz_wybor_trybu, true)
 
 	wybor_gier_dwoch = VBoxContainer.new()
@@ -459,8 +450,8 @@ func _utworz_ekrany_wyboru_gier():
 	center_container.add_child(wybor_gier_dwoch)
 	wybor_gier_dwoch.hide()
 	_dodaj_ekran_wyboru_gier(wybor_gier_dwoch, "Tryb dla dwóch graczy")
-	_dodaj_karte_wyboru(wybor_gier_dwoch, "KLASYCZNY POJEDYNEK", "Zagrajcie przeciwko sobie przy jednej klawiaturze", KOLOR_ROZ_NEON, _pokaz_opcje_dwoch_graczy)
-	_dodaj_karte_wyboru(wybor_gier_dwoch, "ARENA", "Pojedynek na planszy z losowymi modyfikacjami", Color("#ffb454"), _start_arena.bind(true))
+	_dodaj_karte_wyboru(wybor_gier_dwoch, "KLASYCZNY POJEDYNEK", "", KOLOR_ROZ_NEON, _pokaz_opcje_dwoch_graczy)
+	_dodaj_karte_wyboru(wybor_gier_dwoch, "ARENA", "", Color("#ffb454"), _start_arena.bind(true))
 	_dodaj_karte_wyboru(wybor_gier_dwoch, "Wróć", "", Color("#7892ad"), _pokaz_wybor_trybu, true)
 
 
@@ -649,6 +640,10 @@ func _pokaz_ustawienia():
 	_pokaz_ekran(ekran_ustawien)
 
 
+func _wyjdz_z_gry():
+	get_tree().quit()
+
+
 func _start_jeden_gracz():
 	if not limit_jeden.text.is_valid_int() or limit_jeden.text.to_int() < 1:
 		limit_jeden.placeholder_text = "Wpisz liczbę większą od 0"
@@ -711,33 +706,3 @@ func _start_arena(dwoch_graczy: bool = false):
 	Ustawienia.charakter_bota = CHARAKTERY_BOTA.pick_random()
 	Ustawienia.zapisz()
 	get_tree().change_scene_to_file("res://scena_główna.tscn")
-
-
-func _zmien_glosnosc_ogolna(wartosc):
-	Ustawienia.glosnosc_ogolna = wartosc
-	_ustaw_glosnosc("Master", wartosc)
-	Ustawienia.zapisz()
-
-
-func _zmien_glosnosc_muzyki(wartosc):
-	Ustawienia.glosnosc_muzyki = wartosc
-	_ustaw_glosnosc("Muzyka", wartosc)
-	Ustawienia.zapisz()
-
-
-func _zmien_glosnosc_dzwiekow(wartosc):
-	Ustawienia.glosnosc_efektow = wartosc
-	_ustaw_glosnosc("Efekty", wartosc)
-	Ustawienia.zapisz()
-
-
-func _ustaw_glosnosc(nazwa_szyny, wartosc):
-	var indeks = AudioServer.get_bus_index(nazwa_szyny)
-
-	if indeks == -1:
-		return
-
-	if wartosc <= 0:
-		AudioServer.set_bus_volume_db(indeks, -80.0)
-	else:
-		AudioServer.set_bus_volume_db(indeks, linear_to_db(wartosc / 100.0))

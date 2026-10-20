@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://o8qe4bo8u06s"]
 
 [ext_resource type="Script" uid="uid://qm8c2y32p7g5" path="res://menu.gd" id="1_lti8b"]
-[ext_resource type="PackedScene" path="res://ustawienia_sterowania.tscn" id="2_sterowanie"]
+[ext_resource type="PackedScene" path="res://ustawienia_menu.tscn" id="2_ustawienia"]
 
 [node name="Menu" type="Control" unique_id=689527288]
 layout_mode = 3
@@ -37,6 +37,10 @@ text = "Do 5 punktów"
 [node name="Ustawienia" type="Button" parent="CenterContainer/EkranGlowny" unique_id=1013953302]
 layout_mode = 2
 text = "2 graczy"
+
+[node name="Wyjdz" type="Button" parent="CenterContainer/EkranGlowny"]
+layout_mode = 2
+text = "Wyjdź z gry"
 
 [node name="WyborTrybu" type="VBoxContainer" parent="CenterContainer" unique_id=963563374]
 visible = false
@@ -124,36 +128,6 @@ text = "Graj"
 layout_mode = 2
 text = "Wróć"
 
-[node name="EkranUstawien" type="VBoxContainer" parent="CenterContainer" unique_id=1515873499]
+[node name="EkranUstawien" parent="CenterContainer" instance=ExtResource("2_ustawienia")]
 visible = false
 layout_mode = 2
-alignment = 1
-
-[node name="EtykietaOgolna" type="Label" parent="CenterContainer/EkranUstawien" unique_id=1648379712]
-layout_mode = 2
-horizontal_alignment = 1
-
-[node name="GlosnoscOgolna" type="HSlider" parent="CenterContainer/EkranUstawien" unique_id=944033018]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-
-[node name="EtykietaMuzyka" type="Label" parent="CenterContainer/EkranUstawien" unique_id=842601454]
-layout_mode = 2
-
-[node name="GlosnoscMuzyki" type="HSlider" parent="CenterContainer/EkranUstawien" unique_id=864859439]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-
-[node name="EtykietaDzwieki" type="Label" parent="CenterContainer/EkranUstawien" unique_id=1354583480]
-layout_mode = 2
-
-[node name="GlosnoscDzwiekow" type="HSlider" parent="CenterContainer/EkranUstawien" unique_id=456103982]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-
-[node name="UstawieniaSterowania" parent="CenterContainer/EkranUstawien" instance=ExtResource("2_sterowanie")]
-layout_mode = 2
-
-[node name="WrocUstawienia" type="Button" parent="CenterContainer/EkranUstawien" unique_id=567808542]
-layout_mode = 2
-text = "Wróć"

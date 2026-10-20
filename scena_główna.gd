@@ -3,6 +3,7 @@ extends Node2D
 const SCENA_PILKI = preload("res://piłka.tscn")
 const ARENA_MANAGER_SCRIPT = preload("res://arena_manager.gd")
 const DZWIEK_PUNKTU = preload("res://punkt_sukces.wav")
+const DZWIEKI_GRY = preload("res://dzwieki_gry.gd")
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
 const CZAS_DODATKOWEJ_PILKI = 8.0
@@ -23,8 +24,9 @@ var stat_mocne_odbicia_gracza = 0
 var stat_mocne_odbicia_rywala = 0
 var biezaca_wymiana = 0
 var najdluzsza_wymiana = 0
-var odbicia_areny = 0
 var dzwiek_punktu: AudioStreamPlayer
+var dzwiek_bonusu: AudioStreamPlayer
+var dzwiek_modyfikatora: AudioStreamPlayer
 var endless_odbicia = 0
 var endless_wysokosc_startowa = 120.0
 var endless_wysokosc_aktualna = 120.0
@@ -268,7 +270,6 @@ func _ready():
 
 	$"Piłka".punkt.connect(_on_punkt)
 	$"Piłka".odbicie_gracza.connect(_on_odbicie_gracza)
-	$"Piłka".odbicie_paletki.connect(_on_odbicie_paletki)
 	$"Piłka".statystyki_odbicia.connect(_zarejestruj_odbicie)
 	ekran_konca.connect("menu_pressed", _on_przycisk_menu)
 	ekran_konca.connect("replay_pressed", _on_przycisk_ponownie)
@@ -279,6 +280,16 @@ func _ready():
 	dzwiek_punktu.volume_db = -8.0
 	dzwiek_punktu.bus = &"Efekty"
 	add_child(dzwiek_punktu)
+	dzwiek_bonusu = _stworz_odtwarzacz_efektu(
+		"DzwiekBonusu",
+		DZWIEKI_GRY.utworz_dzwiek_bonusu(),
+		-5.0
+	)
+	dzwiek_modyfikatora = _stworz_odtwarzacz_efektu(
+		"DzwiekModyfikatora",
+		DZWIEKI_GRY.utworz_dzwiek_modyfikatora(),
+		-7.0
+	)
 
 	if Ustawienia.tryb == "endless":
 		$PaletkaAI.hide()
@@ -305,6 +316,24 @@ func _ready():
 	if Ustawienia.tryb == "endless":
 		_dodaj_info_endless()
 	_odswiez_rysowanie()
+
+
+func _stworz_odtwarzacz_efektu(nazwa: String, strumien: AudioStream, glosnosc_db: float) -> AudioStreamPlayer:
+	var odtwarzacz = AudioStreamPlayer.new()
+	odtwarzacz.name = nazwa
+	odtwarzacz.stream = strumien
+	odtwarzacz.volume_db = glosnosc_db
+	odtwarzacz.bus = &"Efekty"
+	add_child(odtwarzacz)
+	return odtwarzacz
+
+
+func odtworz_dzwiek_bonusu() -> void:
+	dzwiek_bonusu.play()
+
+
+func odtworz_dzwiek_modyfikatora() -> void:
+	dzwiek_modyfikatora.play()
 
 
 func _pokaz_styl_bota():
@@ -500,7 +529,6 @@ func _on_punkt(strona):
 	$WynikAI.text = str(wynik_ai)
 	_odswiez_rysowanie()
 	$BonusManager.wyczysc_po_punkcie()
-	odbicia_areny = 0
 	_odswiez_rysowanie()
 	if arena_manager != null:
 		arena_manager.call("po_zdobyciu_punktu")
@@ -587,13 +615,6 @@ func _on_odbicie_gracza(perfect_hit: bool):
 	_odswiez_info_endless()
 
 
-func _on_odbicie_paletki() -> void:
-	if Ustawienia.tryb != "arena":
-		return
-	odbicia_areny += 1
-	_odswiez_rysowanie()
-
-
 func _zmniejsz_paletke_endless():
 	var etap = floori(float(endless_odbicia) / 12.0)
 	var mnoznik = maxf(0.6, 1.0 - float(etap) * 0.08)
@@ -635,7 +656,6 @@ func dodaj_dodatkowa_pilke(pilka_zrodlowa, pozycja_bonusu: Vector2):
 	nowa_pilka.intro_aktywne = false
 	nowa_pilka.queue_redraw()
 	nowa_pilka.punkt.connect(_on_punkt)
-	nowa_pilka.odbicie_paletki.connect(_on_odbicie_paletki)
 	nowa_pilka.statystyki_odbicia.connect(_zarejestruj_odbicie)
 
 	get_tree().create_timer(CZAS_DODATKOWEJ_PILKI, false).timeout.connect(

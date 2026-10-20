@@ -1,6 +1,5 @@
 extends CanvasLayer
 
-const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 const KOLOR_TURKUS = Color("#55e7ff")
 const KOLOR_FIOLET = Color("#ad83ff")
 
@@ -8,15 +7,10 @@ const KOLOR_FIOLET = Color("#ad83ff")
 @onready var panel_pauzy = $Przyciemnienie/CenterContainer/PanelPauzy
 @onready var panel_ustawien = $Przyciemnienie/CenterContainer/PanelUstawien
 
-@onready var glosnosc_ogolna = $Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/GlosnoscOgolna
-@onready var glosnosc_muzyki = $Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/GlosnoscMuzyki
-@onready var glosnosc_dzwiekow = $Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/GlosnoscDzwiekow
 
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
-
-	Ustawienia.wczytaj()
 
 	przyciemnienie.hide()
 	panel_ustawien.hide()
@@ -26,91 +20,40 @@ func _ready():
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia.text = "Ustawienia"
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu.text = "Menu główne"
 
-	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/TytulUstawien.text = "Ustawienia"
-	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/EtykietaOgolna.text = "Głośność ogólna"
-	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/EtykietaMuzyka.text = "Głośność muzyki"
-	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/EtykietaDzwieki.text = "Głośność dźwięków"
-	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/WrocDoPauzy.text = "Wróć"
 	_styluj_interfejs()
 
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry.pressed.connect(_wroc_do_gry)
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia.pressed.connect(_otworz_ustawienia)
 	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu.pressed.connect(_wroc_do_menu)
-	$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/WrocDoPauzy.pressed.connect(_wroc_do_pauzy)
-
-	glosnosc_ogolna.min_value = 0
-	glosnosc_ogolna.max_value = 100
-	glosnosc_ogolna.step = 1
-	glosnosc_ogolna.value = Ustawienia.glosnosc_ogolna
-
-	glosnosc_muzyki.min_value = 0
-	glosnosc_muzyki.max_value = 100
-	glosnosc_muzyki.step = 1
-	glosnosc_muzyki.value = Ustawienia.glosnosc_muzyki
-
-	glosnosc_dzwiekow.min_value = 0
-	glosnosc_dzwiekow.max_value = 100
-	glosnosc_dzwiekow.step = 1
-	glosnosc_dzwiekow.value = Ustawienia.glosnosc_efektow
-
-	glosnosc_ogolna.value_changed.connect(_zmien_glosnosc_ogolna)
-	glosnosc_muzyki.value_changed.connect(_zmien_glosnosc_muzyki)
-	glosnosc_dzwiekow.value_changed.connect(_zmien_glosnosc_dzwiekow)
-
-	_ustaw_glosnosc("Master", glosnosc_ogolna.value)
-	_ustaw_glosnosc("Muzyka", glosnosc_muzyki.value)
-	_ustaw_glosnosc("Efekty", glosnosc_dzwiekow.value)
+	$Przyciemnienie/CenterContainer/PanelUstawien/EkranUstawien.back_requested.connect(_wroc_do_pauzy)
 
 
 func _styluj_interfejs():
 	przyciemnienie.color = Color(0.015, 0.03, 0.055, 0.66)
 	_styluj_panel(panel_pauzy, KOLOR_TURKUS)
 	_styluj_panel(panel_ustawien, KOLOR_FIOLET)
-
-	var styl_ustawien = panel_ustawien.get_theme_stylebox("panel") as StyleBoxFlat
-	styl_ustawien.content_margin_top = 5.0
-	styl_ustawien.content_margin_bottom = 5.0
-	panel_ustawien.custom_minimum_size.y = 616.0
+	panel_ustawien.custom_minimum_size = Vector2(560.0, 0.0)
 
 	var tytul_pauzy = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/TytulPauzy
-	var tytul_ustawien = $Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/TytulUstawien
-	for tytul in [tytul_pauzy, tytul_ustawien]:
-		tytul.add_theme_font_override("font", FONT_ARCADE)
-		tytul.add_theme_font_size_override("font_size", 34)
-		tytul.add_theme_color_override("font_color", KOLOR_TURKUS if tytul == tytul_pauzy else KOLOR_FIOLET)
-		tytul.custom_minimum_size.y = 54.0
-		tytul_ustawien.custom_minimum_size.y = 42.0
-
-	for panel in [panel_pauzy, panel_ustawien]:
-		var uklad = panel.get_child(0)
-		uklad.add_theme_constant_override("separation", 12 if panel == panel_pauzy else 5)
-		for dziecko in uklad.get_children():
-			if dziecko is Label:
-				dziecko.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				dziecko.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				dziecko.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				if dziecko != tytul_pauzy and dziecko != tytul_ustawien:
-					dziecko.add_theme_font_size_override("font_size", 18)
-					dziecko.add_theme_color_override("font_color", Color("#e6f2ff"))
+	tytul_pauzy.add_theme_font_override("font", load("res://assets/fonts/Oxanium.ttf"))
+	tytul_pauzy.add_theme_font_size_override("font_size", 34)
+	tytul_pauzy.add_theme_color_override("font_color", KOLOR_TURKUS)
+	tytul_pauzy.custom_minimum_size.y = 54.0
+	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer.add_theme_constant_override("separation", 12)
+	for dziecko in $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer.get_children():
+		if dziecko is Label:
+			dziecko.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			dziecko.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			dziecko.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			dziecko.add_theme_font_size_override("font_size", 18)
+			dziecko.add_theme_color_override("font_color", Color("#e6f2ff"))
 
 	for guzik in [
 		$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry,
 		$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia,
-		$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu,
-		$Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/WrocDoPauzy
+		$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu
 	]:
 		_styluj_przycisk(guzik)
-
-	for suwak in [glosnosc_ogolna, glosnosc_muzyki, glosnosc_dzwiekow]:
-		suwak.custom_minimum_size = Vector2(420.0, 32.0)
-		var akcent = KOLOR_TURKUS if suwak == glosnosc_ogolna else KOLOR_FIOLET if suwak == glosnosc_muzyki else Color("#ff5fb7")
-		suwak.add_theme_stylebox_override("slider", _styl_pola(Color("#17263b"), Color("#17263b")))
-		suwak.add_theme_stylebox_override("grabber_area", _styl_pola(Color(akcent, 0.4), Color(akcent, 0.4)))
-		suwak.add_theme_stylebox_override("grabber_area_highlight", _styl_pola(Color(akcent, 0.75), Color(akcent, 0.75)))
-		var uchwyt = _tekstura_uchwytu(akcent)
-		suwak.add_theme_icon_override("grabber", uchwyt)
-		suwak.add_theme_icon_override("grabber_highlight", uchwyt)
-		suwak.add_theme_icon_override("grabber_disabled", uchwyt)
 
 
 func _styluj_panel(panel: PanelContainer, akcent: Color):
@@ -137,7 +80,7 @@ func _styluj_przycisk(guzik: Button):
 	guzik.add_theme_color_override("font_color", Color("#e8f4ff"))
 	guzik.add_theme_color_override("font_hover_color", Color.WHITE)
 	guzik.add_theme_color_override("font_pressed_color", Color("#b8f5ff"))
-	var akcent = KOLOR_FIOLET if guzik == $Przyciemnienie/CenterContainer/PanelUstawien/VBoxContainer/WrocDoPauzy else KOLOR_TURKUS
+	var akcent = KOLOR_TURKUS
 	guzik.add_theme_stylebox_override("normal", _styl_przycisku(Color("#111e32"), Color("#344d64")))
 	guzik.add_theme_stylebox_override("hover", _styl_przycisku(Color("#192d45"), akcent))
 	guzik.add_theme_stylebox_override("pressed", _styl_przycisku(Color("#102638"), akcent.darkened(0.18)))
@@ -249,33 +192,3 @@ func _wroc_do_pauzy():
 func _wroc_do_menu():
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://menu.tscn")
-
-
-func _zmien_glosnosc_ogolna(wartosc):
-	Ustawienia.glosnosc_ogolna = wartosc
-	_ustaw_glosnosc("Master", wartosc)
-	Ustawienia.zapisz()
-
-
-func _zmien_glosnosc_muzyki(wartosc):
-	Ustawienia.glosnosc_muzyki = wartosc
-	_ustaw_glosnosc("Muzyka", wartosc)
-	Ustawienia.zapisz()
-
-
-func _zmien_glosnosc_dzwiekow(wartosc):
-	Ustawienia.glosnosc_efektow = wartosc
-	_ustaw_glosnosc("Efekty", wartosc)
-	Ustawienia.zapisz()
-
-
-func _ustaw_glosnosc(nazwa_szyny, wartosc):
-	var indeks = AudioServer.get_bus_index(nazwa_szyny)
-
-	if indeks == -1:
-		return
-
-	if wartosc <= 0:
-		AudioServer.set_bus_volume_db(indeks, -80.0)
-	else:
-		AudioServer.set_bus_volume_db(indeks, linear_to_db(wartosc / 100.0))

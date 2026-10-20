@@ -46,15 +46,17 @@ var bazowa_lewa = 0.0
 var bazowa_prawa = 0.0
 var bazowa_gora = 0.0
 var bazowy_dol = 0.0
-var bramka_cialo: StaticBody2D
+var bramka_cialo: AnimatableBody2D
 var bramka_kolizje: Array[CollisionShape2D] = []
 var bramka_ksztalty: Array[RectangleShape2D] = []
 var bramka_faza = 0.0
 var bramka_postep = 0.0
+var bramka_czas_aktywna = 0.0
 var bramka_kolizje_wlaczone = false
 var bramka_wygaszanie = false
 var bramka_czas_wygaszania = 0.0
 var bramka_alfa_poczatkowa = 0.0
+var bramka_czas_wygaszania_docelowy = CZAS_ZANIKANIA_BRAMKI
 var wariant_bramki = ""
 
 
@@ -93,25 +95,25 @@ func _physics_process(delta: float) -> void:
 		return
 	if bramka_wygaszanie:
 		bramka_czas_wygaszania += delta
-		bramka_postep = bramka_alfa_poczatkowa * clampf(1.0 - bramka_czas_wygaszania / CZAS_WYGASZANIA_PO_PUNKCIE, 0.0, 1.0)
+		bramka_faza += delta * PREDKOSC_RUCHU_BRAMKI
+		bramka_postep = bramka_alfa_poczatkowa * clampf(1.0 - bramka_czas_wygaszania / bramka_czas_wygaszania_docelowy, 0.0, 1.0)
 		if bramka_postep <= 0.0:
 			_usun_bramke()
 			return
+		_ustaw_pozycje_bramki()
 		if is_instance_valid(gra):
-			gra.queue_redraw()
+			gra.call("_odswiez_rysowanie")
 		return
 	if stan != "aktywne" or not _czy_aktywne("ruchoma_bramka"):
 		return
 	bramka_faza += delta * PREDKOSC_RUCHU_BRAMKI
-	bramka_postep = clampf(minf(
-		(CZAS_RUCHOMEJ_BRAMKI - czas_do_zmiany) / CZAS_POJAWIENIA_BRAMKI,
-		czas_do_zmiany / CZAS_ZANIKANIA_BRAMKI
-	), 0.0, 1.0)
-	if not bramka_kolizje_wlaczone and bramka_postep >= 0.92:
+	bramka_czas_aktywna += delta
+	bramka_postep = clampf(bramka_czas_aktywna / CZAS_POJAWIENIA_BRAMKI, 0.0, 1.0)
+	if not bramka_kolizje_wlaczone and bramka_postep >= 0.35:
 		bramka_kolizje_wlaczone = true
 	_ustaw_pozycje_bramki()
 	if is_instance_valid(gra):
-		gra.queue_redraw()
+		gra.call("_odswiez_rysowanie")
 
 
 func _losuj_wydarzenie() -> String:
@@ -185,6 +187,8 @@ func _czy_aktywne(nazwa: String) -> bool:
 
 func _rozpocznij_wydarzenie() -> void:
 	stan = "aktywne"
+	if is_instance_valid(gra):
+		gra.call("odtworz_dzwiek_modyfikatora")
 	czas_do_zmiany = CZAS_AKTYWNEGO_WYDARZENIA
 	if _czy_aktywne("krotsze_paletki"):
 		czas_do_zmiany = maxf(czas_do_zmiany, CZAS_KROTSZYCH_PALETEK)
@@ -210,7 +214,7 @@ func _rozpocznij_wydarzenie() -> void:
 	if _czy_aktywne("krotsze_paletki"):
 		gra.call("animuj_wysokosc_paletek", 0.72, 0.45)
 	if _czy_aktywne("mocne_sciany"):
-		gra.queue_redraw()
+		gra.call("_odswiez_rysowanie")
 	if _czy_aktywne("ruchoma_bramka"):
 		_utworz_bramke()
 
@@ -235,11 +239,11 @@ func _przywroc_efekty_modyfikatorow(czas_animacji: float) -> void:
 	if _czy_aktywne("krotsze_paletki") and is_instance_valid(gra):
 		gra.call("animuj_wysokosc_paletek", 1.0, czas_animacji)
 	if _czy_aktywne("mocne_sciany") and is_instance_valid(gra):
-		gra.queue_redraw()
+		gra.call("_odswiez_rysowanie")
 	if _czy_aktywne("ruchoma_bramka") and is_instance_valid(bramka_cialo):
-		_wygasz_bramke()
+		_wygasz_bramke(CZAS_WYGASZANIA_PO_PUNKCIE if czas_animacji <= CZAS_WYGASZANIA_PO_PUNKCIE else CZAS_ZANIKANIA_BRAMKI)
 	if is_instance_valid(gra):
-		gra.queue_redraw()
+		gra.call("_odswiez_rysowanie")
 
 
 func _ustaw_nastepne_wydarzenie(minimum: float = 4.0, maksimum: float = 7.0) -> void:
@@ -289,12 +293,13 @@ func bramka_aktywna() -> bool:
 	return is_instance_valid(bramka_cialo) and (bramka_wygaszanie or (stan == "aktywne" and _czy_aktywne("ruchoma_bramka")))
 
 
-func _wygasz_bramke() -> void:
+func _wygasz_bramke(czas_wygaszania: float = CZAS_ZANIKANIA_BRAMKI) -> void:
 	if not is_instance_valid(bramka_cialo) or bramka_wygaszanie:
 		return
 	bramka_wygaszanie = true
 	bramka_czas_wygaszania = 0.0
 	bramka_alfa_poczatkowa = bramka_postep
+	bramka_czas_wygaszania_docelowy = maxf(czas_wygaszania, 0.01)
 	bramka_kolizje_wlaczone = false
 	# Kolizja znika od razu, a widoczne segmenty płynnie gasną.
 	for kolizja in bramka_kolizje:
@@ -315,14 +320,16 @@ func przezroczystosc_bramki() -> float:
 
 func _utworz_bramke() -> void:
 	_usun_bramke()
-	bramka_cialo = StaticBody2D.new()
+	bramka_cialo = AnimatableBody2D.new()
 	bramka_cialo.name = "RuchomaBramka"
 	bramka_cialo.collision_layer = 1
 	bramka_cialo.collision_mask = 1
+	bramka_cialo.sync_to_physics = true
 	bramka_kolizje.clear()
 	bramka_ksztalty.clear()
 	bramka_kolizje_wlaczone = false
 	bramka_postep = 0.0
+	bramka_czas_aktywna = 0.0
 	for i in range(3):
 		var kolizja = CollisionShape2D.new()
 		kolizja.name = "Segment%d" % i
@@ -337,7 +344,7 @@ func _utworz_bramke() -> void:
 	bramka_faza = 0.0
 	_dopasuj_faze_bramki_do_pilek()
 	_ustaw_pozycje_bramki()
-	gra.queue_redraw()
+	gra.call("_odswiez_rysowanie")
 
 
 func _dopasuj_faze_bramki_do_pilek() -> void:
@@ -356,8 +363,11 @@ func _dopasuj_faze_bramki_do_pilek() -> void:
 				var odleglosc = maxf(maxf(otwor.x - pilka.global_position.y, pilka.global_position.y - otwor.y), 0.0)
 				blad_pilki = minf(blad_pilki, odleglosc)
 			suma_bledu += blad_pilki
-		if suma_bledu < najmniejszy_blad:
-			najmniejszy_blad = suma_bledu
+		var czestotliwosc = 1.25 if wariant_bramki == "podwojne_przejscie" else 1.0
+		var kara_za_powolny_start = (1.0 - absf(cos(testowana_faza * czestotliwosc))) * 18.0
+		var ocena_fazy = suma_bledu + kara_za_powolny_start
+		if ocena_fazy < najmniejszy_blad:
+			najmniejszy_blad = ocena_fazy
 			najlepsza_faza = testowana_faza
 	bramka_faza = najlepsza_faza
 
@@ -425,12 +435,14 @@ func _usun_bramke() -> void:
 	bramka_kolizje.clear()
 	bramka_ksztalty.clear()
 	bramka_postep = 0.0
+	bramka_czas_aktywna = 0.0
 	bramka_kolizje_wlaczone = false
 	bramka_wygaszanie = false
 	bramka_czas_wygaszania = 0.0
 	bramka_alfa_poczatkowa = 0.0
+	bramka_czas_wygaszania_docelowy = CZAS_ZANIKANIA_BRAMKI
 	if is_instance_valid(gra):
-		gra.queue_redraw()
+		gra.call("_odswiez_rysowanie")
 
 
 func przyspieszenie_y(predkosc_pozioma: float) -> float:
@@ -491,7 +503,7 @@ func zatrzymaj() -> void:
 	if _czy_aktywne("ruchoma_bramka"):
 		_usun_bramke()
 	if is_instance_valid(gra):
-		gra.queue_redraw()
+		gra.call("_odswiez_rysowanie")
 	stan = "zatrzymane"
 	aktywne_wydarzenie = ""
 	drugie_wydarzenie = ""

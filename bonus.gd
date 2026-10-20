@@ -68,6 +68,9 @@ func _draw() -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if zebrany or not body.has_method("przyspiesz"):
 		return
+	var gra = get_parent()
+	if gra.has_method("odtworz_dzwiek_bonusu"):
+		gra.call("odtworz_dzwiek_bonusu")
 	body.przyspiesz()
 	_rozpocznij_zbieranie()
 
