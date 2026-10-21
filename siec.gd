@@ -5,7 +5,7 @@ signal blad_polaczenia
 signal host_rozlaczyl
 signal gracz_polaczyl(id: int)
 signal gracz_rozlaczyl(id: int)
-signal otrzymano_ustawienia_meczu(ustawienia: Dictionary)
+signal otrzymano_ustawienia_meczu(ustawienia: UstawieniaMeczuOnline)
 signal nazwa_gracza_2_zmieniona(nazwa: String)
 
 const PORT = 24567
@@ -94,26 +94,31 @@ func online_wyslij_ustawienia_meczu(nazwa_gracza: String) -> void:
 		return
 	nazwa_gracza_2 = _oczysc_nazwe(nazwa_gracza, "Gracz 2")
 	nazwa_gracza_2_zmieniona.emit(nazwa_gracza_2)
-	rpc_id(nadawca, "online_odbierz_ustawienia_meczu", {
-		"tryb": tryb_online,
-		"nazwa_gracza_1": nazwa_gracza_1,
-		"nazwa_gracza_2": nazwa_gracza_2,
-		"warunek": warunek_meczu,
-		"limit_punktow": limit_punktow_meczu,
-		"limit_czasu": limit_czasu_meczu
-	})
+	var ustawienia := UstawieniaMeczuOnline.new()
+	ustawienia.tryb = tryb_online
+	ustawienia.nazwa_gracza_1 = nazwa_gracza_1
+	ustawienia.nazwa_gracza_2 = nazwa_gracza_2
+	ustawienia.warunek = warunek_meczu
+	ustawienia.limit_punktow = limit_punktow_meczu
+	ustawienia.limit_czasu = limit_czasu_meczu
+	rpc_id(nadawca, "online_odbierz_ustawienia_meczu", ustawienia.do_json())
 
 
 @rpc("authority", "call_remote", "reliable")
-func online_odbierz_ustawienia_meczu(ustawienia: Dictionary) -> void:
+func online_odbierz_ustawienia_meczu(pakiet_json: String) -> void:
 	if not czy_klient():
 		return
-	tryb_online = "arena" if ustawienia.get("tryb", "klasyczny") == "arena" else "klasyczny"
-	nazwa_gracza_1 = _oczysc_nazwe(str(ustawienia.get("nazwa_gracza_1", "Gracz 1")), "Gracz 1")
-	nazwa_gracza_2 = _oczysc_nazwe(str(ustawienia.get("nazwa_gracza_2", nazwa_gracza_2)), "Gracz 2")
-	warunek_meczu = "czas" if ustawienia.get("warunek", "punkty") == "czas" else "punkty"
-	limit_punktow_meczu = clampi(int(ustawienia.get("limit_punktow", 5)), 1, 50)
-	limit_czasu_meczu = clampf(float(ustawienia.get("limit_czasu", 180.0)), 60.0, 3600.0)
+	var ustawienia := UstawieniaMeczuOnline.z_jsonu(pakiet_json)
+	if ustawienia == null:
+		push_warning("Odrzucono ustawienia meczu online: niezgodna wersja schematu lub nieprawidłowe dane.")
+		blad_polaczenia.emit()
+		return
+	tryb_online = ustawienia.tryb
+	nazwa_gracza_1 = ustawienia.nazwa_gracza_1
+	nazwa_gracza_2 = ustawienia.nazwa_gracza_2
+	warunek_meczu = ustawienia.warunek
+	limit_punktow_meczu = ustawienia.limit_punktow
+	limit_czasu_meczu = ustawienia.limit_czasu
 	pozostaly_czas_meczu = limit_czasu_meczu
 	otrzymano_ustawienia_meczu.emit(ustawienia)
 

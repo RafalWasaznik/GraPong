@@ -21,7 +21,7 @@ var oczekiwanie_na_pierwsza_loterie = false
 
 func uruchom(gra_glowna: GraPongAPI) -> void:
 	gra = gra_glowna
-	zegar = gra.czas_bonusu
+	zegar = gra.zegar_bonusow()
 
 	if zegar == null:
 		push_error("BonusManager nie znalazł timera CzasBonusu.")

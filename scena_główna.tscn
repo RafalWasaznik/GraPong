@@ -18,6 +18,22 @@ size = Vector2(1152, 20)
 
 [node name="Scena Główna" type="Node2D" unique_id=1496715320]
 script = ExtResource("1_u1wac")
+pilka_glowna_path = NodePath("Piłka")
+paletka_gracza_path = NodePath("Paletka")
+paletka_rywala_path = NodePath("PaletkaAI")
+etykieta_wyniku_gracza_path = NodePath("WynikGracza")
+etykieta_wyniku_rywala_path = NodePath("WynikAI")
+ekran_konca_path = NodePath("EkranKonca")
+przebieg_meczu_path = NodePath("PrzebiegMeczu")
+obsluga_online_path = NodePath("ObslugaOnline")
+bonus_manager_path = NodePath("BonusManager")
+wskazniki_dasha_path = NodePath("WskaznikiDasha")
+sciana_gorna_path = NodePath("górna ściana")
+sciana_dolna_path = NodePath("dolna ściana")
+ksztalt_sciany_gornej_path = NodePath("górna ściana/CollisionShape2D")
+ksztalt_sciany_dolnej_path = NodePath("dolna ściana/CollisionShape2D")
+czas_bonusu_path = NodePath("CzasBonusu")
+rysowanie_areny_path = NodePath("RysowanieAreny")
 
 [node name="RysowanieAreny" type="Node2D" parent="." unique_id=314974593]
 script = ExtResource("8_rysowanie")

@@ -173,10 +173,10 @@ func _online_polaczono_z_hostem() -> void:
 	Siec.popros_o_ustawienia_meczu(nazwa_dolaczajacego_online.text)
 
 
-func _online_tryb_meczu_otrzymany(ustawienia: Dictionary) -> void:
+func _online_tryb_meczu_otrzymany(ustawienia: UstawieniaMeczuOnline) -> void:
 	if not is_inside_tree() or not ekran_online.visible:
 		return
-	_przygotuj_tryb_online(str(ustawienia.get("tryb", "klasyczny")) == "arena")
+	_przygotuj_tryb_online(ustawienia.tryb == "arena")
 	get_tree().change_scene_to_file("res://scena_główna.tscn")
 
 

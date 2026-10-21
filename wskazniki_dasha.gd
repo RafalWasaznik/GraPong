@@ -28,8 +28,8 @@ func _draw() -> void:
 	if gra == null or gra.mecz_zakonczony:
 		return
 	var dol_paska = minf(Ustawienia.dolna_granica + 35.0, get_viewport_rect().size.y - WYSOKOSC_PASKA - 18.0)
-	var paletka_gracza := gra.paletka_gracza
-	var paletka_rywala := gra.paletka_rywala
+	var paletka_gracza := gra.lewa_paletka()
+	var paletka_rywala := gra.prawa_paletka()
 	_rysuj_pasek(paletka_gracza, dol_paska)
 	if Ustawienia.tryb != "endless" and paletka_rywala != null and paletka_rywala.visible:
 		_rysuj_pasek(paletka_rywala, dol_paska)

@@ -17,7 +17,6 @@ var dzwiek_bonusu: AudioStreamPlayer
 var dzwiek_modyfikatora: AudioStreamPlayer
 var dzwiek_punktu: AudioStreamPlayer
 var panel_informacyjny: PanelContainer
-@onready var rysowanie_areny: Node2D = $RysowanieAreny
 var animacja_granic_areny: Tween
 var animacja_wymiarow_areny: Tween
 var animacja_strefy: Tween
@@ -27,19 +26,20 @@ var animacja_gumowej_sciany: Tween
 
 
 func pobierz_wynik_gracza() -> int:
-	return przebieg_meczu.wynik_gracza
+	return _przebieg_meczu.wynik_gracza
 
 
 func pobierz_wynik_ai() -> int:
-	return przebieg_meczu.wynik_ai
+	return _przebieg_meczu.wynik_ai
 
 
 func czy_mecz_zakonczony() -> bool:
-	return przebieg_meczu.mecz_zakonczony
+	return _przebieg_meczu.mecz_zakonczony
 
 
 func _enter_tree():
-	przygotuj_referencje_sceny()
+	if not przygotuj_referencje_sceny():
+		return
 	Ustawienia.ustaw_geometrie_planszy()
 	_ustaw_geometrie_sceny()
 
@@ -54,24 +54,24 @@ func _ustaw_geometrie_sceny():
 
 	_ustaw_sciany_areny(lewa, prawa, gora, dol)
 
-	paletka_gracza.position = Vector2(lewa + ODSTEP_PALETKI, srodek_y)
-	paletka_rywala.position = Vector2(prawa - ODSTEP_PALETKI, srodek_y)
+	_paletka_gracza.position = Vector2(lewa + ODSTEP_PALETKI, srodek_y)
+	_paletka_rywala.position = Vector2(prawa - ODSTEP_PALETKI, srodek_y)
 
 
 func _ustaw_sciany_areny(lewa: float, prawa: float, gora: float, dol: float) -> void:
 	var srodek_x = (lewa + prawa) * 0.5
 	var szerokosc = prawa - lewa
-	sciana_gorna.position = Vector2(srodek_x, gora)
-	sciana_dolna.position = Vector2(srodek_x, dol)
-	_ustaw_ksztalt_sciany(ksztalt_sciany_gornej, szerokosc)
-	_ustaw_ksztalt_sciany(ksztalt_sciany_dolnej, szerokosc)
+	_sciana_gorna.position = Vector2(srodek_x, gora)
+	_sciana_dolna.position = Vector2(srodek_x, dol)
+	_ustaw_ksztalt_sciany(_ksztalt_sciany_gornej, szerokosc)
+	_ustaw_ksztalt_sciany(_ksztalt_sciany_dolnej, szerokosc)
 
 
 func _ogranicz_paletki_pionowo(gora: float, dol: float) -> void:
-	var polowa_gracza = _polowa_wysokosci_paletki(paletka_gracza)
-	var polowa_ai = _polowa_wysokosci_paletki(paletka_rywala)
-	paletka_gracza.position.y = clampf(paletka_gracza.position.y, gora + polowa_gracza, dol - polowa_gracza)
-	paletka_rywala.position.y = clampf(paletka_rywala.position.y, gora + polowa_ai, dol - polowa_ai)
+	var polowa_gracza = _polowa_wysokosci_paletki(_paletka_gracza)
+	var polowa_ai = _polowa_wysokosci_paletki(_paletka_rywala)
+	_paletka_gracza.position.y = clampf(_paletka_gracza.position.y, gora + polowa_gracza, dol - polowa_gracza)
+	_paletka_rywala.position.y = clampf(_paletka_rywala.position.y, gora + polowa_ai, dol - polowa_ai)
 
 
 func _ogranicz_pilki_do_granic(gora: float, dol: float) -> void:
@@ -101,7 +101,7 @@ func ustaw_granice_areny(gora: float, dol: float) -> void:
 	_ogranicz_paletki_pionowo(gora, dol)
 	_ogranicz_pilki_do_granic(gora, dol)
 	_ustaw_etykiety_wyniku()
-	_odswiez_rysowanie()
+	odswiez_rysowanie()
 
 
 func animuj_granice_areny(gora: float, dol: float, czas: float = 0.8) -> void:
@@ -131,12 +131,12 @@ func ustaw_wymiary_areny(lewa: float, prawa: float, gora: float, dol: float) -> 
 	Ustawienia.gorna_granica = gora
 	Ustawienia.dolna_granica = dol
 	_ustaw_sciany_areny(lewa, prawa, gora, dol)
-	paletka_gracza.ustaw_pozycje_x(lewa + ODSTEP_PALETKI)
-	paletka_rywala.ustaw_pozycje_x(prawa - ODSTEP_PALETKI)
+	_paletka_gracza.ustaw_pozycje_x(lewa + ODSTEP_PALETKI)
+	_paletka_rywala.ustaw_pozycje_x(prawa - ODSTEP_PALETKI)
 	_ogranicz_paletki_pionowo(gora, dol)
 	_ogranicz_pilki_do_granic(gora, dol)
 	_ustaw_etykiety_wyniku()
-	_odswiez_rysowanie()
+	odswiez_rysowanie()
 
 
 func animuj_wymiary_areny(lewa: float, prawa: float, gora: float, dol: float, czas: float = 0.8) -> void:
@@ -162,15 +162,15 @@ func animuj_strefe_przyspieszenia(pokaz: bool, czas: float = 0.55) -> void:
 	animacja_strefy.set_ease(Tween.EASE_OUT if pokaz else Tween.EASE_IN)
 	animacja_strefy.tween_method(
 		_ustaw_postep_animacji_strefy,
-		postep_animacji_strefy,
+		_postep_animacji_strefy,
 		1.0 if pokaz else 0.0,
 		czas
 	)
 
 
 func _ustaw_postep_animacji_strefy(postep: float) -> void:
-	postep_animacji_strefy = postep
-	_odswiez_rysowanie()
+	_postep_animacji_strefy = postep
+	odswiez_rysowanie()
 
 
 func animuj_wysokosc_paletek(proporcja: float, czas: float = 0.45) -> void:
@@ -178,12 +178,12 @@ func animuj_wysokosc_paletek(proporcja: float, czas: float = 0.45) -> void:
 		animacja_wysokosci_paletek.kill()
 	if bazowe_wysokosci_paletek == Vector2.ZERO:
 		bazowe_wysokosci_paletek = Vector2(
-			_polowa_wysokosci_paletki(paletka_gracza) * 2.0,
-			_polowa_wysokosci_paletki(paletka_rywala) * 2.0
+			_polowa_wysokosci_paletki(_paletka_gracza) * 2.0,
+			_polowa_wysokosci_paletki(_paletka_rywala) * 2.0
 		)
 	var wysokosci_startowe = Vector2(
-		_polowa_wysokosci_paletki(paletka_gracza) * 2.0,
-		_polowa_wysokosci_paletki(paletka_rywala) * 2.0
+		_polowa_wysokosci_paletki(_paletka_gracza) * 2.0,
+		_polowa_wysokosci_paletki(_paletka_rywala) * 2.0
 	)
 	var wysokosci_docelowe = bazowe_wysokosci_paletek * proporcja
 	animacja_wysokosci_paletek = create_tween()
@@ -198,8 +198,8 @@ func animuj_wysokosc_paletek(proporcja: float, czas: float = 0.45) -> void:
 
 
 func _ustaw_wysokosci_paletek(wysokosci: Vector2) -> void:
-	paletka_gracza.ustaw_wysokosc(wysokosci.x)
-	paletka_rywala.ustaw_wysokosc(wysokosci.y)
+	_paletka_gracza.ustaw_wysokosc(wysokosci.x)
+	_paletka_rywala.ustaw_wysokosc(wysokosci.y)
 
 
 func animuj_rozmiar_pilki(proporcja: float, czas: float = 0.55) -> void:
@@ -210,15 +210,15 @@ func animuj_rozmiar_pilki(proporcja: float, czas: float = 0.55) -> void:
 func ustaw_ugiecie_gumowej_sciany(strona: int, y: float, ugiecie: float, kula_id: int) -> void:
 	if is_instance_valid(animacja_gumowej_sciany):
 		animacja_gumowej_sciany.kill()
-	gumowa_sciana_strona = strona
-	gumowa_sciana_y = y
-	gumowa_sciana_ugiecie = ugiecie
-	gumowa_sciana_kula_id = kula_id
-	_odswiez_rysowanie()
+	_gumowa_sciana_strona = strona
+	_gumowa_sciana_y = y
+	_gumowa_sciana_ugiecie = ugiecie
+	_gumowa_sciana_kula_id = kula_id
+	odswiez_rysowanie()
 
 
 func odpusc_gumowa_sciane(kula_id: int) -> void:
-	if gumowa_sciana_kula_id != kula_id or gumowa_sciana_ugiecie <= 0.0:
+	if _gumowa_sciana_kula_id != kula_id or _gumowa_sciana_ugiecie <= 0.0:
 		return
 	if is_instance_valid(animacja_gumowej_sciany):
 		animacja_gumowej_sciany.kill()
@@ -227,15 +227,15 @@ func odpusc_gumowa_sciane(kula_id: int) -> void:
 	animacja_gumowej_sciany.set_ease(Tween.EASE_OUT)
 	animacja_gumowej_sciany.tween_method(
 		_ustaw_ugiecie_gumowej_sciany_animowane,
-		gumowa_sciana_ugiecie,
+		_gumowa_sciana_ugiecie,
 		0.0,
 		0.28
 	)
 
 
 func _ustaw_ugiecie_gumowej_sciany_animowane(ugiecie: float) -> void:
-	gumowa_sciana_ugiecie = ugiecie
-	_odswiez_rysowanie()
+	_gumowa_sciana_ugiecie = ugiecie
+	odswiez_rysowanie()
 
 
 func _polowa_wysokosci_paletki(paletka: PaletkaBazowa) -> float:
@@ -246,17 +246,19 @@ func _polowa_wysokosci_paletki(paletka: PaletkaBazowa) -> float:
 
 
 func _ready():
-	pilka_glowna.punkt.connect(przebieg_meczu._on_punkt)
-	pilka_glowna.odbicie_gracza.connect(przebieg_meczu.zarejestruj_odbicie_endless)
-	pilka_glowna.statystyki_odbicia.connect(przebieg_meczu.zarejestruj_odbicie)
-	pilka_glowna.odbicie_paletki.connect(obsluga_online.odnotuj_odbicie_paletki)
-	pilka_glowna.odbicie_sciany.connect(obsluga_online.odnotuj_odbicie_sciany)
-	ekran_konca.menu_pressed.connect(_on_przycisk_menu)
-	ekran_konca.replay_pressed.connect(_on_przycisk_ponownie)
-	obsluga_online.gra_rozpoczeta.connect(_online_uruchom_gre)
-	obsluga_online.gra_zatrzymana.connect(_online_zatrzymaj_gre)
-	obsluga_online.mecz_zakonczony.connect(przebieg_meczu.zakoncz_mecz)
-	przebieg_meczu.uruchom(self)
+	if not _referencje_sceny_poprawne:
+		return
+	_pilka_glowna.punkt.connect(_przebieg_meczu._on_punkt)
+	_pilka_glowna.odbicie_gracza.connect(_przebieg_meczu.zarejestruj_odbicie_endless)
+	_pilka_glowna.statystyki_odbicia.connect(_przebieg_meczu.zarejestruj_odbicie)
+	_pilka_glowna.odbicie_paletki.connect(_obsluga_online.odnotuj_odbicie_paletki)
+	_pilka_glowna.odbicie_sciany.connect(_obsluga_online.odnotuj_odbicie_sciany)
+	_ekran_konca.menu_pressed.connect(_on_przycisk_menu)
+	_ekran_konca.replay_pressed.connect(_on_przycisk_ponownie)
+	_obsluga_online.gra_rozpoczeta.connect(_online_uruchom_gre)
+	_obsluga_online.gra_zatrzymana.connect(_online_zatrzymaj_gre)
+	_obsluga_online.mecz_zakonczony.connect(_przebieg_meczu.zakoncz_mecz)
+	_przebieg_meczu.uruchom(self)
 
 	dzwiek_punktu = AudioStreamPlayer.new()
 	dzwiek_punktu.name = "DzwiekPunktu"
@@ -277,51 +279,51 @@ func _ready():
 
 	if Ustawienia.tryb == "online":
 		if Ustawienia.online_arena:
-			czas_bonusu.stop()
-			arena_manager = ArenaManager.new()
-			arena_manager.name = "ArenaManager"
-			add_child(arena_manager)
-			arena_manager.uruchom(self, Siec.czy_klient(), true)
-		obsluga_online.uruchom(self)
+			_czas_bonusu.stop()
+			_arena_manager = ArenaManager.new()
+			_arena_manager.name = "ArenaManager"
+			add_child(_arena_manager)
+			_arena_manager.uruchom(self, Siec.czy_klient(), true)
+		_obsluga_online.uruchom(self)
 	elif Ustawienia.tryb == "endless":
-		paletka_rywala.hide()
-		paletka_rywala.set_physics_process(false)
-		paletka_rywala.kolizja.set_deferred("disabled", true)
-		czas_bonusu.stop()
+		_paletka_rywala.hide()
+		_paletka_rywala.set_physics_process(false)
+		_paletka_rywala.kolizja.set_deferred("disabled", true)
+		_czas_bonusu.stop()
 	elif Ustawienia.tryb == "arena":
-		czas_bonusu.stop()
-		arena_manager = ArenaManager.new()
-		arena_manager.name = "ArenaManager"
-		add_child(arena_manager)
-		arena_manager.uruchom(self)
+		_czas_bonusu.stop()
+		_arena_manager = ArenaManager.new()
+		_arena_manager.name = "ArenaManager"
+		add_child(_arena_manager)
+		_arena_manager.uruchom(self)
 	else:
-		bonus_manager.uruchom(self)
-		pilka_glowna.runda_rozpoczeta.connect(bonus_manager.runda_rozpoczeta)
+		_bonus_manager.uruchom(self)
+		_pilka_glowna.runda_rozpoczeta.connect(_bonus_manager.runda_rozpoczeta)
 		if Ustawienia.tryb == "bot" or (Ustawienia.tryb == "arena" and not Ustawienia.arena_dwoch_graczy):
 			_pokaz_styl_bota()
 
 	_ustaw_etykiety_wyniku()
 	if Ustawienia.tryb == "endless":
-		przebieg_meczu.dodaj_info_endless()
-	_odswiez_rysowanie()
+		_przebieg_meczu.dodaj_info_endless()
+	odswiez_rysowanie()
 
 
 func _online_uruchom_gre() -> void:
-	paletka_gracza.set_physics_process(true)
-	paletka_rywala.set_physics_process(true)
-	if arena_manager != null:
-		arena_manager.rozpocznij()
-	pilka_glowna.reset()
-	pilka_glowna.set_physics_process(true)
+	_paletka_gracza.set_physics_process(true)
+	_paletka_rywala.set_physics_process(true)
+	if _arena_manager != null:
+		_arena_manager.rozpocznij()
+	_pilka_glowna.reset()
+	_pilka_glowna.set_physics_process(true)
 
 
 func _online_zatrzymaj_gre() -> void:
-	paletka_gracza.set_physics_process(false)
-	paletka_rywala.set_physics_process(false)
-	pilka_glowna.set_physics_process(false)
-	if arena_manager != null:
-		arena_manager.set_process(false)
-		arena_manager.set_physics_process(false)
+	_paletka_gracza.set_physics_process(false)
+	_paletka_rywala.set_physics_process(false)
+	_pilka_glowna.set_physics_process(false)
+	if _arena_manager != null:
+		_arena_manager.set_process(false)
+		_arena_manager.set_physics_process(false)
 
 
 func _stworz_odtwarzacz_efektu(nazwa: String, strumien: AudioStream, glosnosc_db: float) -> AudioStreamPlayer:
@@ -343,7 +345,7 @@ func odtworz_dzwiek_punktu() -> void:
 
 
 func ustaw_tekst_konca_online(tekst: String) -> void:
-	obsluga_online.ustaw_tekst_konca(tekst)
+	_obsluga_online.ustaw_tekst_konca(tekst)
 
 
 func odtworz_dzwiek_modyfikatora() -> void:
@@ -457,7 +459,7 @@ func ukryj_informacje_graczowi() -> void:
 		panel_informacyjny = null
 
 
-func _prostokat_karty_wyniku(numer_karty: int) -> Rect2:
+func prostokat_karty_wyniku(numer_karty: int) -> Rect2:
 	var szerokosc = 84.0
 	var wysokosc = clampf(Ustawienia.gorna_granica - 32.0, 38.0, 54.0)
 	var odstep = 6.0
@@ -488,23 +490,23 @@ func _czy_tryb_areny() -> bool:
 
 func _ustaw_etykiety_wyniku():
 	if Ustawienia.tryb in ["arena", "online"]:
-		etykieta_wyniku_gracza.hide()
-		etykieta_wyniku_rywala.hide()
+		_etykieta_wyniku_gracza.hide()
+		_etykieta_wyniku_rywala.hide()
 		return
-	etykieta_wyniku_gracza.show()
-	etykieta_wyniku_rywala.show()
+	_etykieta_wyniku_gracza.show()
+	_etykieta_wyniku_rywala.show()
 	if Ustawienia.tryb == "endless":
-		etykieta_wyniku_gracza.text = str(wynik_gracza)
-		etykieta_wyniku_rywala.text = str(Ustawienia.rekord_endless)
-		etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
-		etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
-		_ustaw_etykiete(etykieta_wyniku_gracza, _prostokat_karty_wyniku(0), KOLOR_GRACZA)
-		_ustaw_etykiete(etykieta_wyniku_rywala, _prostokat_karty_wyniku(1), Color("#c4b5fd"))
+		_etykieta_wyniku_gracza.text = str(wynik_gracza)
+		_etykieta_wyniku_rywala.text = str(Ustawienia.rekord_endless)
+		_etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
+		_etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
+		_ustaw_etykiete(_etykieta_wyniku_gracza, prostokat_karty_wyniku(0), KOLOR_GRACZA)
+		_ustaw_etykiete(_etykieta_wyniku_rywala, prostokat_karty_wyniku(1), Color("#c4b5fd"))
 		return
-	_ustaw_etykiete(etykieta_wyniku_gracza, _prostokat_karty_wyniku(0), KOLOR_GRACZA)
-	_ustaw_etykiete(etykieta_wyniku_rywala, _prostokat_karty_wyniku(1), KOLOR_AI)
-	etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
-	etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
+	_ustaw_etykiete(_etykieta_wyniku_gracza, prostokat_karty_wyniku(0), KOLOR_GRACZA)
+	_ustaw_etykiete(_etykieta_wyniku_rywala, prostokat_karty_wyniku(1), KOLOR_AI)
+	_etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
+	_etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
 
 
 func _ustaw_etykiete(etykieta: Label, karta: Rect2, kolor: Color):
@@ -521,15 +523,15 @@ func _ustaw_etykiete(etykieta: Label, karta: Rect2, kolor: Color):
 
 
 func rozpocznij_rozpad_pilki(pilka_punktujaca: PilkaAPI) -> bool:
-	if rozpad_punktu_trwa or mecz_zakonczony:
+	if _rozpad_punktu_trwa or mecz_zakonczony:
 		return false
-	rozpad_punktu_trwa = true
+	_rozpad_punktu_trwa = true
 	for pilka in get_tree().get_nodes_in_group("pilki"):
 		if pilka != pilka_punktujaca:
 			pilka.set_physics_process(false)
-	paletka_gracza.set_physics_process(false)
-	paletka_rywala.set_physics_process(false)
-	bonus_manager.zatrzymaj()
+	_paletka_gracza.set_physics_process(false)
+	_paletka_rywala.set_physics_process(false)
+	_bonus_manager.zatrzymaj()
 	return true
 
 
@@ -555,17 +557,17 @@ func dodaj_dodatkowa_pilke(pilka_zrodlowa: PilkaAPI, pozycja_bonusu: Vector2) ->
 
 	nowa_pilka.intro_aktywne = false
 	nowa_pilka.queue_redraw()
-	nowa_pilka.punkt.connect(przebieg_meczu._on_punkt)
-	nowa_pilka.statystyki_odbicia.connect(przebieg_meczu.zarejestruj_odbicie)
+	nowa_pilka.punkt.connect(_przebieg_meczu._on_punkt)
+	nowa_pilka.statystyki_odbicia.connect(_przebieg_meczu.zarejestruj_odbicie)
 
 	get_tree().create_timer(CZAS_DODATKOWEJ_PILKI, false).timeout.connect(
 		nowa_pilka.queue_free
 	)
 
 
-func _odswiez_rysowanie() -> void:
-	if is_instance_valid(rysowanie_areny):
-		rysowanie_areny.queue_redraw()
+func odswiez_rysowanie() -> void:
+	if is_instance_valid(_rysowanie_areny):
+		_rysowanie_areny.queue_redraw()
 
 
 func _on_przycisk_menu():
@@ -579,6 +581,6 @@ func _on_przycisk_ponownie():
 	get_tree().paused = false
 	if Ustawienia.tryb == "online":
 		Siec.pauza_lokalna = false
-		if obsluga_online.ponow_rozgrywke():
+		if _obsluga_online.ponow_rozgrywke():
 			return
 	get_tree().reload_current_scene()

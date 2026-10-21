@@ -161,26 +161,26 @@ func _utworz_podsumowanie_statystyk() -> void:
 		etykiety_wartosci_statystyk.append(wartosc)
 
 
-func _odswiez_statystyki_koncowe(dane: Dictionary) -> void:
-	var czas = maxi(0, roundi(float(dane.get("czas_meczu", 0.0))))
+func _odswiez_statystyki_koncowe(dane: PodsumowanieMeczu) -> void:
+	var czas = maxi(0, roundi(dane.czas_meczu))
 	var tekst_czasu = "%02d:%02d" % [floori(float(czas) / 60.0), czas % 60]
 	var nazwy: Array[String]
 	var wartosci: Array[String]
-	if str(dane.get("tryb", "")) == "endless":
-		$WynikKoncowy.text = "WYNIK  ·  %d" % int(dane.get("wynik_gracza", 0))
+	if dane.tryb == "endless":
+		$WynikKoncowy.text = "WYNIK  ·  %d" % dane.wynik_gracza
 	else:
-		$WynikKoncowy.text = "%d     :     %d" % [int(dane.get("wynik_gracza", 0)), int(dane.get("wynik_ai", 0))]
+		$WynikKoncowy.text = "%d     :     %d" % [dane.wynik_gracza, dane.wynik_ai]
 
-	if str(dane.get("tryb", "")) == "endless":
+	if dane.tryb == "endless":
 		nazwy = ["Czas próby", "Odbicia łącznie", "Mocne odbicia łącznie", "Rekord osobisty"]
-		wartosci = [tekst_czasu, str(int(dane.get("odbicia_lacznie", 0))), str(int(dane.get("mocne_odbicia_lacznie", 0))), str(int(dane.get("rekord_endless", 0)))]
+		wartosci = [tekst_czasu, str(dane.odbicia_lacznie), str(dane.mocne_odbicia_lacznie), str(dane.rekord_endless)]
 	else:
 		nazwy = ["Czas meczu", "Odbicia łącznie", "Mocne odbicia łącznie", "Najdłuższa wymiana"]
 		wartosci = [
 			tekst_czasu,
-			str(int(dane.get("odbicia_lacznie", 0))),
-			str(int(dane.get("mocne_odbicia_lacznie", 0))),
-			str(int(dane.get("najdluzsza_wymiana", 0)))
+			str(dane.odbicia_lacznie),
+			str(dane.mocne_odbicia_lacznie),
+			str(dane.najdluzsza_wymiana)
 		]
 
 	for i in range(4):
@@ -188,7 +188,7 @@ func _odswiez_statystyki_koncowe(dane: Dictionary) -> void:
 		etykiety_wartosci_statystyk[i].text = wartosci[i]
 
 
-func pokaz(tekst: String, dane: Dictionary) -> void:
+func pokaz(tekst: String, dane: PodsumowanieMeczu) -> void:
 	$Komunikat.text = tekst
 	$Komunikat.show()
 	$PrzyciskMenu.show()

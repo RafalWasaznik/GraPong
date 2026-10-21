@@ -143,7 +143,7 @@ func _przewidz_przeciecie_y(pilka: CharacterBody2D) -> float:
 	var przyspieszenie_y = 0.0
 	if Ustawienia.tryb == "arena":
 		var gra := get_parent() as GraPongAPI
-		var manager_areny := gra.arena_manager if gra != null else null
+		var manager_areny := gra.menedzer_areny() if gra != null else null
 		if manager_areny != null:
 			przyspieszenie_y = manager_areny.przyspieszenie_y(pilka.velocity.x)
 	var przewidziane_y = pilka.position.y + pilka.velocity.y * mnoznik * czas_do_paletki + 0.5 * przyspieszenie_y * czas_do_paletki * czas_do_paletki

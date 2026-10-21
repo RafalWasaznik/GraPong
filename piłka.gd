@@ -216,7 +216,7 @@ func _mnoznik_przyspieszenia_za_czas() -> float:
 func mnoznik_ruchu_chwilowy() -> float:
 	var mnoznik_areny = 1.0
 	if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
-		var manager_areny := gra.arena_manager
+		var manager_areny := gra.menedzer_areny()
 		if manager_areny != null:
 			mnoznik_areny = manager_areny.mnoznik_predkosci()
 	return _mnoznik_przyspieszenia_za_czas() * mnoznik_areny
@@ -240,7 +240,7 @@ func _physics_process(delta):
 
 	var mnoznik_predkosci_areny = 1.0
 	if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
-		var manager_areny := gra.arena_manager
+		var manager_areny := gra.menedzer_areny()
 		if manager_areny != null:
 			mnoznik_predkosci_areny = manager_areny.przygotuj_pilke(self, delta)
 
@@ -278,7 +278,7 @@ func _physics_process(delta):
 		else:
 			velocity = velocity.bounce(normalna)
 			if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
-				var manager_areny := gra.arena_manager
+				var manager_areny := gra.menedzer_areny()
 				if manager_areny != null:
 					manager_areny.wzmocnij_odbicie_od_sciany(self, str(obiekt.name))
 			$DzwiekSciana.play()

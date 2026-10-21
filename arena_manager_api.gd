@@ -24,12 +24,12 @@ func wzmocnij_odbicie_od_sciany(_pilka: PilkaAPI, _nazwa_sciany: String) -> void
 	_brak_implementacji("wzmocnij_odbicie_od_sciany")
 
 
-func dane_sieciowe() -> Dictionary:
+func dane_sieciowe() -> StanArenyOnline:
 	_brak_implementacji("dane_sieciowe")
-	return {}
+	return StanArenyOnline.new()
 
 
-func ustaw_stan_zdalny(_dane: Dictionary) -> void:
+func ustaw_stan_zdalny(_dane: StanArenyOnline) -> void:
 	_brak_implementacji("ustaw_stan_zdalny")
 
 

@@ -23,7 +23,7 @@ var endless_info: Label
 func uruchom(gra_glowna: GraPongAPI) -> void:
 	gra = gra_glowna
 	if Ustawienia.tryb == "endless":
-		var ksztalt_paletki = gra.paletka_gracza.kolizja.shape as RectangleShape2D
+		var ksztalt_paletki = gra.lewa_paletka().kolizja.shape as RectangleShape2D
 		if ksztalt_paletki != null:
 			endless_wysokosc_startowa = ksztalt_paletki.size.y
 			endless_wysokosc_aktualna = ksztalt_paletki.size.y
@@ -47,22 +47,22 @@ func zarejestruj_odbicie(strona: String, mocne: bool) -> void:
 	najdluzsza_wymiana = maxi(najdluzsza_wymiana, biezaca_wymiana)
 
 
-func ustaw_stan_zdalny(stan: Dictionary) -> void:
-	wynik_gracza = int(stan.get("wynik_gracza", wynik_gracza))
-	wynik_ai = int(stan.get("wynik_ai", wynik_ai))
-	czas_meczu = float(stan.get("czas_meczu", czas_meczu))
-	stat_odbicia_gracza = int(stan.get("stat_odbicia_gracza", stat_odbicia_gracza))
-	stat_odbicia_rywala = int(stan.get("stat_odbicia_rywala", stat_odbicia_rywala))
-	stat_mocne_odbicia_gracza = int(stan.get("stat_mocne_odbicia_gracza", stat_mocne_odbicia_gracza))
-	stat_mocne_odbicia_rywala = int(stan.get("stat_mocne_odbicia_rywala", stat_mocne_odbicia_rywala))
-	biezaca_wymiana = int(stan.get("biezaca_wymiana", biezaca_wymiana))
-	najdluzsza_wymiana = int(stan.get("najdluzsza_wymiana", najdluzsza_wymiana))
+func ustaw_stan_zdalny(stan: StanMeczuOnline) -> void:
+	wynik_gracza = stan.wynik_gracza
+	wynik_ai = stan.wynik_ai
+	czas_meczu = stan.czas_meczu
+	stat_odbicia_gracza = stan.stat_odbicia_gracza
+	stat_odbicia_rywala = stan.stat_odbicia_rywala
+	stat_mocne_odbicia_gracza = stan.stat_mocne_odbicia_gracza
+	stat_mocne_odbicia_rywala = stan.stat_mocne_odbicia_rywala
+	biezaca_wymiana = stan.biezaca_wymiana
+	najdluzsza_wymiana = stan.najdluzsza_wymiana
 
 
 func _on_punkt(strona: String) -> void:
 	if mecz_zakonczony:
 		return
-	gra.rozpad_punktu_trwa = false
+	gra.zresetuj_rozpad_punktu()
 	if Ustawienia.tryb == "endless":
 		_zakoncz_endless()
 		return
@@ -74,24 +74,23 @@ func _on_punkt(strona: String) -> void:
 	else:
 		wynik_gracza += 1
 
-	(gra.etykieta_wyniku_gracza).text = str(wynik_gracza)
-	(gra.etykieta_wyniku_rywala).text = str(wynik_ai)
+	gra.ustaw_wyniki(wynik_gracza, wynik_ai)
 	if Ustawienia.tryb != "online":
-		(gra.bonus_manager).wyczysc_po_punkcie()
-	var arena_manager := gra.arena_manager
+		(gra.bonusy()).wyczysc_po_punkcie()
+	var arena_manager := gra.menedzer_areny()
 	if arena_manager != null:
 		arena_manager.po_zdobyciu_punktu()
-	gra._odswiez_rysowanie()
+	gra.odswiez_rysowanie()
 
-	var pilka_glowna := gra.pilka_glowna
+	var pilka_glowna := gra.pilka()
 	for pilka in get_tree().get_nodes_in_group("pilki"):
 		if pilka != pilka_glowna:
 			pilka.queue_free()
 
 	var z_botem = Ustawienia.tryb == "bot" or (Ustawienia.tryb == "arena" and not Ustawienia.arena_dwoch_graczy)
 	if Ustawienia.tryb == "online" and Siec.warunek_meczu == "czas":
-		gra.paletka_gracza.set_physics_process(true)
-		gra.paletka_rywala.set_physics_process(true)
+		gra.lewa_paletka().set_physics_process(true)
+		gra.prawa_paletka().set_physics_process(true)
 		pilka_glowna.set_physics_process(true)
 		pilka_glowna.reset()
 	elif Ustawienia.tryb == "online" and wynik_gracza >= Siec.limit_punktow_meczu:
@@ -103,8 +102,8 @@ func _on_punkt(strona: String) -> void:
 	elif wynik_ai >= Ustawienia.limit_punktow:
 		zakoncz_mecz("Przegrałeś!" if z_botem else "Wygrywa gracz 2!")
 	else:
-		gra.paletka_gracza.set_physics_process(true)
-		gra.paletka_rywala.set_physics_process(true)
+		gra.lewa_paletka().set_physics_process(true)
+		gra.prawa_paletka().set_physics_process(true)
 		pilka_glowna.set_physics_process(true)
 		pilka_glowna.reset()
 
@@ -114,10 +113,9 @@ func zarejestruj_odbicie_endless(idealne: bool) -> void:
 		return
 	endless_odbicia += 1
 	wynik_gracza += (3 if idealne else 1)
-	(gra.etykieta_wyniku_gracza).text = str(wynik_gracza)
-	(gra.etykieta_wyniku_rywala).text = str(Ustawienia.rekord_endless)
+	gra.ustaw_wyniki(wynik_gracza, Ustawienia.rekord_endless)
 	if endless_odbicia % 5 == 0:
-		(gra.pilka_glowna).przyspiesz(1.08)
+		(gra.pilka()).przyspiesz(1.08)
 	if endless_odbicia % 12 == 0:
 		_zmniejsz_paletke_endless()
 	_odswiez_info_endless()
@@ -127,7 +125,7 @@ func _zmniejsz_paletke_endless() -> void:
 	var etap = floori(float(endless_odbicia) / 12.0)
 	var mnoznik = maxf(0.6, 1.0 - float(etap) * 0.08)
 	endless_wysokosc_aktualna = endless_wysokosc_startowa * mnoznik
-	var paletka := gra.paletka_gracza
+	var paletka := gra.lewa_paletka()
 	paletka.ustaw_wysokosc.call_deferred(endless_wysokosc_aktualna)
 
 
@@ -136,7 +134,7 @@ func _zakoncz_endless() -> void:
 	if nowy_rekord:
 		Ustawienia.rekord_endless = wynik_gracza
 		Ustawienia.zapisz()
-	(gra.etykieta_wyniku_rywala).text = str(Ustawienia.rekord_endless)
+	gra.ustaw_wyniki(wynik_gracza, Ustawienia.rekord_endless)
 	zakoncz_mecz("Nowy rekord!" if nowy_rekord else "Koniec próby")
 
 
@@ -175,7 +173,7 @@ func _ustaw_pozycje_info_endless() -> void:
 func _odswiez_info_endless() -> void:
 	if endless_info == null:
 		return
-	var pilka := gra.pilka_glowna
+	var pilka := gra.pilka()
 	var predkosc_razy = pilka.predkosc / PREDKOSC_BAZOWA_ENDLESS
 	var procent_paletki = 100
 	if endless_wysokosc_startowa > 0.0:
@@ -189,31 +187,30 @@ func zakoncz_mecz(tekst: String) -> void:
 	mecz_zakonczony = true
 	if Ustawienia.tryb == "online":
 		gra.ustaw_tekst_konca_online(tekst)
-	(gra.etykieta_wyniku_gracza).hide()
-	(gra.etykieta_wyniku_rywala).hide()
-	(gra.ekran_konca).pokaz(tekst, pobierz_podsumowanie())
+	gra.pokaz_wyniki(false)
+	(gra.ekran_konca_meczu()).pokaz(tekst, pobierz_podsumowanie())
 	if is_instance_valid(endless_info):
 		endless_info.hide()
 	gra.ukryj_informacje_graczowi()
-	gra._odswiez_rysowanie()
-	(gra.bonus_manager).zatrzymaj()
-	var arena_manager := gra.arena_manager
+	gra.odswiez_rysowanie()
+	(gra.bonusy()).zatrzymaj()
+	var arena_manager := gra.menedzer_areny()
 	if arena_manager != null:
 		arena_manager.zatrzymaj()
 	for pilka in get_tree().get_nodes_in_group("pilki"):
 		pilka.set_physics_process(false)
-	gra.paletka_gracza.set_physics_process(false)
-	gra.paletka_rywala.set_physics_process(false)
+	gra.lewa_paletka().set_physics_process(false)
+	gra.prawa_paletka().set_physics_process(false)
 
 
-func pobierz_podsumowanie() -> Dictionary:
-	return {
-		"tryb": Ustawienia.tryb,
-		"czas_meczu": czas_meczu,
-		"wynik_gracza": wynik_gracza,
-		"wynik_ai": wynik_ai,
-		"odbicia_lacznie": stat_odbicia_gracza + stat_odbicia_rywala,
-		"mocne_odbicia_lacznie": stat_mocne_odbicia_gracza + stat_mocne_odbicia_rywala,
-		"rekord_endless": Ustawienia.rekord_endless,
-		"najdluzsza_wymiana": najdluzsza_wymiana
-	}
+func pobierz_podsumowanie() -> PodsumowanieMeczu:
+	var podsumowanie := PodsumowanieMeczu.new()
+	podsumowanie.tryb = Ustawienia.tryb
+	podsumowanie.czas_meczu = czas_meczu
+	podsumowanie.wynik_gracza = wynik_gracza
+	podsumowanie.wynik_ai = wynik_ai
+	podsumowanie.odbicia_lacznie = stat_odbicia_gracza + stat_odbicia_rywala
+	podsumowanie.mocne_odbicia_lacznie = stat_mocne_odbicia_gracza + stat_mocne_odbicia_rywala
+	podsumowanie.rekord_endless = Ustawienia.rekord_endless
+	podsumowanie.najdluzsza_wymiana = najdluzsza_wymiana
+	return podsumowanie

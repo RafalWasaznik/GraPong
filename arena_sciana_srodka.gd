@@ -109,4 +109,4 @@ func _usun() -> void:
 
 func _odswiez_rysowanie() -> void:
 	if is_instance_valid(gra):
-		gra._odswiez_rysowanie()
+		gra.odswiez_rysowanie()

@@ -65,26 +65,25 @@ func rozpocznij() -> void:
 	set_physics_process(true)
 
 
-func dane_sieciowe() -> Dictionary:
-	var stan_sieciowy := {
-		"stan": stan,
-		"czas": czas_do_zmiany,
-		"wydarzenie": aktywne_wydarzenie,
-		"drugie": drugie_wydarzenie,
-		"wiatr": kierunek_wiatru,
-		"wariant_bramki": wariant_bramki
-	}
-	stan_sieciowy.merge(ruchoma_sciana.dane_sieciowe())
+func dane_sieciowe() -> StanArenyOnline:
+	var stan_sieciowy := StanArenyOnline.new()
+	stan_sieciowy.stan = stan
+	stan_sieciowy.czas = czas_do_zmiany
+	stan_sieciowy.wydarzenie = aktywne_wydarzenie
+	stan_sieciowy.drugie = drugie_wydarzenie
+	stan_sieciowy.wiatr = kierunek_wiatru
+	stan_sieciowy.wariant_bramki = wariant_bramki
+	ruchoma_sciana.zapisz_stan_sieciowy(stan_sieciowy)
 	return stan_sieciowy
 
 
-func ustaw_stan_zdalny(dane: Dictionary) -> void:
+func ustaw_stan_zdalny(dane: StanArenyOnline) -> void:
 	if not tryb_zdalny:
 		return
-	var nowy_stan = str(dane.get("stan", "oczekiwanie"))
-	var nowe_wydarzenie = str(dane.get("wydarzenie", ""))
-	var nowe_drugie = str(dane.get("drugie", ""))
-	var nowy_wariant = str(dane.get("wariant_bramki", ""))
+	var nowy_stan = dane.stan
+	var nowe_wydarzenie = dane.wydarzenie
+	var nowe_drugie = dane.drugie
+	var nowy_wariant = dane.wariant_bramki
 	var zmieniono_wydarzenie = stan != nowy_stan or aktywne_wydarzenie != nowe_wydarzenie or drugie_wydarzenie != nowe_drugie or wariant_bramki != nowy_wariant
 	if zmieniono_wydarzenie and stan == "aktywne":
 		_przywroc_efekty_modyfikatorow(0.8)
@@ -92,16 +91,16 @@ func ustaw_stan_zdalny(dane: Dictionary) -> void:
 	aktywne_wydarzenie = nowe_wydarzenie
 	drugie_wydarzenie = nowe_drugie
 	wariant_bramki = nowy_wariant
-	kierunek_wiatru = float(dane.get("wiatr", 1.0))
-	czas_do_zmiany = float(dane.get("czas", 0.0))
+	kierunek_wiatru = dane.wiatr
+	czas_do_zmiany = dane.czas
 	if zmieniono_wydarzenie and stan == "aktywne":
 		gra.odtworz_dzwiek_modyfikatora()
 		_zastosuj_modyfikatory_zdalne()
 	if zmieniono_wydarzenie and stan == "ostrzezenie":
 		gra.pokaz_informacje_graczowi(_nazwa_aktywnych_modyfikatorow(), _opis_aktywnych_modyfikatorow(), Color("#ffb454"), CZAS_OSTRZEZENIA)
-	ruchoma_sciana.ustaw_stan_zdalny(dane, wariant_bramki)
+	ruchoma_sciana.ustaw_stan_zdalny(dane)
 	set_physics_process(tryb_zdalny and ruchoma_sciana.istnieje())
-	gra._odswiez_rysowanie()
+	gra.odswiez_rysowanie()
 
 
 func _zastosuj_modyfikatory_zdalne() -> void:
@@ -129,22 +128,29 @@ func _physics_process(delta: float) -> void:
 
 
 func _losuj_wydarzenie() -> String:
-	var mozliwe = KATALOG.DEFINICJE_MODYFIKATOROW.keys()
+	var mozliwe := _lista_wydarzen()
 	mozliwe.erase(poprzednie_wydarzenie)
-	return str(mozliwe.pick_random())
+	return mozliwe.pick_random()
+
+
+func _lista_wydarzen() -> Array[String]:
+	var wynik: Array[String] = []
+	for definicja in KATALOG.wszystkie():
+		wynik.append(definicja.id)
+	return wynik
 
 
 func _zapowiedz_wydarzenie() -> void:
 	aktywne_wydarzenie = _losuj_wydarzenie()
 	drugie_wydarzenie = ""
 	if randf() < 0.30:
-		var mozliwe_drugie = KATALOG.DEFINICJE_MODYFIKATOROW.keys()
+		var mozliwe_drugie := _lista_wydarzen()
 		mozliwe_drugie.erase(aktywne_wydarzenie)
 		for kandydat in mozliwe_drugie.duplicate():
-			if not KATALOG.para_kompatybilna(aktywne_wydarzenie, str(kandydat)):
+			if not KATALOG.para_kompatybilna(aktywne_wydarzenie, kandydat):
 				mozliwe_drugie.erase(kandydat)
 		if not mozliwe_drugie.is_empty():
-			drugie_wydarzenie = str(mozliwe_drugie.pick_random())
+			drugie_wydarzenie = mozliwe_drugie.pick_random()
 	if aktywne_wydarzenie == "wiatr_gora" or drugie_wydarzenie == "wiatr_gora":
 		kierunek_wiatru = -1.0
 	elif aktywne_wydarzenie == "wiatr_dol" or drugie_wydarzenie == "wiatr_dol":
@@ -189,7 +195,7 @@ func _aktywne_modyfikatory() -> Array[String]:
 func _czas_aktywnego_zestawu() -> float:
 	var czas = 0.0
 	for modyfikator in _aktywne_modyfikatory():
-		czas = maxf(czas, float(KATALOG.definicja(modyfikator).get("czas", 0.0)))
+		czas = maxf(czas, KATALOG.definicja(modyfikator).czas)
 	return czas
 
 
@@ -222,7 +228,7 @@ func _aktywuj_modyfikator(modyfikator: String, zdalny: bool = false) -> void:
 		"sciana_srodka":
 			_utworz_sciane_srodka()
 		"mocne_sciany":
-			gra._odswiez_rysowanie()
+			gra.odswiez_rysowanie()
 		"ruchoma_bramka":
 			if not zdalny:
 				ruchoma_sciana.aktywuj(wariant_bramki)
@@ -243,7 +249,7 @@ func _przywroc_efekty_modyfikatorow(czas_animacji: float) -> void:
 	for modyfikator in _aktywne_modyfikatory():
 		_cofnij_modyfikator(modyfikator, czas_animacji)
 	if is_instance_valid(gra):
-		gra._odswiez_rysowanie()
+		gra.odswiez_rysowanie()
 
 
 func _cofnij_modyfikator(modyfikator: String, czas_animacji: float, wymus: bool = false) -> void:
@@ -270,7 +276,7 @@ func _cofnij_modyfikator(modyfikator: String, czas_animacji: float, wymus: bool 
 				_wygasz_sciane_srodka()
 		"mocne_sciany":
 			if is_instance_valid(gra):
-				gra._odswiez_rysowanie()
+				gra.odswiez_rysowanie()
 		"ruchoma_bramka":
 			if wymus:
 				ruchoma_sciana.zatrzymaj()
@@ -420,7 +426,7 @@ func zatrzymaj() -> void:
 	for modyfikator in _aktywne_modyfikatory():
 		_cofnij_modyfikator(modyfikator, 0.3, true)
 	if is_instance_valid(gra):
-		gra._odswiez_rysowanie()
+		gra.odswiez_rysowanie()
 	stan = "zatrzymane"
 	aktywne_wydarzenie = ""
 	drugie_wydarzenie = ""

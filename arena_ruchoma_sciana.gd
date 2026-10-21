@@ -34,37 +34,35 @@ func istnieje() -> bool:
 	return is_instance_valid(cialo)
 
 
-func ustaw_stan_zdalny(dane: Dictionary, wariant_sciany: String) -> void:
+func ustaw_stan_zdalny(dane: StanArenyOnline) -> void:
 	if not zdalna:
 		return
-	wariant = wariant_sciany
-	if bool(dane.get("bramka", false)):
+	wariant = dane.wariant_bramki
+	if dane.bramka:
 		if not istnieje():
 			_utworz()
-		faza = float(dane.get("bramka_faza", 0.0))
-		czas_aktywna = float(dane.get("bramka_czas", 0.0))
-		postep = float(dane.get("bramka_postep", 0.0))
-		wygaszanie = bool(dane.get("bramka_wygaszanie", false))
-		czas_wygaszania = float(dane.get("bramka_czas_wygaszania", 0.0))
-		alfa_poczatkowa = float(dane.get("bramka_alfa_poczatkowa", postep))
-		czas_wygaszania_docelowy = float(dane.get("bramka_czas_docelowy", CZAS_ZANIKANIA))
+		faza = dane.bramka_faza
+		czas_aktywna = dane.bramka_czas
+		postep = dane.bramka_postep
+		wygaszanie = dane.bramka_wygaszanie
+		czas_wygaszania = dane.bramka_czas_wygaszania
+		alfa_poczatkowa = dane.bramka_alfa_poczatkowa
+		czas_wygaszania_docelowy = dane.bramka_czas_docelowy
 		kolizje_wlaczone = wygaszanie or postep >= 0.35
 		_ustaw_pozycje()
 	elif istnieje():
 		_usun()
 
 
-func dane_sieciowe() -> Dictionary:
-	return {
-		"bramka": istnieje(),
-		"bramka_faza": faza,
-		"bramka_czas": czas_aktywna,
-		"bramka_postep": postep,
-		"bramka_wygaszanie": wygaszanie,
-		"bramka_czas_wygaszania": czas_wygaszania,
-		"bramka_alfa_poczatkowa": alfa_poczatkowa,
-		"bramka_czas_docelowy": czas_wygaszania_docelowy
-	}
+func zapisz_stan_sieciowy(stan_sieciowy: StanArenyOnline) -> void:
+	stan_sieciowy.bramka = istnieje()
+	stan_sieciowy.bramka_faza = faza
+	stan_sieciowy.bramka_czas = czas_aktywna
+	stan_sieciowy.bramka_postep = postep
+	stan_sieciowy.bramka_wygaszanie = wygaszanie
+	stan_sieciowy.bramka_czas_wygaszania = czas_wygaszania
+	stan_sieciowy.bramka_alfa_poczatkowa = alfa_poczatkowa
+	stan_sieciowy.bramka_czas_docelowy = czas_wygaszania_docelowy
 
 
 func aktywuj(nowy_wariant: String) -> void:
@@ -267,4 +265,4 @@ func _usun() -> void:
 
 func _odswiez_rysowanie() -> void:
 	if is_instance_valid(gra):
-		gra._odswiez_rysowanie()
+		gra.odswiez_rysowanie()

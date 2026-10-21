@@ -21,7 +21,7 @@ func _ready() -> void:
 
 
 func _manager_areny() -> ArenaManagerAPI:
-	return gra.arena_manager
+	return gra.menedzer_areny()
 
 
 func _draw():
@@ -46,14 +46,14 @@ func _draw():
 
 	var srodek_x = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) / 2.0
 	var srodek_y = (Ustawienia.gorna_granica + Ustawienia.dolna_granica) / 2.0
-	if _czy_tryb_areny() and gra.postep_animacji_strefy > 0.001:
-		var szerokosc_strefy = 104.0 * gra.postep_animacji_strefy
+	if _czy_tryb_areny() and gra.postep_strefy() > 0.001:
+		var szerokosc_strefy = 104.0 * gra.postep_strefy()
 		var strefa = Rect2(
 			Vector2(srodek_x - szerokosc_strefy * 0.5, Ustawienia.gorna_granica),
 			Vector2(szerokosc_strefy, Ustawienia.dolna_granica - Ustawienia.gorna_granica)
 		)
-		draw_rect(strefa, Color(1.0, 0.73, 0.22, 0.13 * gra.postep_animacji_strefy), true)
-		var kolor_krawedzi = Color(1.0, 0.79, 0.34, 0.72 * gra.postep_animacji_strefy)
+		draw_rect(strefa, Color(1.0, 0.73, 0.22, 0.13 * gra.postep_strefy()), true)
+		var kolor_krawedzi = Color(1.0, 0.79, 0.34, 0.72 * gra.postep_strefy())
 		draw_line(strefa.position, Vector2(strefa.position.x, strefa.end.y), kolor_krawedzi, 2.0)
 		draw_line(Vector2(strefa.end.x, strefa.position.y), strefa.end, kolor_krawedzi, 2.0)
 	if _czy_tryb_areny() and manager_areny != null and manager_areny.mocne_sciany_aktywne():
@@ -75,8 +75,8 @@ func _draw():
 	_rysuj_bramke_areny()
 
 	if not gra.mecz_zakonczony:
-		var karta_gracza = gra._prostokat_karty_wyniku(0)
-		var karta_ai = gra._prostokat_karty_wyniku(1)
+		var karta_gracza = gra.prostokat_karty_wyniku(0)
+		var karta_ai = gra.prostokat_karty_wyniku(1)
 
 		draw_rect(karta_gracza, KOLOR_KARTY_WYNIKU, true)
 		draw_rect(karta_ai, KOLOR_KARTY_WYNIKU, true)
@@ -123,10 +123,11 @@ func _rysuj_znaczniki_srodka(srodek: Vector2, gora: float, dol: float) -> void:
 
 
 func _rysuj_gumowe_sciany() -> void:
+	var dane_gumy: DaneGumowejSciany = gra.dane_gumowej_sciany()
 	for strona in [-1, 1]:
 		var x_bazowy = Ustawienia.lewa_granica if strona < 0 else Ustawienia.prawa_granica
 		var kolor = KOLOR_GRACZA if strona < 0 else KOLOR_AI
-		if gra.gumowa_sciana_strona != strona or gra.gumowa_sciana_ugiecie <= 0.1:
+		if dane_gumy.strona != strona or dane_gumy.ugiecie <= 0.1:
 			draw_line(
 				Vector2(x_bazowy, Ustawienia.gorna_granica),
 				Vector2(x_bazowy, Ustawienia.dolna_granica),
@@ -139,13 +140,13 @@ func _rysuj_gumowe_sciany() -> void:
 		var punkty = PackedVector2Array()
 		var y = Ustawienia.gorna_granica
 		while y <= Ustawienia.dolna_granica:
-			var odleglosc = (y - gra.gumowa_sciana_y) / 66.0
+			var odleglosc = (y - dane_gumy.y) / 66.0
 			var profil = exp(-odleglosc * odleglosc)
-			var x = x_bazowy + float(strona) * gra.gumowa_sciana_ugiecie * profil
+			var x = x_bazowy + float(strona) * dane_gumy.ugiecie * profil
 			punkty.append(Vector2(x, y))
 			y += 10.0
 		punkty.append(Vector2(
-			x_bazowy + float(strona) * gra.gumowa_sciana_ugiecie * exp(-pow((Ustawienia.dolna_granica - gra.gumowa_sciana_y) / 66.0, 2.0)),
+		x_bazowy + float(strona) * dane_gumy.ugiecie * exp(-pow((Ustawienia.dolna_granica - dane_gumy.y) / 66.0, 2.0)),
 			Ustawienia.dolna_granica
 		))
 		draw_polyline(punkty, Color(kolor, 0.2), 8.0, true)
