@@ -13,7 +13,9 @@ config_version=5
 config/name="PongGra"
 run/main_scene="uid://o8qe4bo8u06s"
 config/features=PackedStringArray("4.7", "Mobile")
-config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.03137, 0.0549, 0.09412, 1)
+boot_splash/image="res://assets/ekran_startowy.png"
+config/icon="uid://cbij48kunqpi7"
 
 [autoload]
 

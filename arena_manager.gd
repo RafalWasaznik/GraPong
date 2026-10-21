@@ -18,8 +18,10 @@ const WYSOKOSC_OTWORU_BRAMKI = 156.0
 const PREDKOSC_RUCHU_BRAMKI = 1.35
 const CZAS_RUCHOMEJ_BRAMKI = 9.0
 const CZAS_POJAWIENIA_BRAMKI = 0.7
-const CZAS_ZANIKANIA_BRAMKI = 0.85
-const CZAS_WYGASZANIA_PO_PUNKCIE = 0.45
+const CZAS_ZANIKANIA_BRAMKI = 0.28
+const CZAS_WYGASZANIA_PO_PUNKCIE = 0.20
+const CZAS_ZANIKANIA_SCIANY_SRODKOWEJ = 0.38
+const CZAS_PRZYWRACANIA_PO_PUNKCIE = 0.45
 const WYSOKOSC_PODWOJNEGO_OTWORU = 104.0
 const ODSTEP_PODWOJNYCH_OTWOROW = 166.0
 const PROMIEN_SCIANY_SRODKOWEJ = 54.0
@@ -67,6 +69,8 @@ var bramka_alfa_poczatkowa = 0.0
 var bramka_czas_wygaszania_docelowy = CZAS_ZANIKANIA_BRAMKI
 var wariant_bramki = ""
 var sciana_srodka: StaticBody2D
+var sciana_srodka_postep = 0.0
+var animacja_sciany_srodka: Tween
 
 
 func uruchom(gra_glowna: Node2D, zdalny: bool = false, oczekuj_na_gracza: bool = false) -> void:
@@ -145,7 +149,7 @@ func ustaw_stan_zdalny(dane: Dictionary) -> void:
 		bramka_czas_wygaszania = float(dane.get("bramka_czas_wygaszania", 0.0))
 		bramka_alfa_poczatkowa = float(dane.get("bramka_alfa_poczatkowa", bramka_postep))
 		bramka_czas_wygaszania_docelowy = float(dane.get("bramka_czas_docelowy", CZAS_ZANIKANIA_BRAMKI))
-		bramka_kolizje_wlaczone = false
+		bramka_kolizje_wlaczone = bramka_wygaszanie or bramka_postep >= 0.35
 		_ustaw_pozycje_bramki()
 	elif is_instance_valid(bramka_cialo):
 		_usun_bramke()
@@ -369,11 +373,11 @@ func _przywroc_efekty_modyfikatorow(czas_animacji: float) -> void:
 	if _czy_aktywne("duza_pilka") and is_instance_valid(gra):
 		gra.call("animuj_rozmiar_pilki", 1.0, czas_animacji)
 	if _czy_aktywne("sciana_srodka"):
-		_usun_sciane_srodka()
+		_wygasz_sciane_srodka()
 	if _czy_aktywne("mocne_sciany") and is_instance_valid(gra):
 		gra.call("_odswiez_rysowanie")
 	if _czy_aktywne("ruchoma_bramka") and is_instance_valid(bramka_cialo):
-		_wygasz_bramke(CZAS_WYGASZANIA_PO_PUNKCIE if czas_animacji <= CZAS_WYGASZANIA_PO_PUNKCIE else CZAS_ZANIKANIA_BRAMKI)
+		_wygasz_bramke(CZAS_WYGASZANIA_PO_PUNKCIE if czas_animacji <= CZAS_PRZYWRACANIA_PO_PUNKCIE else CZAS_ZANIKANIA_BRAMKI)
 	if is_instance_valid(gra):
 		gra.call("_odswiez_rysowanie")
 
@@ -390,7 +394,7 @@ func _ustaw_nastepne_wydarzenie(minimum: float = 3.5, maksimum: float = 6.0) -> 
 func po_zdobyciu_punktu() -> void:
 	# Przerwij też zapowiedź, żeby modyfikator nie wystartował podczas nowej piłki.
 	if stan == "aktywne":
-		_przywroc_efekty_modyfikatorow(0.45)
+		_przywroc_efekty_modyfikatorow(CZAS_PRZYWRACANIA_PO_PUNKCIE)
 	_ustaw_nastepne_wydarzenie(6.0, 8.5)
 	if is_instance_valid(gra):
 		gra.call("ukryj_informacje_graczowi")
@@ -432,11 +436,7 @@ func _wygasz_bramke(czas_wygaszania: float = CZAS_ZANIKANIA_BRAMKI) -> void:
 	bramka_czas_wygaszania = 0.0
 	bramka_alfa_poczatkowa = bramka_postep
 	bramka_czas_wygaszania_docelowy = maxf(czas_wygaszania, 0.01)
-	bramka_kolizje_wlaczone = false
-	# Kolizja znika od razu, a widoczne segmenty płynnie gasną.
-	for kolizja in bramka_kolizje:
-		if is_instance_valid(kolizja):
-			kolizja.set_deferred("disabled", true)
+	# Ściana zachowuje kolizję, dopóki jest widoczna; obie znikają razem.
 
 
 func dane_bramki() -> Array[Rect2]:
@@ -630,11 +630,19 @@ func _srodek_planszy_x() -> float:
 
 
 func sciana_srodka_aktywna() -> bool:
-	return stan == "aktywne" and _czy_aktywne("sciana_srodka")
+	return is_instance_valid(sciana_srodka) and sciana_srodka_postep > 0.0
+
+
+func przezroczystosc_sciany_srodka() -> float:
+	return sciana_srodka_postep
 
 
 func _utworz_sciane_srodka() -> void:
 	if is_instance_valid(sciana_srodka):
+		if is_instance_valid(animacja_sciany_srodka):
+			animacja_sciany_srodka.kill()
+		animacja_sciany_srodka = null
+		sciana_srodka_postep = 1.0
 		_aktualizuj_sciane_srodka()
 		return
 
@@ -654,6 +662,7 @@ func _utworz_sciane_srodka() -> void:
 		kolizja.position = Vector2(cos(kat), sin(kat)) * PROMIEN_SCIANY_SRODKOWEJ
 		kolizja.rotation = kat
 		sciana_srodka.add_child(kolizja)
+	sciana_srodka_postep = 1.0
 	_aktualizuj_sciane_srodka()
 	if is_instance_valid(gra):
 		gra.call("_odswiez_rysowanie")
@@ -673,6 +682,28 @@ func _usun_sciane_srodka() -> void:
 	if is_instance_valid(sciana_srodka):
 		sciana_srodka.queue_free()
 	sciana_srodka = null
+	sciana_srodka_postep = 0.0
+	animacja_sciany_srodka = null
+	if is_instance_valid(gra):
+		gra.call("_odswiez_rysowanie")
+
+
+func _wygasz_sciane_srodka(czas: float = CZAS_ZANIKANIA_SCIANY_SRODKOWEJ) -> void:
+	if not is_instance_valid(sciana_srodka):
+		return
+	if is_instance_valid(animacja_sciany_srodka):
+		animacja_sciany_srodka.kill()
+	animacja_sciany_srodka = create_tween()
+	animacja_sciany_srodka.set_trans(Tween.TRANS_CUBIC)
+	animacja_sciany_srodka.set_ease(Tween.EASE_IN)
+	animacja_sciany_srodka.tween_method(_ustaw_postep_sciany_srodka, sciana_srodka_postep, 0.0, maxf(czas, 0.01))
+	animacja_sciany_srodka.tween_callback(_usun_sciane_srodka)
+
+
+func _ustaw_postep_sciany_srodka(postep: float) -> void:
+	sciana_srodka_postep = clampf(postep, 0.0, 1.0)
+	if is_instance_valid(gra):
+		gra.call("_odswiez_rysowanie")
 
 
 func zatrzymaj() -> void:
@@ -691,6 +722,8 @@ func zatrzymaj() -> void:
 	if _czy_aktywne("duza_pilka") and is_instance_valid(gra):
 		gra.call("animuj_rozmiar_pilki", 1.0, 0.3)
 	if _czy_aktywne("sciana_srodka"):
+		if is_instance_valid(animacja_sciany_srodka):
+			animacja_sciany_srodka.kill()
 		_usun_sciane_srodka()
 	if _czy_aktywne("ruchoma_bramka"):
 		_usun_bramke()

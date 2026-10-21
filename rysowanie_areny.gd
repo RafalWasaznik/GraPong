@@ -4,7 +4,6 @@ const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 const KOLOR_TLA = Color("#080e18")
 const KOLOR_PLANSZY = Color("#142235")
 const KOLOR_RAMKI = Color("#46627e")
-const KOLOR_LINII = Color("#7892ad")
 const KOLOR_KARTY_WYNIKU = Color("#0b1725")
 const KOLOR_GRACZA = Color("#55d8f2")
 const KOLOR_AI = Color("#ff647a")
@@ -55,33 +54,18 @@ func _draw():
 		var kolor_scian = Color(1.0, 0.78, 0.3, 0.8)
 		draw_line(Vector2(Ustawienia.lewa_granica, Ustawienia.gorna_granica), Vector2(Ustawienia.prawa_granica, Ustawienia.gorna_granica), kolor_scian, 4.0)
 		draw_line(Vector2(Ustawienia.lewa_granica, Ustawienia.dolna_granica), Vector2(Ustawienia.prawa_granica, Ustawienia.dolna_granica), kolor_scian, 4.0)
-	draw_arc(
-		Vector2(srodek_x, srodek_y),
-		54.0,
-		0.0,
-		TAU,
-		64,
-		Color(0.37, 0.59, 0.77, 0.17),
-		2.0
-	)
-	draw_circle(Vector2(srodek_x, srodek_y), 3.0, Color(0.45, 0.67, 0.84, 0.3))
-	var y = Ustawienia.gorna_granica + 20.0
-	var koniec_linii = Ustawienia.dolna_granica - 10.0
 	var sciana_srodka_aktywna = _czy_tryb_areny() and gra.arena_manager != null and gra.arena_manager.call("sciana_srodka_aktywna")
-	if not sciana_srodka_aktywna:
-		while y < koniec_linii:
-			draw_line(
-				Vector2(srodek_x, y),
-				Vector2(srodek_x, min(y + 12.0, koniec_linii)),
-				KOLOR_LINII,
-				3.0
-			)
-			y += 24.0
-	else:
+	_rysuj_znaczniki_srodka(
+		Vector2(srodek_x, srodek_y),
+		Ustawienia.gorna_granica + 20.0,
+		Ustawienia.dolna_granica - 10.0
+	)
+	if sciana_srodka_aktywna:
 		var srodek = Vector2(srodek_x, srodek_y)
-		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.69, 0.3, 0.14), 22.0, true)
-		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color("#ffb454"), 9.0, true)
-		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color("#fff2d8"), 2.0, true)
+		var alfa_sciany = float(gra.arena_manager.call("przezroczystosc_sciany_srodka"))
+		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.69, 0.3, 0.14 * alfa_sciany), 22.0 * alfa_sciany, true)
+		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.69, 0.3, alfa_sciany), 9.0 * alfa_sciany, true)
+		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.95, 0.85, alfa_sciany), 2.0 * alfa_sciany, true)
 	_rysuj_bramke_areny()
 
 	if not gra.mecz_zakonczony:
@@ -103,6 +87,33 @@ func _draw():
 		elif Ustawienia.tryb == "endless":
 			_rysuj_nazwe_wyniku(karta_gracza, "SERIA", KOLOR_GRACZA)
 			_rysuj_nazwe_wyniku(karta_ai, "REKORD", Color("#c4b5fd"))
+
+
+func _rysuj_znaczniki_srodka(srodek: Vector2, gora: float, dol: float) -> void:
+	var promien_okregu = 58.0
+	var przerwa_okregu = 68.0
+	var dlugosc_segmentu = 14.0
+	var odstep_segmentow = 14.0
+	var szerokosc_poswiaty = 7.0
+	var kolor_poswiaty = Color(0.32, 0.89, 1.0, 0.045)
+	var kolor_linii = Color(0.64, 0.77, 0.87, 0.48)
+
+	for zakres in [Vector2(gora, srodek.y - przerwa_okregu), Vector2(srodek.y + przerwa_okregu, dol)]:
+		var y = zakres.x
+		while y < zakres.y:
+			var koniec = minf(y + dlugosc_segmentu, zakres.y)
+			draw_line(Vector2(srodek.x, y), Vector2(srodek.x, koniec), kolor_poswiaty, szerokosc_poswiaty, true)
+			draw_line(Vector2(srodek.x, y), Vector2(srodek.x, koniec), kolor_linii, 2.2, true)
+			draw_circle(Vector2(srodek.x, y), 1.1, kolor_linii)
+			draw_circle(Vector2(srodek.x, koniec), 1.1, kolor_linii)
+			y += dlugosc_segmentu + odstep_segmentow
+
+	# Wielowarstwowe obręcze i delikatne akcenty zastępują płaski, domyślny okrąg.
+	draw_arc(srodek, promien_okregu, 0.0, TAU, 128, Color(0.32, 0.89, 1.0, 0.035), 9.0, true)
+	draw_arc(srodek, promien_okregu, 0.0, TAU, 128, Color(0.31, 0.52, 0.68, 0.30), 1.8, true)
+	draw_arc(srodek, promien_okregu - 6.0, 0.0, TAU, 128, Color(0.31, 0.52, 0.68, 0.10), 1.0, true)
+	draw_circle(srodek, 4.0, Color(0.32, 0.89, 1.0, 0.045))
+	draw_circle(srodek, 1.7, Color(0.69, 0.86, 0.96, 0.34))
 
 
 func _rysuj_gumowe_sciany() -> void:
