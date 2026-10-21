@@ -4,7 +4,7 @@ const CZAS_ODNOWIENIA_DASHU = 3.0
 const SZEROKOSC_PASKA = 90.0
 const WYSOKOSC_PASKA = 14.0
 
-var gra: Variant
+var gra: GraPongAPI
 var styl_tla: StyleBoxFlat
 var styl_wypelnienia: StyleBoxFlat
 var styl_poswiaty: StyleBoxFlat
@@ -28,17 +28,17 @@ func _draw() -> void:
 	if gra == null or gra.mecz_zakonczony:
 		return
 	var dol_paska = minf(Ustawienia.dolna_granica + 35.0, get_viewport_rect().size.y - WYSOKOSC_PASKA - 18.0)
-	var paletka_gracza = gra.get_node_or_null("Paletka")
-	var paletka_rywala = gra.get_node_or_null("PaletkaAI")
+	var paletka_gracza := gra.paletka_gracza
+	var paletka_rywala := gra.paletka_rywala
 	_rysuj_pasek(paletka_gracza, dol_paska)
 	if Ustawienia.tryb != "endless" and paletka_rywala != null and paletka_rywala.visible:
 		_rysuj_pasek(paletka_rywala, dol_paska)
 
 
-func _rysuj_pasek(paletka: Node2D, y: float) -> void:
+func _rysuj_pasek(paletka: PaletkaBazowa, y: float) -> void:
 	if paletka == null or not paletka.visible:
 		return
-	var gotowosc = 1.0 - clampf(float(paletka.get("dash_odnowienie")) / CZAS_ODNOWIENIA_DASHU, 0.0, 1.0)
+	var gotowosc = 1.0 - clampf(paletka.dash_odnowienie / CZAS_ODNOWIENIA_DASHU, 0.0, 1.0)
 	var kolor = Color.from_hsv(lerpf(0.0, 0.33, gotowosc), 0.88, 1.0)
 	var x_paska = clampf(
 		paletka.global_position.x,

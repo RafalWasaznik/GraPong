@@ -165,9 +165,3 @@ func tekst_klawisza(akcja: String) -> String:
 	var zdarzenie = InputEventKey.new()
 	zdarzenie.physical_keycode = int(klawisze.get(akcja, KEY_NONE))
 	return zdarzenie.as_text_physical_keycode()
-
-
-func tekst_podpowiedzi() -> String:
-	var lewy = "%s/%s" % [tekst_klawisza("lewy_gora"), tekst_klawisza("lewy_dol")]
-	var prawy = "%s/%s" % [tekst_klawisza("prawy_gora"), tekst_klawisza("prawy_dol")]
-	return "1 gracz: %s lub %s · dash: %s\n2 graczy: lewy %s/%s · prawy %s/%s\nPauza: %s" % [lewy, prawy, tekst_klawisza("dash_gracza_1"), lewy, tekst_klawisza("dash_gracza_1"), prawy, tekst_klawisza("dash_gracza_2"), tekst_klawisza("pauza")]

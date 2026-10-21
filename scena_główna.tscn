@@ -10,6 +10,8 @@
 [ext_resource type="PackedScene" path="res://ekran_konca.tscn" id="9_ekran_konca"]
 [ext_resource type="Script" uid="uid://bhlafvlwpd62i" path="res://wskazniki_dasha.gd" id="10_dash_ui"]
 [ext_resource type="PackedScene" path="res://ustawienia_menu.tscn" id="11_ustawienia"]
+[ext_resource type="Script" path="res://obsluga_online.gd" id="12_obsluga_online"]
+[ext_resource type="Script" path="res://przebieg_meczu.gd" id="13_przebieg_meczu"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_618dn"]
 size = Vector2(1152, 20)
@@ -119,3 +121,9 @@ layout_mode = 2
 script = ExtResource("6_57rfe")
 
 [node name="EkranKonca" parent="." unique_id=123991594 instance=ExtResource("9_ekran_konca")]
+
+[node name="ObslugaOnline" type="Node" parent="." unique_id=2047381291]
+script = ExtResource("12_obsluga_online")
+
+[node name="PrzebiegMeczu" type="Node" parent="." unique_id=1874596302]
+script = ExtResource("13_przebieg_meczu")

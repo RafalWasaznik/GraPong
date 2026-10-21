@@ -1,3 +1,4 @@
+class_name EkranKonca
 extends CanvasLayer
 
 signal menu_pressed
@@ -67,38 +68,16 @@ func _ready() -> void:
 	add_child(przycisk)
 	przycisk.hide()
 	przycisk.text = "Wróć do menu"
-	przycisk.custom_minimum_size = Vector2(300.0, 56.0)
-	przycisk.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	przycisk.add_theme_font_size_override("font_size", 20)
-	przycisk.add_theme_color_override("font_color", Color("#e8f4ff"))
-	przycisk.add_theme_color_override("font_hover_color", Color.WHITE)
-	przycisk.add_theme_stylebox_override("normal", _styl_przycisku(Color("#111e32"), Color("#344d64")))
-	przycisk.add_theme_stylebox_override("hover", _styl_przycisku(Color("#192d45"), Color("#ad83ff")))
-	przycisk.add_theme_stylebox_override("pressed", _styl_przycisku(Color("#102638"), Color("#7958c7")))
-	przycisk.add_theme_stylebox_override("focus", _styl_przycisku(Color("#111e32"), Color("#ad83ff")))
+	przycisk.set_meta("neon_akcent", Color("#ad83ff"))
+	StylMenu.styluj_przycisk(przycisk, Vector2(300.0, 56.0), Color("#ad83ff"), Color("#111e32"), Color("#344d64"), Color("#192d45"), Color("#102638"), Color("#7958c7"), 20)
 	przycisk.z_index = 11
-	przycisk.pivot_offset = przycisk.custom_minimum_size * 0.5
-	przycisk.resized.connect(func(): przycisk.pivot_offset = przycisk.size * 0.5)
-	przycisk.mouse_entered.connect(_animuj_przycisk.bind(przycisk, true))
-	przycisk.mouse_exited.connect(_animuj_przycisk.bind(przycisk, false))
 	przycisk.pressed.connect(func(): menu_pressed.emit())
 	var przycisk_ponownie = Button.new()
 	przycisk_ponownie.name = "PrzyciskPonownie"
 	przycisk_ponownie.text = "Zagraj ponownie"
-	przycisk_ponownie.custom_minimum_size = Vector2(300.0, 52.0)
-	przycisk_ponownie.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	przycisk_ponownie.add_theme_font_size_override("font_size", 20)
-	przycisk_ponownie.add_theme_color_override("font_color", Color("#e8f4ff"))
-	przycisk_ponownie.add_theme_color_override("font_hover_color", Color.WHITE)
-	przycisk_ponownie.add_theme_stylebox_override("normal", _styl_przycisku(Color("#102838"), Color("#258fa5")))
-	przycisk_ponownie.add_theme_stylebox_override("hover", _styl_przycisku(Color("#123b4a"), Color("#55e7ff")))
-	przycisk_ponownie.add_theme_stylebox_override("pressed", _styl_przycisku(Color("#0e2d39"), Color("#35bcd5")))
-	przycisk_ponownie.add_theme_stylebox_override("focus", _styl_przycisku(Color("#102838"), Color("#55e7ff")))
+	przycisk_ponownie.set_meta("neon_akcent", Color("#55e7ff"))
+	StylMenu.styluj_przycisk(przycisk_ponownie, Vector2(300.0, 52.0), Color("#55e7ff"), Color("#102838"), Color("#258fa5"), Color("#123b4a"), Color("#0e2d39"), Color("#35bcd5"), 20)
 	przycisk_ponownie.z_index = 11
-	przycisk_ponownie.pivot_offset = przycisk_ponownie.custom_minimum_size * 0.5
-	przycisk_ponownie.resized.connect(func(): przycisk_ponownie.pivot_offset = przycisk_ponownie.size * 0.5)
-	przycisk_ponownie.mouse_entered.connect(_animuj_przycisk.bind(przycisk_ponownie, true))
-	przycisk_ponownie.mouse_exited.connect(_animuj_przycisk.bind(przycisk_ponownie, false))
 	przycisk_ponownie.pressed.connect(func(): replay_pressed.emit())
 	add_child(przycisk_ponownie)
 	przycisk_ponownie.hide()
@@ -238,27 +217,3 @@ func _animuj_pokaz_podsumowania() -> void:
 	animacja.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	for warstwa in warstwy:
 		animacja.parallel().tween_property(warstwa, "modulate:a", 1.0, 0.22)
-
-
-func _animuj_przycisk(przycisk: Control, aktywne: bool) -> void:
-	if przycisk.has_meta("animacja_najechania"):
-		var poprzednia = przycisk.get_meta("animacja_najechania")
-		if is_instance_valid(poprzednia):
-			poprzednia.kill()
-	var animacja = create_tween()
-	przycisk.set_meta("animacja_najechania", animacja)
-	animacja.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	animacja.tween_property(przycisk, "scale", Vector2(1.035, 1.035) if aktywne else Vector2.ONE, 0.14)
-
-
-func _styl_przycisku(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
-	var styl = StyleBoxFlat.new()
-	styl.bg_color = tlo
-	styl.border_color = obramowanie
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(10)
-	styl.content_margin_left = 18.0
-	styl.content_margin_right = 18.0
-	styl.content_margin_top = 8.0
-	styl.content_margin_bottom = 8.0
-	return styl

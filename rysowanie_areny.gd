@@ -1,3 +1,4 @@
+class_name RysowanieAreny
 extends Node2D
 
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
@@ -8,7 +9,7 @@ const KOLOR_KARTY_WYNIKU = Color("#0b1725")
 const KOLOR_GRACZA = Color("#55d8f2")
 const KOLOR_AI = Color("#ff647a")
 
-var gra: Variant
+var gra: GraPongAPI
 
 
 func _czy_tryb_areny() -> bool:
@@ -17,6 +18,10 @@ func _czy_tryb_areny() -> bool:
 
 func _ready() -> void:
 	gra = get_parent()
+
+
+func _manager_areny() -> ArenaManagerAPI:
+	return gra.arena_manager
 
 
 func _draw():
@@ -35,7 +40,8 @@ func _draw():
 	draw_rect(plansza, KOLOR_RAMKI, false, 3.0)
 	draw_rect(plansza.grow(-10.0), Color(0.24, 0.39, 0.54, 0.2), false, 1.0)
 	_rysuj_gumowe_sciany()
-	if _czy_tryb_areny() and gra.arena_manager != null and gra.arena_manager.call("wieksza_arena_aktywna"):
+	var manager_areny := _manager_areny()
+	if _czy_tryb_areny() and manager_areny != null and manager_areny.wieksza_arena_aktywna():
 		draw_rect(plansza, Color(0.65, 0.84, 1.0, 0.78), false, 3.0)
 
 	var srodek_x = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) / 2.0
@@ -50,11 +56,11 @@ func _draw():
 		var kolor_krawedzi = Color(1.0, 0.79, 0.34, 0.72 * gra.postep_animacji_strefy)
 		draw_line(strefa.position, Vector2(strefa.position.x, strefa.end.y), kolor_krawedzi, 2.0)
 		draw_line(Vector2(strefa.end.x, strefa.position.y), strefa.end, kolor_krawedzi, 2.0)
-	if _czy_tryb_areny() and gra.arena_manager != null and gra.arena_manager.call("mocne_sciany_aktywne"):
+	if _czy_tryb_areny() and manager_areny != null and manager_areny.mocne_sciany_aktywne():
 		var kolor_scian = Color(1.0, 0.78, 0.3, 0.8)
 		draw_line(Vector2(Ustawienia.lewa_granica, Ustawienia.gorna_granica), Vector2(Ustawienia.prawa_granica, Ustawienia.gorna_granica), kolor_scian, 4.0)
 		draw_line(Vector2(Ustawienia.lewa_granica, Ustawienia.dolna_granica), Vector2(Ustawienia.prawa_granica, Ustawienia.dolna_granica), kolor_scian, 4.0)
-	var sciana_srodka_aktywna = _czy_tryb_areny() and gra.arena_manager != null and gra.arena_manager.call("sciana_srodka_aktywna")
+	var sciana_srodka_aktywna = _czy_tryb_areny() and manager_areny != null and manager_areny.sciana_srodka_aktywna()
 	_rysuj_znaczniki_srodka(
 		Vector2(srodek_x, srodek_y),
 		Ustawienia.gorna_granica + 20.0,
@@ -62,15 +68,15 @@ func _draw():
 	)
 	if sciana_srodka_aktywna:
 		var srodek = Vector2(srodek_x, srodek_y)
-		var alfa_sciany = float(gra.arena_manager.call("przezroczystosc_sciany_srodka"))
+		var alfa_sciany = manager_areny.przezroczystosc_sciany_srodka()
 		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.69, 0.3, 0.14 * alfa_sciany), 22.0 * alfa_sciany, true)
 		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.69, 0.3, alfa_sciany), 9.0 * alfa_sciany, true)
 		draw_arc(srodek, 54.0, 0.0, TAU, 96, Color(1.0, 0.95, 0.85, alfa_sciany), 2.0 * alfa_sciany, true)
 	_rysuj_bramke_areny()
 
 	if not gra.mecz_zakonczony:
-		var karta_gracza = gra.call("_prostokat_karty_wyniku", 0)
-		var karta_ai = gra.call("_prostokat_karty_wyniku", 1)
+		var karta_gracza = gra._prostokat_karty_wyniku(0)
+		var karta_ai = gra._prostokat_karty_wyniku(1)
 
 		draw_rect(karta_gracza, KOLOR_KARTY_WYNIKU, true)
 		draw_rect(karta_ai, KOLOR_KARTY_WYNIKU, true)
@@ -147,13 +153,14 @@ func _rysuj_gumowe_sciany() -> void:
 
 
 func _rysuj_bramke_areny() -> void:
-	if not _czy_tryb_areny() or gra.arena_manager == null:
+	var manager_areny := _manager_areny()
+	if not _czy_tryb_areny() or manager_areny == null:
 		return
-	if not bool(gra.arena_manager.call("bramka_aktywna")):
+	if not manager_areny.bramka_aktywna():
 		return
 
-	var segmenty: Array[Rect2] = gra.arena_manager.call("dane_bramki")
-	var alfa = float(gra.arena_manager.call("przezroczystosc_bramki"))
+	var segmenty := manager_areny.dane_bramki()
+	var alfa = manager_areny.przezroczystosc_bramki()
 	var kolor_bramki = Color("#a78bfa")
 	var kolor_wypelnienia = kolor_bramki
 	kolor_wypelnienia.a = 0.88 * alfa

@@ -1,71 +1,45 @@
-extends Node2D
+extends GraPongAPI
 
 const SCENA_PILKI = preload("res://piłka.tscn")
-const ARENA_MANAGER_SCRIPT = preload("res://arena_manager.gd")
 const DZWIEK_PUNKTU = preload("res://punkt_sukces.wav")
 const DZWIEKI_GRY = preload("res://dzwieki_gry.gd")
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
 const CZAS_DODATKOWEJ_PILKI = 8.0
 const MNOZNIK_PREDKOSCI_DODATKOWEJ = 0.8
-const PREDKOSC_BAZOWA_ENDLESS = 560.0
 const WYSOKOSC_SCIANY = 20.0
 const ODSTEP_PALETKI = 30.0
 
 const KOLOR_GRACZA = Color("#55d8f2")
 const KOLOR_AI = Color("#ff647a")
 
-var wynik_gracza = 0
-var wynik_ai = 0
-var czas_meczu = 0.0
-var stat_odbicia_gracza = 0
-var stat_odbicia_rywala = 0
-var stat_mocne_odbicia_gracza = 0
-var stat_mocne_odbicia_rywala = 0
-var biezaca_wymiana = 0
-var najdluzsza_wymiana = 0
-var dzwiek_punktu: AudioStreamPlayer
 var dzwiek_bonusu: AudioStreamPlayer
 var dzwiek_modyfikatora: AudioStreamPlayer
-var endless_odbicia = 0
-var endless_wysokosc_startowa = 120.0
-var endless_wysokosc_aktualna = 120.0
-var endless_info: Label
+var dzwiek_punktu: AudioStreamPlayer
 var panel_informacyjny: PanelContainer
 @onready var rysowanie_areny: Node2D = $RysowanieAreny
-@onready var ekran_konca: CanvasLayer = $EkranKonca
-var arena_manager: Node
 var animacja_granic_areny: Tween
 var animacja_wymiarow_areny: Tween
 var animacja_strefy: Tween
 var animacja_wysokosci_paletek: Tween
-var postep_animacji_strefy = 0.0
 var bazowe_wysokosci_paletek = Vector2.ZERO
 var animacja_gumowej_sciany: Tween
-var gumowa_sciana_strona = 0
-var gumowa_sciana_y = 0.0
-var gumowa_sciana_ugiecie = 0.0
-var gumowa_sciana_kula_id = 0
-var rozpad_punktu_trwa = false
-var mecz_zakonczony = false
-var online_czas_wejscia = 0.0
-var online_czas_stanu = 0.0
-var online_poprzedni_stan: Dictionary = {}
-var online_aktualny_stan: Dictionary = {}
-var online_komunikat: Label
-var online_czas_etykieta: Label
-var online_czas_pozostaly = 0.0
-var online_tekst_konca = ""
-var online_powrot_zaplany = false
-var online_przewidywane_prawe_y = 0.0
-var online_licznik_odbic_paletka = 0
-var online_licznik_odbic_sciana = 0
-var online_odebrane_odbicia_paletka = 0
-var online_odebrane_odbicia_sciana = 0
-var online_otrzymano_pierwszy_stan = false
+
+
+func pobierz_wynik_gracza() -> int:
+	return przebieg_meczu.wynik_gracza
+
+
+func pobierz_wynik_ai() -> int:
+	return przebieg_meczu.wynik_ai
+
+
+func czy_mecz_zakonczony() -> bool:
+	return przebieg_meczu.mecz_zakonczony
 
 
 func _enter_tree():
+	przygotuj_referencje_sceny()
 	Ustawienia.ustaw_geometrie_planszy()
 	_ustaw_geometrie_sceny()
 
@@ -76,24 +50,38 @@ func _ustaw_geometrie_sceny():
 	var gora = Ustawienia.gorna_granica
 	var dol = Ustawienia.dolna_granica
 
-	var srodek_x = (lewa + prawa) / 2.0
 	var srodek_y = (gora + dol) / 2.0
+
+	_ustaw_sciany_areny(lewa, prawa, gora, dol)
+
+	paletka_gracza.position = Vector2(lewa + ODSTEP_PALETKI, srodek_y)
+	paletka_rywala.position = Vector2(prawa - ODSTEP_PALETKI, srodek_y)
+
+
+func _ustaw_sciany_areny(lewa: float, prawa: float, gora: float, dol: float) -> void:
+	var srodek_x = (lewa + prawa) * 0.5
 	var szerokosc = prawa - lewa
+	sciana_gorna.position = Vector2(srodek_x, gora)
+	sciana_dolna.position = Vector2(srodek_x, dol)
+	_ustaw_ksztalt_sciany(ksztalt_sciany_gornej, szerokosc)
+	_ustaw_ksztalt_sciany(ksztalt_sciany_dolnej, szerokosc)
 
-	$"górna ściana".position = Vector2(srodek_x, gora)
-	$"dolna ściana".position = Vector2(srodek_x, dol)
 
-	_ustaw_ksztalt_sciany(
-		$"górna ściana/CollisionShape2D",
-		szerokosc
-	)
-	_ustaw_ksztalt_sciany(
-		$"dolna ściana/CollisionShape2D",
-		szerokosc
-	)
+func _ogranicz_paletki_pionowo(gora: float, dol: float) -> void:
+	var polowa_gracza = _polowa_wysokosci_paletki(paletka_gracza)
+	var polowa_ai = _polowa_wysokosci_paletki(paletka_rywala)
+	paletka_gracza.position.y = clampf(paletka_gracza.position.y, gora + polowa_gracza, dol - polowa_gracza)
+	paletka_rywala.position.y = clampf(paletka_rywala.position.y, gora + polowa_ai, dol - polowa_ai)
 
-	$Paletka.position = Vector2(lewa + ODSTEP_PALETKI, srodek_y)
-	$PaletkaAI.position = Vector2(prawa - ODSTEP_PALETKI, srodek_y)
+
+func _ogranicz_pilki_do_granic(gora: float, dol: float) -> void:
+	for pilka in get_tree().get_nodes_in_group("pilki"):
+		if pilka.position.y < gora + 13.0:
+			pilka.position.y = gora + 13.0
+			pilka.velocity.y = absf(pilka.velocity.y)
+		elif pilka.position.y > dol - 13.0:
+			pilka.position.y = dol - 13.0
+			pilka.velocity.y = -absf(pilka.velocity.y)
 
 
 func _ustaw_ksztalt_sciany(kolizja: CollisionShape2D, szerokosc: float):
@@ -109,24 +97,9 @@ func ustaw_granice_areny(gora: float, dol: float) -> void:
 	Ustawienia.gorna_granica = gora
 	Ustawienia.dolna_granica = dol
 
-	var srodek_x = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5
-	var szerokosc = Ustawienia.prawa_granica - Ustawienia.lewa_granica
-	$"górna ściana".position = Vector2(srodek_x, gora)
-	$"dolna ściana".position = Vector2(srodek_x, dol)
-	_ustaw_ksztalt_sciany($"górna ściana/CollisionShape2D", szerokosc)
-	_ustaw_ksztalt_sciany($"dolna ściana/CollisionShape2D", szerokosc)
-
-	var polowa_gracza = _polowa_wysokosci_paletki($Paletka)
-	var polowa_ai = _polowa_wysokosci_paletki($PaletkaAI)
-	$Paletka.position.y = clampf($Paletka.position.y, gora + polowa_gracza, dol - polowa_gracza)
-	$PaletkaAI.position.y = clampf($PaletkaAI.position.y, gora + polowa_ai, dol - polowa_ai)
-	for pilka in get_tree().get_nodes_in_group("pilki"):
-		if pilka.position.y < gora + 13.0:
-			pilka.position.y = gora + 13.0
-			pilka.velocity.y = absf(pilka.velocity.y)
-		elif pilka.position.y > dol - 13.0:
-			pilka.position.y = dol - 13.0
-			pilka.velocity.y = -absf(pilka.velocity.y)
+	_ustaw_sciany_areny(Ustawienia.lewa_granica, Ustawienia.prawa_granica, gora, dol)
+	_ogranicz_paletki_pionowo(gora, dol)
+	_ogranicz_pilki_do_granic(gora, dol)
 	_ustaw_etykiety_wyniku()
 	_odswiez_rysowanie()
 
@@ -157,24 +130,11 @@ func ustaw_wymiary_areny(lewa: float, prawa: float, gora: float, dol: float) -> 
 	Ustawienia.prawa_granica = prawa
 	Ustawienia.gorna_granica = gora
 	Ustawienia.dolna_granica = dol
-	var srodek_x = (lewa + prawa) * 0.5
-	_ustaw_ksztalt_sciany($"górna ściana/CollisionShape2D", prawa - lewa)
-	_ustaw_ksztalt_sciany($"dolna ściana/CollisionShape2D", prawa - lewa)
-	$"górna ściana".position = Vector2(srodek_x, gora)
-	$"dolna ściana".position = Vector2(srodek_x, dol)
-	$Paletka.call("ustaw_pozycje_x", lewa + ODSTEP_PALETKI)
-	$PaletkaAI.call("ustaw_pozycje_x", prawa - ODSTEP_PALETKI)
-	var polowa_gracza = _polowa_wysokosci_paletki($Paletka)
-	var polowa_ai = _polowa_wysokosci_paletki($PaletkaAI)
-	$Paletka.position.y = clampf($Paletka.position.y, gora + polowa_gracza, dol - polowa_gracza)
-	$PaletkaAI.position.y = clampf($PaletkaAI.position.y, gora + polowa_ai, dol - polowa_ai)
-	for pilka in get_tree().get_nodes_in_group("pilki"):
-		if pilka.position.y < gora + 13.0:
-			pilka.position.y = gora + 13.0
-			pilka.velocity.y = absf(pilka.velocity.y)
-		elif pilka.position.y > dol - 13.0:
-			pilka.position.y = dol - 13.0
-			pilka.velocity.y = -absf(pilka.velocity.y)
+	_ustaw_sciany_areny(lewa, prawa, gora, dol)
+	paletka_gracza.ustaw_pozycje_x(lewa + ODSTEP_PALETKI)
+	paletka_rywala.ustaw_pozycje_x(prawa - ODSTEP_PALETKI)
+	_ogranicz_paletki_pionowo(gora, dol)
+	_ogranicz_pilki_do_granic(gora, dol)
 	_ustaw_etykiety_wyniku()
 	_odswiez_rysowanie()
 
@@ -218,12 +178,12 @@ func animuj_wysokosc_paletek(proporcja: float, czas: float = 0.45) -> void:
 		animacja_wysokosci_paletek.kill()
 	if bazowe_wysokosci_paletek == Vector2.ZERO:
 		bazowe_wysokosci_paletek = Vector2(
-			_polowa_wysokosci_paletki($Paletka) * 2.0,
-			_polowa_wysokosci_paletki($PaletkaAI) * 2.0
+			_polowa_wysokosci_paletki(paletka_gracza) * 2.0,
+			_polowa_wysokosci_paletki(paletka_rywala) * 2.0
 		)
 	var wysokosci_startowe = Vector2(
-		_polowa_wysokosci_paletki($Paletka) * 2.0,
-		_polowa_wysokosci_paletki($PaletkaAI) * 2.0
+		_polowa_wysokosci_paletki(paletka_gracza) * 2.0,
+		_polowa_wysokosci_paletki(paletka_rywala) * 2.0
 	)
 	var wysokosci_docelowe = bazowe_wysokosci_paletek * proporcja
 	animacja_wysokosci_paletek = create_tween()
@@ -238,14 +198,13 @@ func animuj_wysokosc_paletek(proporcja: float, czas: float = 0.45) -> void:
 
 
 func _ustaw_wysokosci_paletek(wysokosci: Vector2) -> void:
-	$Paletka.call("ustaw_wysokosc", wysokosci.x)
-	$PaletkaAI.call("ustaw_wysokosc", wysokosci.y)
+	paletka_gracza.ustaw_wysokosc(wysokosci.x)
+	paletka_rywala.ustaw_wysokosc(wysokosci.y)
 
 
 func animuj_rozmiar_pilki(proporcja: float, czas: float = 0.55) -> void:
 	for pilka in get_tree().get_nodes_in_group("pilki"):
-		if pilka.has_method("animuj_rozmiar"):
-			pilka.call("animuj_rozmiar", proporcja, czas)
+		(pilka as PilkaAPI).animuj_rozmiar(proporcja, czas)
 
 
 func ustaw_ugiecie_gumowej_sciany(strona: int, y: float, ugiecie: float, kula_id: int) -> void:
@@ -279,23 +238,25 @@ func _ustaw_ugiecie_gumowej_sciany_animowane(ugiecie: float) -> void:
 	_odswiez_rysowanie()
 
 
-func _polowa_wysokosci_paletki(paletka: CharacterBody2D) -> float:
-	var kolizja = paletka.get_node_or_null("CollisionShape2D") as CollisionShape2D
+func _polowa_wysokosci_paletki(paletka: PaletkaBazowa) -> float:
+	var kolizja = paletka.kolizja
 	if kolizja != null and kolizja.shape is RectangleShape2D:
 		return (kolizja.shape as RectangleShape2D).size.y * 0.5
 	return 60.0
 
 
 func _ready():
-	set_process(true)
-
-	$"Piłka".punkt.connect(_on_punkt)
-	$"Piłka".odbicie_gracza.connect(_on_odbicie_gracza)
-	$"Piłka".statystyki_odbicia.connect(_zarejestruj_odbicie)
-	$"Piłka".odbicie_paletki.connect(_online_odnotuj_odbicie_paletki)
-	$"Piłka".odbicie_sciany.connect(_online_odnotuj_odbicie_sciany)
-	ekran_konca.connect("menu_pressed", _on_przycisk_menu)
-	ekran_konca.connect("replay_pressed", _on_przycisk_ponownie)
+	pilka_glowna.punkt.connect(przebieg_meczu._on_punkt)
+	pilka_glowna.odbicie_gracza.connect(przebieg_meczu.zarejestruj_odbicie_endless)
+	pilka_glowna.statystyki_odbicia.connect(przebieg_meczu.zarejestruj_odbicie)
+	pilka_glowna.odbicie_paletki.connect(obsluga_online.odnotuj_odbicie_paletki)
+	pilka_glowna.odbicie_sciany.connect(obsluga_online.odnotuj_odbicie_sciany)
+	ekran_konca.menu_pressed.connect(_on_przycisk_menu)
+	ekran_konca.replay_pressed.connect(_on_przycisk_ponownie)
+	obsluga_online.gra_rozpoczeta.connect(_online_uruchom_gre)
+	obsluga_online.gra_zatrzymana.connect(_online_zatrzymaj_gre)
+	obsluga_online.mecz_zakonczony.connect(przebieg_meczu.zakoncz_mecz)
+	przebieg_meczu.uruchom(self)
 
 	dzwiek_punktu = AudioStreamPlayer.new()
 	dzwiek_punktu.name = "DzwiekPunktu"
@@ -315,39 +276,52 @@ func _ready():
 	)
 
 	if Ustawienia.tryb == "online":
-		online_czas_pozostaly = Siec.limit_czasu_meczu
 		if Ustawienia.online_arena:
-			$CzasBonusu.stop()
-			arena_manager = ARENA_MANAGER_SCRIPT.new()
+			czas_bonusu.stop()
+			arena_manager = ArenaManager.new()
 			arena_manager.name = "ArenaManager"
 			add_child(arena_manager)
-			arena_manager.call("uruchom", self, Siec.czy_klient(), true)
-		_inicjalizuj_online()
+			arena_manager.uruchom(self, Siec.czy_klient(), true)
+		obsluga_online.uruchom(self)
 	elif Ustawienia.tryb == "endless":
-		$PaletkaAI.hide()
-		$PaletkaAI.set_physics_process(false)
-		$PaletkaAI/CollisionShape2D.set_deferred("disabled", true)
-		$CzasBonusu.stop()
-		var ksztalt_paletki = $Paletka/CollisionShape2D.shape as RectangleShape2D
-		if ksztalt_paletki != null:
-			endless_wysokosc_startowa = ksztalt_paletki.size.y
-			endless_wysokosc_aktualna = ksztalt_paletki.size.y
+		paletka_rywala.hide()
+		paletka_rywala.set_physics_process(false)
+		paletka_rywala.kolizja.set_deferred("disabled", true)
+		czas_bonusu.stop()
 	elif Ustawienia.tryb == "arena":
-		$CzasBonusu.stop()
-		arena_manager = ARENA_MANAGER_SCRIPT.new()
+		czas_bonusu.stop()
+		arena_manager = ArenaManager.new()
 		arena_manager.name = "ArenaManager"
 		add_child(arena_manager)
-		arena_manager.call("uruchom", self)
+		arena_manager.uruchom(self)
 	else:
-		$BonusManager.uruchom(self)
-		$"Piłka".runda_rozpoczeta.connect(Callable($BonusManager, "runda_rozpoczeta"))
+		bonus_manager.uruchom(self)
+		pilka_glowna.runda_rozpoczeta.connect(bonus_manager.runda_rozpoczeta)
 		if Ustawienia.tryb == "bot" or (Ustawienia.tryb == "arena" and not Ustawienia.arena_dwoch_graczy):
 			_pokaz_styl_bota()
 
 	_ustaw_etykiety_wyniku()
 	if Ustawienia.tryb == "endless":
-		_dodaj_info_endless()
+		przebieg_meczu.dodaj_info_endless()
 	_odswiez_rysowanie()
+
+
+func _online_uruchom_gre() -> void:
+	paletka_gracza.set_physics_process(true)
+	paletka_rywala.set_physics_process(true)
+	if arena_manager != null:
+		arena_manager.rozpocznij()
+	pilka_glowna.reset()
+	pilka_glowna.set_physics_process(true)
+
+
+func _online_zatrzymaj_gre() -> void:
+	paletka_gracza.set_physics_process(false)
+	paletka_rywala.set_physics_process(false)
+	pilka_glowna.set_physics_process(false)
+	if arena_manager != null:
+		arena_manager.set_process(false)
+		arena_manager.set_physics_process(false)
 
 
 func _stworz_odtwarzacz_efektu(nazwa: String, strumien: AudioStream, glosnosc_db: float) -> AudioStreamPlayer:
@@ -362,6 +336,14 @@ func _stworz_odtwarzacz_efektu(nazwa: String, strumien: AudioStream, glosnosc_db
 
 func odtworz_dzwiek_bonusu() -> void:
 	dzwiek_bonusu.play()
+
+
+func odtworz_dzwiek_punktu() -> void:
+	dzwiek_punktu.play()
+
+
+func ustaw_tekst_konca_online(tekst: String) -> void:
+	obsluga_online.ustaw_tekst_konca(tekst)
 
 
 func odtworz_dzwiek_modyfikatora() -> void:
@@ -475,19 +457,6 @@ func ukryj_informacje_graczowi() -> void:
 		panel_informacyjny = null
 
 
-func _zarejestruj_odbicie(strona: String, mocne: bool) -> void:
-	if strona == "gracz":
-		stat_odbicia_gracza += 1
-		if mocne:
-			stat_mocne_odbicia_gracza += 1
-	else:
-		stat_odbicia_rywala += 1
-		if mocne:
-			stat_mocne_odbicia_rywala += 1
-	biezaca_wymiana += 1
-	najdluzsza_wymiana = maxi(najdluzsza_wymiana, biezaca_wymiana)
-
-
 func _prostokat_karty_wyniku(numer_karty: int) -> Rect2:
 	var szerokosc = 84.0
 	var wysokosc = clampf(Ustawienia.gorna_granica - 32.0, 38.0, 54.0)
@@ -519,23 +488,23 @@ func _czy_tryb_areny() -> bool:
 
 func _ustaw_etykiety_wyniku():
 	if Ustawienia.tryb in ["arena", "online"]:
-		$WynikGracza.hide()
-		$WynikAI.hide()
+		etykieta_wyniku_gracza.hide()
+		etykieta_wyniku_rywala.hide()
 		return
-	$WynikGracza.show()
-	$WynikAI.show()
+	etykieta_wyniku_gracza.show()
+	etykieta_wyniku_rywala.show()
 	if Ustawienia.tryb == "endless":
-		$WynikGracza.text = str(wynik_gracza)
-		$WynikAI.text = str(Ustawienia.rekord_endless)
-		$WynikGracza.add_theme_font_size_override("font_size", 36)
-		$WynikAI.add_theme_font_size_override("font_size", 36)
-		_ustaw_etykiete($WynikGracza, _prostokat_karty_wyniku(0), KOLOR_GRACZA)
-		_ustaw_etykiete($WynikAI, _prostokat_karty_wyniku(1), Color("#c4b5fd"))
+		etykieta_wyniku_gracza.text = str(wynik_gracza)
+		etykieta_wyniku_rywala.text = str(Ustawienia.rekord_endless)
+		etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
+		etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
+		_ustaw_etykiete(etykieta_wyniku_gracza, _prostokat_karty_wyniku(0), KOLOR_GRACZA)
+		_ustaw_etykiete(etykieta_wyniku_rywala, _prostokat_karty_wyniku(1), Color("#c4b5fd"))
 		return
-	_ustaw_etykiete($WynikGracza, _prostokat_karty_wyniku(0), KOLOR_GRACZA)
-	_ustaw_etykiete($WynikAI, _prostokat_karty_wyniku(1), KOLOR_AI)
-	$WynikGracza.add_theme_font_size_override("font_size", 36)
-	$WynikAI.add_theme_font_size_override("font_size", 36)
+	_ustaw_etykiete(etykieta_wyniku_gracza, _prostokat_karty_wyniku(0), KOLOR_GRACZA)
+	_ustaw_etykiete(etykieta_wyniku_rywala, _prostokat_karty_wyniku(1), KOLOR_AI)
+	etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
+	etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
 
 
 func _ustaw_etykiete(etykieta: Label, karta: Rect2, kolor: Color):
@@ -551,142 +520,20 @@ func _ustaw_etykiete(etykieta: Label, karta: Rect2, kolor: Color):
 	etykieta.z_index = 10
 
 
-func _on_punkt(strona):
-	if mecz_zakonczony:
-		return
-	rozpad_punktu_trwa = false
-	if Ustawienia.tryb == "endless":
-		_zakoncz_endless()
-		return
-
-	dzwiek_punktu.play()
-	biezaca_wymiana = 0
-
-	if strona == "lewa":
-		wynik_ai += 1
-	else:
-		wynik_gracza += 1
-
-	$WynikGracza.text = str(wynik_gracza)
-	$WynikAI.text = str(wynik_ai)
-	_odswiez_rysowanie()
-	if Ustawienia.tryb != "online":
-		$BonusManager.wyczysc_po_punkcie()
-	_odswiez_rysowanie()
-	if arena_manager != null:
-		arena_manager.call("po_zdobyciu_punktu")
-
-	var pilka_glowna = $"Piłka"
-
-	for pilka in get_tree().get_nodes_in_group("pilki"):
-		if pilka != pilka_glowna:
-			pilka.queue_free()
-
-	var z_botem = Ustawienia.tryb == "bot" or (Ustawienia.tryb == "arena" and not Ustawienia.arena_dwoch_graczy)
-
-	if Ustawienia.tryb == "online" and Siec.warunek_meczu == "czas":
-		$Paletka.set_physics_process(true)
-		$PaletkaAI.set_physics_process(true)
-		pilka_glowna.set_physics_process(true)
-		pilka_glowna.reset()
-	elif Ustawienia.tryb == "online" and wynik_gracza >= Siec.limit_punktow_meczu:
-		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_1)
-	elif Ustawienia.tryb == "online" and wynik_ai >= Siec.limit_punktow_meczu:
-		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_2)
-	elif wynik_gracza >= Ustawienia.limit_punktow:
-		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_1 if Ustawienia.tryb == "online" else ("Wygrałeś!" if z_botem else "Wygrywa gracz 1!"))
-	elif wynik_ai >= Ustawienia.limit_punktow:
-		koniec_gry("Wygrywa %s!" % Siec.nazwa_gracza_2 if Ustawienia.tryb == "online" else ("Przegrałeś!" if z_botem else "Wygrywa gracz 2!"))
-	else:
-		$Paletka.set_physics_process(true)
-		$PaletkaAI.set_physics_process(true)
-		pilka_glowna.set_physics_process(true)
-		pilka_glowna.reset()
-
-
-func rozpocznij_rozpad_pilki(pilka_punktujaca: Node) -> bool:
+func rozpocznij_rozpad_pilki(pilka_punktujaca: PilkaAPI) -> bool:
 	if rozpad_punktu_trwa or mecz_zakonczony:
 		return false
 	rozpad_punktu_trwa = true
 	for pilka in get_tree().get_nodes_in_group("pilki"):
 		if pilka != pilka_punktujaca:
 			pilka.set_physics_process(false)
-	$Paletka.set_physics_process(false)
-	$PaletkaAI.set_physics_process(false)
-	$BonusManager.zatrzymaj()
+	paletka_gracza.set_physics_process(false)
+	paletka_rywala.set_physics_process(false)
+	bonus_manager.zatrzymaj()
 	return true
 
 
-func _dodaj_info_endless():
-	endless_info = Label.new()
-	endless_info.name = "InformacjaEndless"
-	endless_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	endless_info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	endless_info.add_theme_font_size_override("font_size", 14)
-	endless_info.add_theme_color_override("font_color", Color("#a9bdd0"))
-	endless_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	endless_info.z_index = 10
-	add_child(endless_info)
-	get_viewport().size_changed.connect(_ustaw_pozycje_info_endless)
-	_ustaw_pozycje_info_endless()
-	_odswiez_info_endless()
-
-
-func _ustaw_pozycje_info_endless():
-	if endless_info == null:
-		return
-	var wymiar = get_viewport_rect().size
-	endless_info.position = Vector2(24.0, minf(Ustawienia.dolna_granica + 18.0, wymiar.y - 42.0))
-	endless_info.size = Vector2(wymiar.x - 48.0, 24.0)
-
-
-func _odswiez_info_endless():
-	if endless_info == null:
-		return
-	var pilka = $"Piłka"
-	var predkosc_razy = pilka.predkosc / PREDKOSC_BAZOWA_ENDLESS
-	var procent_paletki = 100
-	if endless_wysokosc_startowa > 0.0:
-		procent_paletki = roundi(endless_wysokosc_aktualna / endless_wysokosc_startowa * 100.0)
-	endless_info.text = "Idealne trafienie: +2 pkt   ·   Prędkość ×%.2f   ·   Paletka %d%%   ·   Przyspieszenie co 5 odbić, skrócenie co 12" % [predkosc_razy, procent_paletki]
-
-
-func _on_odbicie_gracza(perfect_hit: bool):
-	if Ustawienia.tryb != "endless" or mecz_zakonczony:
-		return
-
-	endless_odbicia += 1
-	wynik_gracza += (3 if perfect_hit else 1)
-	$WynikGracza.text = str(wynik_gracza)
-	$WynikAI.text = str(Ustawienia.rekord_endless)
-
-	if endless_odbicia % 5 == 0:
-		$"Piłka".przyspiesz(1.08)
-	if endless_odbicia % 12 == 0:
-		_zmniejsz_paletke_endless()
-	_odswiez_info_endless()
-
-
-func _zmniejsz_paletke_endless():
-	var etap = floori(float(endless_odbicia) / 12.0)
-	var mnoznik = maxf(0.6, 1.0 - float(etap) * 0.08)
-	endless_wysokosc_aktualna = endless_wysokosc_startowa * mnoznik
-	$Paletka.call_deferred("ustaw_wysokosc", endless_wysokosc_aktualna)
-
-
-func _zakoncz_endless():
-	var nowy_rekord = wynik_gracza > Ustawienia.rekord_endless
-	if nowy_rekord:
-		Ustawienia.rekord_endless = wynik_gracza
-		Ustawienia.zapisz()
-	$WynikAI.text = str(Ustawienia.rekord_endless)
-	if nowy_rekord:
-		koniec_gry("Nowy rekord!")
-	else:
-		koniec_gry("Koniec próby")
-
-
-func dodaj_dodatkowa_pilke(pilka_zrodlowa, pozycja_bonusu: Vector2):
+func dodaj_dodatkowa_pilke(pilka_zrodlowa: PilkaAPI, pozycja_bonusu: Vector2) -> void:
 	var nowa_pilka = SCENA_PILKI.instantiate()
 	add_child(nowa_pilka)
 	nowa_pilka.czas_rundy = pilka_zrodlowa.czas_rundy
@@ -708,354 +555,17 @@ func dodaj_dodatkowa_pilke(pilka_zrodlowa, pozycja_bonusu: Vector2):
 
 	nowa_pilka.intro_aktywne = false
 	nowa_pilka.queue_redraw()
-	nowa_pilka.punkt.connect(_on_punkt)
-	nowa_pilka.statystyki_odbicia.connect(_zarejestruj_odbicie)
+	nowa_pilka.punkt.connect(przebieg_meczu._on_punkt)
+	nowa_pilka.statystyki_odbicia.connect(przebieg_meczu.zarejestruj_odbicie)
 
 	get_tree().create_timer(CZAS_DODATKOWEJ_PILKI, false).timeout.connect(
 		nowa_pilka.queue_free
 	)
 
 
-func koniec_gry(tekst: String) -> void:
-	mecz_zakonczony = true
-	if Ustawienia.tryb == "online":
-		online_tekst_konca = tekst
-	$WynikGracza.hide()
-	$WynikAI.hide()
-	var dane_podsumowania = {
-		"tryb": Ustawienia.tryb,
-		"czas_meczu": czas_meczu,
-		"wynik_gracza": wynik_gracza,
-		"wynik_ai": wynik_ai,
-		"odbicia_lacznie": stat_odbicia_gracza + stat_odbicia_rywala,
-		"mocne_odbicia_lacznie": stat_mocne_odbicia_gracza + stat_mocne_odbicia_rywala,
-		"rekord_endless": Ustawienia.rekord_endless,
-		"najdluzsza_wymiana": najdluzsza_wymiana
-	}
-	ekran_konca.call("pokaz", tekst, dane_podsumowania)
-	if is_instance_valid(endless_info):
-		endless_info.hide()
-	ukryj_informacje_graczowi()
-	_odswiez_rysowanie()
-	$BonusManager.zatrzymaj()
-	if arena_manager != null:
-		arena_manager.call("zatrzymaj")
-	for pilka in get_tree().get_nodes_in_group("pilki"):
-		pilka.set_physics_process(false)
-	$Paletka.set_physics_process(false)
-	$PaletkaAI.set_physics_process(false)
-
-
 func _odswiez_rysowanie() -> void:
 	if is_instance_valid(rysowanie_areny):
 		rysowanie_areny.queue_redraw()
-
-
-func _process(delta: float) -> void:
-	if not mecz_zakonczony:
-		czas_meczu += delta
-	if Ustawienia.tryb == "online":
-		if Siec.czy_host() and Siec.warunek_meczu == "czas" and not multiplayer.get_peers().is_empty() and not mecz_zakonczony:
-			Siec.pozostaly_czas_meczu = maxf(0.0, Siec.pozostaly_czas_meczu - delta)
-			online_czas_pozostaly = Siec.pozostaly_czas_meczu
-			if online_czas_pozostaly <= 0.0:
-				koniec_gry(_tekst_wyniku_po_czasie())
-		_odswiez_etykiete_czasu_online()
-		_online_obsluz(delta)
-
-
-func _inicjalizuj_online() -> void:
-	_utworz_komunikat_online()
-	Siec.gracz_polaczyl.connect(_online_gracz_polaczyl)
-	Siec.gracz_rozlaczyl.connect(_online_gracz_rozlaczyl)
-	Siec.polaczono_z_hostem.connect(_online_polaczono)
-	Siec.host_rozlaczyl.connect(_online_host_rozlaczyl)
-	Siec.nazwa_gracza_2_zmieniona.connect(_online_zmieniono_nazwe_gracza)
-
-	$Paletka.set_physics_process(false)
-	$PaletkaAI.set_physics_process(false)
-	$"Piłka".set_physics_process(false)
-	$BonusManager.set_process(false)
-	$BonusManager.set_physics_process(false)
-
-	if Siec.czy_host():
-		_online_ustaw_komunikat("Oczekiwanie na drugiego gracza", Color("#55e7ff"))
-		var polaczeni = multiplayer.get_peers()
-		if not polaczeni.is_empty():
-			_online_gracz_polaczyl(polaczeni[0])
-	else:
-		online_przewidywane_prawe_y = $PaletkaAI.position.y
-		_online_ustaw_komunikat("Łączenie z hostem…", Color("#55e7ff"))
-		if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
-			_online_polaczono()
-
-
-func _utworz_komunikat_online() -> void:
-	var warstwa = CanvasLayer.new()
-	warstwa.name = "WarstwaStatusuOnline"
-	warstwa.layer = 20
-	add_child(warstwa)
-	online_komunikat = Label.new()
-	online_komunikat.name = "StatusOnline"
-	online_komunikat.position = Vector2(0.0, 0.0)
-	online_komunikat.size = Vector2(get_viewport_rect().size.x, 26.0)
-	online_komunikat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	online_komunikat.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	online_komunikat.add_theme_font_override("font", FONT_ARCADE)
-	online_komunikat.add_theme_font_size_override("font_size", 13)
-	online_komunikat.add_theme_color_override("font_color", Color("#55e7ff"))
-	warstwa.add_child(online_komunikat)
-	online_czas_etykieta = Label.new()
-	online_czas_etykieta.name = "WarunekMeczuOnline"
-	online_czas_etykieta.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	online_czas_etykieta.offset_top = 78.0
-	online_czas_etykieta.offset_bottom = 106.0
-	online_czas_etykieta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	online_czas_etykieta.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	online_czas_etykieta.add_theme_font_override("font", FONT_ARCADE)
-	online_czas_etykieta.add_theme_font_size_override("font_size", 20)
-	online_czas_etykieta.add_theme_color_override("font_color", Color("#ffd27a"))
-	warstwa.add_child(online_czas_etykieta)
-	_odswiez_etykiete_czasu_online()
-
-
-func _odswiez_etykiete_czasu_online() -> void:
-	if not is_instance_valid(online_czas_etykieta):
-		return
-	if Siec.warunek_meczu == "czas":
-		var sekundy = maxi(0, ceili(online_czas_pozostaly))
-		var minuty = floori(float(sekundy) / 60.0)
-		online_czas_etykieta.text = "%02d:%02d" % [minuty, sekundy % 60]
-	else:
-		online_czas_etykieta.text = "Do %d punktów" % Siec.limit_punktow_meczu
-
-
-func _tekst_wyniku_po_czasie() -> String:
-	if wynik_gracza > wynik_ai:
-		return "Koniec czasu — wygrywa %s!" % Siec.nazwa_gracza_1
-	if wynik_ai > wynik_gracza:
-		return "Koniec czasu — wygrywa %s!" % Siec.nazwa_gracza_2
-	return "Koniec czasu — remis!"
-
-
-func _online_ustaw_komunikat(tekst: String, kolor: Color = Color("#55e7ff")) -> void:
-	if not is_instance_valid(online_komunikat):
-		return
-	online_komunikat.text = tekst
-	online_komunikat.add_theme_color_override("font_color", kolor)
-	online_komunikat.show()
-
-
-func _online_gracz_polaczyl(id: int) -> void:
-	if not Siec.czy_host() or not multiplayer.get_peers().has(id):
-		return
-	_online_ustaw_komunikat("Gracz dołączył — powodzenia!", Color("#55e7ff"))
-	get_tree().create_timer(2.0).timeout.connect(func():
-		if is_instance_valid(online_komunikat) and online_komunikat.text == "Gracz dołączył — powodzenia!":
-			online_komunikat.hide()
-	)
-	$Paletka.set_physics_process(true)
-	$PaletkaAI.set_physics_process(true)
-	if arena_manager != null:
-		arena_manager.call("rozpocznij")
-	$"Piłka".reset()
-	$"Piłka".set_physics_process(true)
-
-
-func _online_zmieniono_nazwe_gracza(_nazwa: String) -> void:
-	_odswiez_rysowanie()
-
-
-func _online_gracz_rozlaczyl(id: int) -> void:
-	if not Siec.czy_host():
-		return
-	$PaletkaAI.sieciowy_kierunek = 0.0
-	$PaletkaAI.sieciowy_dash_zadany = false
-	$Paletka.set_physics_process(false)
-	$PaletkaAI.set_physics_process(false)
-	$"Piłka".set_physics_process(false)
-	if arena_manager != null:
-		arena_manager.set_process(false)
-		arena_manager.set_physics_process(false)
-	_online_ustaw_komunikat("Gracz rozłączony — oczekiwanie na kolejnego", Color("#ffb454"))
-
-
-func _online_polaczono() -> void:
-	if Siec.czy_klient():
-		_online_ustaw_komunikat("Połączono z hostem", Color("#55e7ff"))
-
-
-func _online_host_rozlaczyl() -> void:
-	if not Siec.czy_klient() or online_powrot_zaplany:
-		return
-	online_powrot_zaplany = true
-	_online_ustaw_komunikat("Host zakończył połączenie — wracam do menu…", Color("#ff647a"))
-	get_tree().create_timer(2.0).timeout.connect(_online_wroc_do_menu)
-
-
-func _online_wroc_do_menu() -> void:
-	Siec.rozlacz()
-	Ustawienia.tryb = "bot"
-	get_tree().change_scene_to_file("res://menu.tscn")
-
-
-func _online_obsluz(delta: float) -> void:
-	if Siec.czy_klient():
-		if online_komunikat.text == "Połączono z hostem":
-			online_komunikat.hide()
-		var kierunek = 0.0 if Siec.pauza_lokalna else Input.get_axis("lewy_gora", "lewy_dol")
-		online_czas_wejscia += delta
-		if online_czas_wejscia >= 1.0 / 30.0 and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
-			online_czas_wejscia = 0.0
-			rpc_id(1, "online_ustaw_kierunek", kierunek)
-		if not Siec.pauza_lokalna and Input.is_action_just_pressed("dash_gracza_1") and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
-			rpc_id(1, "online_zadaj_dash")
-			if $PaletkaAI.dash_odnowienie <= 0.0:
-				var dash_kierunek = signf(kierunek) if not is_zero_approx(kierunek) else $PaletkaAI.ostatni_kierunek
-				$PaletkaAI._rozpocznij_dash(dash_kierunek)
-		if not Siec.pauza_lokalna and not is_zero_approx(kierunek):
-			$PaletkaAI.ostatni_kierunek = signf(kierunek)
-		if $PaletkaAI.dash_aktywne:
-			$PaletkaAI._aktualizuj_dash(delta)
-			$PaletkaAI.position.y += $PaletkaAI.velocity.y * delta
-			$PaletkaAI._ogranicz_pozycje_y()
-			online_przewidywane_prawe_y = $PaletkaAI.position.y
-		else:
-			var polowa_paletki = $PaletkaAI._polowa_wysokosci_paletki()
-			online_przewidywane_prawe_y = clampf(
-				online_przewidywane_prawe_y + kierunek * 400.0 * delta,
-				Ustawienia.gorna_granica + polowa_paletki,
-				Ustawienia.dolna_granica - polowa_paletki
-			)
-			$PaletkaAI.position.y = online_przewidywane_prawe_y
-		if not online_aktualny_stan.is_empty():
-			online_czas_stanu += delta
-			var postep = clampf(online_czas_stanu / 0.1, 0.0, 1.0)
-			var poprzednia_pilka: Vector2 = online_poprzedni_stan["pilka"]
-			var aktualna_pilka: Vector2 = online_aktualny_stan["pilka"]
-			$"Piłka".position = poprzednia_pilka.lerp(aktualna_pilka, postep)
-			$Paletka.position.y = lerpf(float(online_poprzedni_stan["lewa_y"]), float(online_aktualny_stan["lewa_y"]), postep)
-		return
-	if not Siec.czy_host() or multiplayer.get_peers().is_empty():
-		return
-	online_czas_wejscia += delta
-	if online_czas_wejscia < 1.0 / 30.0:
-		return
-	online_czas_wejscia = 0.0
-	var dane_areny: Dictionary = arena_manager.call("dane_sieciowe") if arena_manager != null else {}
-	rpc("online_odbierz_stan", {
-		"pilka": $"Piłka".position,
-		"lewa_y": $Paletka.position.y,
-		"prawa_y": $PaletkaAI.position.y,
-		"dash_lewy": $Paletka.dash_odnowienie,
-		"dash_prawy": $PaletkaAI.dash_odnowienie,
-		"wynik_gracza": wynik_gracza,
-		"wynik_ai": wynik_ai,
-		"koniec": mecz_zakonczony,
-		"komunikat_konca": online_tekst_konca,
-		"czas_pozostaly": Siec.pozostaly_czas_meczu,
-		"runda_online": Siec.runda_online,
-		"odbicia_paletki": online_licznik_odbic_paletka,
-		"odbicia_sciany": online_licznik_odbic_sciana,
-		"arena": dane_areny
-	})
-
-
-func _online_odnotuj_odbicie_paletki() -> void:
-	if Ustawienia.tryb == "online" and Siec.czy_host():
-		online_licznik_odbic_paletka += 1
-
-
-func _online_odnotuj_odbicie_sciany() -> void:
-	if Ustawienia.tryb == "online" and Siec.czy_host():
-		online_licznik_odbic_sciana += 1
-
-
-@rpc("any_peer", "call_remote", "unreliable_ordered")
-func online_ustaw_kierunek(kierunek: float) -> void:
-	if not Siec.czy_host() or not _online_nadawca_jest_graczem():
-		return
-	$PaletkaAI.sieciowy_kierunek = clampf(kierunek, -1.0, 1.0)
-
-
-@rpc("any_peer", "call_remote", "reliable")
-func online_zadaj_dash() -> void:
-	if not Siec.czy_host() or not _online_nadawca_jest_graczem():
-		return
-	$PaletkaAI.sieciowy_dash_zadany = true
-
-
-@rpc("any_peer", "call_remote", "reliable")
-func online_zadaj_ponowne() -> void:
-	if not Siec.czy_host() or not _online_nadawca_jest_graczem() or not mecz_zakonczony:
-		return
-	Siec.runda_online += 1
-	Siec.pozostaly_czas_meczu = Siec.limit_czasu_meczu
-	get_tree().reload_current_scene()
-
-
-func _online_nadawca_jest_graczem() -> bool:
-	var polaczeni = multiplayer.get_peers()
-	return not polaczeni.is_empty() and multiplayer.get_remote_sender_id() == polaczeni[0]
-
-
-@rpc("authority", "call_remote", "unreliable_ordered")
-func online_odbierz_stan(stan: Dictionary) -> void:
-	if not Siec.czy_klient():
-		return
-	if arena_manager != null and stan.has("arena"):
-		arena_manager.call("ustaw_stan_zdalny", stan["arena"])
-	if int(stan["runda_online"]) != Siec.runda_online:
-		Siec.runda_online = int(stan["runda_online"])
-		get_tree().reload_current_scene()
-		return
-	if not online_otrzymano_pierwszy_stan:
-		online_odebrane_odbicia_paletka = int(stan["odbicia_paletki"])
-		online_odebrane_odbicia_sciana = int(stan["odbicia_sciany"])
-		online_otrzymano_pierwszy_stan = true
-	var poprzedni_wynik_gracza = int(online_aktualny_stan.get("wynik_gracza", stan["wynik_gracza"]))
-	var poprzedni_wynik_ai = int(online_aktualny_stan.get("wynik_ai", stan["wynik_ai"]))
-	var nowe_odbicia_paletki = int(stan["odbicia_paletki"]) - online_odebrane_odbicia_paletka
-	var nowe_odbicia_sciany = int(stan["odbicia_sciany"]) - online_odebrane_odbicia_sciana
-	var poprzedni_cooldown_gracza = $Paletka.dash_odnowienie
-	var poprzedni_cooldown_dasha = $PaletkaAI.dash_odnowienie
-	var autorytatywna_pozycja_prawej = float(stan["prawa_y"])
-	online_przewidywane_prawe_y += clampf(autorytatywna_pozycja_prawej - online_przewidywane_prawe_y, -65.0, 65.0) * 0.4
-	if not online_aktualny_stan.is_empty():
-		online_poprzedni_stan = online_aktualny_stan.duplicate()
-	else:
-		online_poprzedni_stan = stan.duplicate()
-	online_aktualny_stan = stan
-	online_czas_stanu = 0.0
-	$WynikGracza.text = str(stan["wynik_gracza"])
-	$WynikAI.text = str(stan["wynik_ai"])
-	online_czas_pozostaly = float(stan.get("czas_pozostaly", online_czas_pozostaly))
-	_odswiez_etykiete_czasu_online()
-	$Paletka.dash_odnowienie = float(stan["dash_lewy"])
-	$PaletkaAI.dash_odnowienie = float(stan["dash_prawy"])
-	if poprzedni_cooldown_gracza <= 0.0 and $Paletka.dash_odnowienie > 0.0:
-		if not online_poprzedni_stan.is_empty():
-			$Paletka.dash_efekt_kierunek = signf(float(stan["lewa_y"]) - float(online_poprzedni_stan["lewa_y"]))
-		$Paletka.dash_efekt_czas = 0.28
-		$Paletka.dzwiek_dasha.play()
-		$Paletka.queue_redraw()
-	if poprzedni_cooldown_dasha <= 0.0 and $PaletkaAI.dash_odnowienie > 0.0:
-		if not online_poprzedni_stan.is_empty():
-			$PaletkaAI.dash_efekt_kierunek = signf(float(stan["prawa_y"]) - float(online_poprzedni_stan["prawa_y"]))
-		$PaletkaAI.dash_efekt_czas = 0.28
-		$PaletkaAI.dzwiek_dasha.play()
-		$PaletkaAI.queue_redraw()
-	$WskaznikiDasha.queue_redraw()
-	if nowe_odbicia_paletki > 0:
-		$"Piłka"/DzwiekPaletka.play()
-	if nowe_odbicia_sciany > 0:
-		$"Piłka"/DzwiekSciana.play()
-	online_odebrane_odbicia_paletka = int(stan["odbicia_paletki"])
-	online_odebrane_odbicia_sciana = int(stan["odbicia_sciany"])
-	if int(stan["wynik_gracza"]) != poprzedni_wynik_gracza or int(stan["wynik_ai"]) != poprzedni_wynik_ai:
-		dzwiek_punktu.play()
-	if stan["koniec"] and not mecz_zakonczony:
-		koniec_gry(str(stan.get("komunikat_konca", "Koniec meczu — wynik %d : %d" % [stan["wynik_gracza"], stan["wynik_ai"]])))
 
 
 func _on_przycisk_menu():
@@ -1069,11 +579,6 @@ func _on_przycisk_ponownie():
 	get_tree().paused = false
 	if Ustawienia.tryb == "online":
 		Siec.pauza_lokalna = false
-		if Siec.czy_klient():
-			_online_ustaw_komunikat("Prośba o ponowne rozpoczęcie meczu…", Color("#55e7ff"))
-			rpc_id(1, "online_zadaj_ponowne")
+		if obsluga_online.ponow_rozgrywke():
 			return
-		if Siec.czy_host():
-			Siec.runda_online += 1
-			Siec.pozostaly_czas_meczu = Siec.limit_czasu_meczu
 	get_tree().reload_current_scene()

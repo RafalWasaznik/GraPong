@@ -1,7 +1,7 @@
+class_name BonusManager
 extends Node
 
-const BONUS = preload("res://bonus.tscn")
-const BONUS_DWIE_PILKI = preload("res://bonus_dwie_pilki.tscn")
+const BONUS_KULKI = preload("res://bonusy_kulki.tscn")
 
 const MAKS_BONUSOW_NA_PLANSZY = 2
 const ODLEGLOSC_MIEDZY_BONUSAMI = 64.0
@@ -13,15 +13,15 @@ const MAKS_ODSTEP_LOSOWANIA = 8.0
 const MARGINES_BOCZNY = 90.0
 const MARGINES_GORNY_DOLNY = 40.0
 
-var gra: Node2D
+var gra: GraPongAPI
 var zegar: Timer
 var runda_aktywna = false
 var oczekiwanie_na_pierwsza_loterie = false
 
 
-func uruchom(gra_glowna: Node2D) -> void:
+func uruchom(gra_glowna: GraPongAPI) -> void:
 	gra = gra_glowna
-	zegar = gra.get_node_or_null("CzasBonusu") as Timer
+	zegar = gra.czas_bonusu
 
 	if zegar == null:
 		push_error("BonusManager nie znalazł timera CzasBonusu.")
@@ -77,13 +77,8 @@ func _pojaw_bonus() -> void:
 
 	if aktywne_bonusy.size() < MAKS_BONUSOW_NA_PLANSZY:
 		var bonus_dwoch_pilek = randf() >= 0.75
-		var bonus
-
-		if bonus_dwoch_pilek:
-			bonus = BONUS_DWIE_PILKI.instantiate()
-		else:
-			bonus = BONUS.instantiate()
-
+		var bonus := BONUS_KULKI.instantiate() as BonusKulki
+		bonus.typ = BonusKulki.TypBonusu.DWIE_PILKI if bonus_dwoch_pilek else BonusKulki.TypBonusu.PRZYSPIESZENIE
 		bonus.position = _losuj_pozycje_bonusu(aktywne_bonusy, bonus_dwoch_pilek)
 		gra.add_child(bonus)
 

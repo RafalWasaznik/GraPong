@@ -1,4 +1,7 @@
-extends CharacterBody2D
+class_name Pilka
+extends PilkaAPI
+
+@onready var gra: GraPongAPI = get_parent() as GraPongAPI
 
 signal punkt(strona)
 signal odbicie_gracza(perfect_hit: bool)
@@ -126,7 +129,7 @@ func _draw():
 		draw_arc(Vector2.ZERO, 19.0, 0.0, TAU, 40, Color(1.0, 0.78, 0.3, alfa_strefy), 2.5, true)
 
 
-func reset():
+func reset() -> void:
 	set_physics_process(true)
 	set_process(false)
 	czas_rundy = 0.0
@@ -155,7 +158,7 @@ func reset():
 	queue_redraw()
 
 
-func przyspiesz(mnoznik: float = 1.15):
+func przyspiesz(mnoznik: float = 1.15) -> void:
 	predkosc = min(predkosc * mnoznik, MAX_SPEED)
 
 	if velocity.length() > 0.0:
@@ -198,11 +201,25 @@ func pokaz_efekt_mocnego_odbicia() -> void:
 	queue_redraw()
 
 
-func dodaj_dodatkowa_pilke(pozycja_bonusu: Vector2):
-	var scena_glowna = get_parent()
+func dodaj_dodatkowa_pilke(pozycja_bonusu: Vector2) -> void:
+	var scena_glowna := get_parent() as GraPongAPI
+	scena_glowna.dodaj_dodatkowa_pilke(self, pozycja_bonusu)
 
-	if scena_glowna.has_method("dodaj_dodatkowa_pilke"):
-		scena_glowna.dodaj_dodatkowa_pilke(self, pozycja_bonusu)
+
+func _mnoznik_przyspieszenia_za_czas() -> float:
+	return minf(
+		pow(MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE, czas_rundy),
+		MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY
+	)
+
+
+func mnoznik_ruchu_chwilowy() -> float:
+	var mnoznik_areny = 1.0
+	if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
+		var manager_areny := gra.arena_manager
+		if manager_areny != null:
+			mnoznik_areny = manager_areny.mnoznik_predkosci()
+	return _mnoznik_przyspieszenia_za_czas() * mnoznik_areny
 
 
 func _physics_process(delta):
@@ -219,16 +236,13 @@ func _physics_process(delta):
 		return
 
 	czas_rundy += delta
-	var mnoznik_przyspieszenia_rundy = minf(
-		pow(MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE, czas_rundy),
-		MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY
-	)
+	var mnoznik_przyspieszenia_rundy = _mnoznik_przyspieszenia_za_czas()
 
 	var mnoznik_predkosci_areny = 1.0
 	if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
-		var manager_areny = get_parent().get_node_or_null("ArenaManager")
+		var manager_areny := gra.arena_manager
 		if manager_areny != null:
-			mnoznik_predkosci_areny = float(manager_areny.call("przygotuj_pilke", self, delta))
+			mnoznik_predkosci_areny = manager_areny.przygotuj_pilke(self, delta)
 
 	var mnoznik_ruchu = mnoznik_predkosci_areny * mnoznik_przyspieszenia_rundy
 	var collision = move_and_collide(velocity * delta * mnoznik_ruchu)
@@ -247,8 +261,8 @@ func _physics_process(delta):
 				obiekt,
 				collision.get_position()
 			)
-			if obiekt.has_method("efekt_odbicia"):
-				obiekt.call("efekt_odbicia", perfect_hit)
+			if obiekt is PaletkaBazowa:
+				(obiekt as PaletkaBazowa).efekt_odbicia(perfect_hit)
 			odbicie_paletki.emit()
 			statystyki_odbicia.emit("gracz" if obiekt.name == "Paletka" else "rywal", perfect_hit)
 			if Ustawienia.tryb == "endless" and obiekt.name == "Paletka":
@@ -264,9 +278,9 @@ func _physics_process(delta):
 		else:
 			velocity = velocity.bounce(normalna)
 			if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
-				var manager_areny = get_parent().get_node_or_null("ArenaManager")
+				var manager_areny := gra.arena_manager
 				if manager_areny != null:
-					manager_areny.call("wzmocnij_odbicie_od_sciany", self, str(obiekt.name))
+					manager_areny.wzmocnij_odbicie_od_sciany(self, str(obiekt.name))
 			$DzwiekSciana.play()
 			odbicie_sciany.emit()
 
@@ -293,11 +307,10 @@ func _physics_process(delta):
 func _rozpocznij_rozpad_punktu(strona: String) -> void:
 	if rozpad_aktywny:
 		return
-	var scena_glowna = get_parent()
-	if scena_glowna.has_method("rozpocznij_rozpad_pilki"):
-		if not bool(scena_glowna.call("rozpocznij_rozpad_pilki", self)):
-			set_physics_process(false)
-			return
+	var scena_glowna := get_parent() as GraPongAPI
+	if not scena_glowna.rozpocznij_rozpad_pilki(self):
+		set_physics_process(false)
+		return
 
 	_odpusc_gumowa_sciane()
 	slady_pozycji.clear()
@@ -365,9 +378,8 @@ func _aktualizuj_kontakt_z_gumowa_sciana(mnoznik_predkosci: float, delta: float)
 		if not is_equal_approx(deformacja_gumowa_pilki, nowa_deformacja):
 			deformacja_gumowa_pilki = nowa_deformacja
 			queue_redraw()
-		var scena_glowna = get_parent()
-		if scena_glowna.has_method("ustaw_ugiecie_gumowej_sciany"):
-			scena_glowna.call("ustaw_ugiecie_gumowej_sciany", strona, position.y, ugiecie, get_instance_id())
+		var scena_glowna := get_parent() as GraPongAPI
+		scena_glowna.ustaw_ugiecie_gumowej_sciany(strona, position.y, ugiecie, get_instance_id())
 		zglasza_kontakt_z_guma = true
 	else:
 		if zglasza_kontakt_z_guma:
@@ -381,9 +393,8 @@ func _odpusc_gumowa_sciane() -> void:
 	if not zglasza_kontakt_z_guma:
 		return
 	zglasza_kontakt_z_guma = false
-	var scena_glowna = get_parent()
-	if scena_glowna.has_method("odpusc_gumowa_sciane"):
-		scena_glowna.call("odpusc_gumowa_sciane", get_instance_id())
+	var scena_glowna := get_parent() as GraPongAPI
+	scena_glowna.odpusc_gumowa_sciane(get_instance_id())
 
 
 func _dodaj_probke_sladu() -> void:
@@ -399,7 +410,7 @@ func _odbicie_od_paletki(
 	punkt_kontaktu: Vector2
 ) -> bool:
 	var polowa_wysokosci = 60.0
-	var kolizja = paletka.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	var kolizja = paletka.kolizja
 
 	if kolizja != null and kolizja.shape is RectangleShape2D:
 		polowa_wysokosci = (kolizja.shape as RectangleShape2D).size.y / 2.0

@@ -1,13 +1,10 @@
+class_name MenuGlowne
 extends Control
 
 const CHARAKTERY_BOTA = ["defensywny", "ofensywny", "agresywny", "nieprzewidywalny"]
-const KOLOR_TLA_NEON = Color("#050914")
 const KOLOR_TURKUS_NEON = Color("#55e7ff")
 const KOLOR_FIOLET_NEON = Color("#ad83ff")
 const KOLOR_ROZ_NEON = Color("#ff5fb7")
-const KOLOR_PILKI_DEMO = Color("#ffd166")
-const KOLOR_BLYSKU_DEMO = Color("#fff0a8")
-const DEMO_MAX_PRZESZKOD = 15
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 const DZWIEK_MENU_GENERATOR = preload("res://dzwiek_menu.gd")
 
@@ -17,6 +14,8 @@ const DZWIEK_MENU_GENERATOR = preload("res://dzwiek_menu.gd")
 @onready var opcje_jeden_gracz = $CenterContainer/OpcjeJedenGracz
 @onready var opcje_dwoch_graczy = $CenterContainer/OpcjeDwochGraczy
 @onready var ekran_ustawien = $CenterContainer/EkranUstawien
+@onready var konfiguracja_online: KonfiguracjaOnline = $KonfiguracjaOnline
+@onready var tlo_menu: TloMenu = $Tlo
 
 var wybor_gier_jeden: VBoxContainer
 var wybor_gier_dwoch: VBoxContainer
@@ -36,12 +35,9 @@ var wskazowka_warunku_online: Label
 var status_online: Label
 var adresy_hosta_label: Label
 var kopiuj_adres_hosta: Button
-var tryb_online_arena = false
 var przycisk_tryb_online_klasyczny: Button
 var przycisk_tryb_online_arena: Button
-var adres_hosta_do_skopiowania = ""
 var instrukcje_polaczenia: Label
-var tryb_ekranu_online = "wybor"
 var aktywne_ustawienia_bota = "klasyczna"
 var dzwiek_klikniecia: AudioStreamPlayer
 
@@ -52,18 +48,6 @@ var dzwiek_klikniecia: AudioStreamPlayer
 @onready var rozmiar_jeden = $CenterContainer/OpcjeJedenGracz/RozmiarPlanszyJeden
 @onready var rozmiar_dwoch = $CenterContainer/OpcjeDwochGraczy/RozmiarPlanszyDwoch
 
-
-var demo_pilka = Vector2.ZERO
-var demo_predkosc = Vector2(460.0, 260.0)
-var demo_slady: Array[Vector2] = []
-var demo_lewa_y = 0.0
-var demo_prawa_y = 0.0
-var demo_gotowy = false
-var demo_przeszkody: Array[Dictionary] = []
-var demo_poprzednie_miejsca: Array[Vector2] = []
-var demo_czas_do_przeszkody = 1.4
-var przyciemnienie_tla = 0.0
-var docelowe_przyciemnienie = 0.0
 
 
 func _enter_tree():
@@ -157,7 +141,6 @@ func _ready():
 
 	_pokaz_ekran_glowny()
 	_podlacz_dzwiek_klikniecia($CenterContainer)
-	queue_redraw()
 
 
 func _podlacz_dzwiek_klikniecia(wezel: Node) -> void:
@@ -169,160 +152,6 @@ func _podlacz_dzwiek_klikniecia(wezel: Node) -> void:
 
 func _odtworz_dzwiek_klikniecia() -> void:
 	dzwiek_klikniecia.play()
-
-
-func _process(delta):
-	if size.x <= 0.0 or size.y <= 0.0:
-		return
-	if not demo_gotowy:
-		var boisko = _prostokat_boisko()
-		demo_pilka = boisko.get_center()
-		demo_lewa_y = demo_pilka.y
-		demo_prawa_y = demo_pilka.y
-		demo_gotowy = true
-	przyciemnienie_tla = move_toward(przyciemnienie_tla, docelowe_przyciemnienie, delta * 1.8)
-	_symuluj_tlo(delta)
-	queue_redraw()
-
-
-func _draw():
-	draw_rect(Rect2(Vector2.ZERO, size), KOLOR_TLA_NEON, true)
-	draw_circle(Vector2(size.x * 0.12, size.y * 0.18), size.y * 0.42, Color("#183047", 0.12))
-	draw_circle(Vector2(size.x * 0.88, size.y * 0.82), size.y * 0.48, Color("#241c3b", 0.10))
-	if przyciemnienie_tla > 0.01:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.015, 0.03, 0.055, przyciemnienie_tla), true)
-	var boisko = _prostokat_boisko()
-	# Animowana partia zajmuje całe tło. Nie rysujemy obramowania boiska,
-	# które wcześniej tworzyło drugi, nachodzący na menu prostokąt.
-	var paletka_w = clampf(boisko.size.x * 0.012, 12.0, 20.0)
-	var paletka_h = clampf(boisko.size.y * 0.22, 66.0, 116.0)
-	var lewa = Rect2(Vector2(boisko.position.x + 14.0, demo_lewa_y - paletka_h * 0.5), Vector2(paletka_w, paletka_h))
-	var prawa = Rect2(Vector2(boisko.end.x - 14.0 - paletka_w, demo_prawa_y - paletka_h * 0.5), Vector2(paletka_w, paletka_h))
-	draw_rect(lewa.grow(8.0), Color(KOLOR_TURKUS_NEON, 0.2), true)
-	draw_rect(lewa, Color("#40dff5"), true)
-	draw_rect(lewa, Color("#c7faff"), false, 2.0)
-	draw_rect(prawa.grow(8.0), Color(KOLOR_ROZ_NEON, 0.22), true)
-	draw_rect(prawa, Color("#ff4fa3"), true)
-	draw_rect(prawa, Color("#ffe0f1"), false, 2.0)
-	for i in range(demo_slady.size()):
-		var udzial = float(i + 1) / float(demo_slady.size() + 1)
-		draw_circle(demo_slady[i], lerpf(2.0, 7.0, udzial), Color(KOLOR_PILKI_DEMO, udzial * 0.55))
-	for przeszkoda in demo_przeszkody:
-		var miejsce: Vector2 = boisko.position + Vector2(przeszkoda["miejsce"].x * boisko.size.x, przeszkoda["miejsce"].y * boisko.size.y)
-		var blysk: float = przeszkoda["blysk"]
-		var zycie_pozostale: float = float(przeszkoda["zycie"]) - float(przeszkoda["wiek"])
-		var pojawienie: float = float(przeszkoda["pojawienie"]) * clampf(zycie_pozostale / 0.8, 0.0, 1.0)
-		var kolor = KOLOR_BLYSKU_DEMO if blysk > 0.0 else KOLOR_FIOLET_NEON
-		draw_circle(miejsce, 17.0 * pojawienie + blysk * 8.0, Color(kolor, (0.12 + blysk * 0.3) * pojawienie))
-		draw_circle(miejsce, 10.0 * pojawienie, Color("#17152a", pojawienie))
-		draw_circle(miejsce, 8.0 * pojawienie, Color(kolor, (0.72 + blysk * 0.28) * pojawienie), false, 2.0)
-		draw_circle(miejsce, 3.5 * pojawienie, Color.WHITE if blysk > 0.0 else Color(kolor, 0.9 * pojawienie))
-	draw_circle(demo_pilka, 20.0, Color("#ff9f43", 0.34))
-	draw_circle(demo_pilka, 11.0, KOLOR_PILKI_DEMO)
-	draw_circle(demo_pilka, 5.5, Color("#ffffff"))
-
-
-func _prostokat_boisko() -> Rect2:
-	var margines_x = size.x * 0.045
-	var margines_y = size.y * 0.08
-	return Rect2(Vector2(margines_x, margines_y), Vector2(maxf(size.x - margines_x * 2.0, 1.0), maxf(size.y - margines_y * 2.0, 1.0)))
-
-
-func _symuluj_tlo(delta):
-	var boisko = _prostokat_boisko()
-	if demo_przeszkody.size() < DEMO_MAX_PRZESZKOD:
-		demo_czas_do_przeszkody -= delta
-		if demo_czas_do_przeszkody <= 0.0:
-			_dodaj_przeszkode_demo(boisko)
-			demo_czas_do_przeszkody = 0.45
-	for indeks in range(demo_przeszkody.size() - 1, -1, -1):
-		var przeszkoda = demo_przeszkody[indeks]
-		przeszkoda["blysk"] = maxf(float(przeszkoda["blysk"]) - delta, 0.0)
-		przeszkoda["pojawienie"] = minf(float(przeszkoda["pojawienie"]) + delta * 2.5, 1.0)
-		przeszkoda["wiek"] = float(przeszkoda["wiek"]) + delta
-		if float(przeszkoda["wiek"]) >= float(przeszkoda["zycie"]):
-			demo_poprzednie_miejsca.append(przeszkoda["miejsce"])
-			if demo_poprzednie_miejsca.size() > 3:
-				demo_poprzednie_miejsca.pop_front()
-			demo_przeszkody.remove_at(indeks)
-	var paletka_h = clampf(boisko.size.y * 0.22, 66.0, 116.0)
-	var paletka_w = clampf(boisko.size.x * 0.012, 12.0, 20.0)
-	var stara_pozycja = demo_pilka
-	var nowa_pozycja = demo_pilka + demo_predkosc * delta
-	var gora = boisko.position.y + 12.0
-	var dol = boisko.end.y - 12.0
-	if nowa_pozycja.y < gora or nowa_pozycja.y > dol:
-		demo_predkosc.y *= -1.0
-		nowa_pozycja.y = clampf(nowa_pozycja.y, gora, dol)
-	var x_lewej = boisko.position.x + 14.0 + paletka_w
-	var x_prawej = boisko.end.x - 14.0 - paletka_w
-	if demo_predkosc.x < 0.0 and nowa_pozycja.x - 6.0 <= x_lewej and absf(nowa_pozycja.y - demo_lewa_y) <= paletka_h * 0.5 + 8.0:
-		demo_predkosc.x = absf(demo_predkosc.x)
-		demo_predkosc.y += (nowa_pozycja.y - demo_lewa_y) * 1.2
-	elif demo_predkosc.x > 0.0 and nowa_pozycja.x + 6.0 >= x_prawej and absf(nowa_pozycja.y - demo_prawa_y) <= paletka_h * 0.5 + 8.0:
-		demo_predkosc.x = -absf(demo_predkosc.x)
-		demo_predkosc.y += (nowa_pozycja.y - demo_prawa_y) * 1.2
-	if nowa_pozycja.x < boisko.position.x + 5.0 or nowa_pozycja.x > boisko.end.x - 5.0:
-		demo_predkosc.x *= -1.0
-		nowa_pozycja.x = clampf(nowa_pozycja.x, boisko.position.x + 5.0, boisko.end.x - 5.0)
-	for przeszkoda in demo_przeszkody:
-		var miejsce: Vector2 = boisko.position + Vector2(przeszkoda["miejsce"].x * boisko.size.x, przeszkoda["miejsce"].y * boisko.size.y)
-		var roznica = nowa_pozycja - miejsce
-		var odleglosc = roznica.length()
-		var odleglosc_odbicia = 18.0
-		if odleglosc < odleglosc_odbicia:
-			var normalna = roznica / odleglosc if odleglosc > 0.01 else -demo_predkosc.normalized()
-			if demo_predkosc.dot(normalna) < 0.0:
-				demo_predkosc = demo_predkosc.bounce(normalna)
-				nowa_pozycja = miejsce + normalna * (odleglosc_odbicia + 0.5)
-				przeszkoda["blysk"] = 0.45
-	demo_predkosc = demo_predkosc.normalized() * 460.0
-	if demo_slady.is_empty() or demo_pilka.distance_to(demo_slady.back()) > 2.5:
-		demo_slady.append(stara_pozycja)
-		if demo_slady.size() > 16:
-			demo_slady.pop_front()
-	demo_pilka = nowa_pozycja
-	var cel_lewej = demo_pilka.y if demo_predkosc.x < 0.0 else boisko.get_center().y
-	var cel_prawej = demo_pilka.y if demo_predkosc.x > 0.0 else boisko.get_center().y
-	demo_lewa_y = move_toward(demo_lewa_y, cel_lewej, 300.0 * delta)
-	demo_prawa_y = move_toward(demo_prawa_y, cel_prawej, 300.0 * delta)
-	demo_lewa_y = clampf(demo_lewa_y, boisko.position.y + paletka_h * 0.5, boisko.end.y - paletka_h * 0.5)
-	demo_prawa_y = clampf(demo_prawa_y, boisko.position.y + paletka_h * 0.5, boisko.end.y - paletka_h * 0.5)
-
-
-func _dodaj_przeszkode_demo(boisko: Rect2) -> void:
-	var nowe_miejsce = Vector2.ZERO
-	var znaleziono_miejsce = false
-	for _proba in range(100):
-		var kandydat = Vector2(randf_range(0.08, 0.92), randf_range(0.1, 0.9))
-		var pozycja = boisko.position + Vector2(kandydat.x * boisko.size.x, kandydat.y * boisko.size.y)
-		if pozycja.distance_to(demo_pilka) < 70.0:
-			continue
-		var za_blisko_innej = false
-		for istniejaca in demo_przeszkody:
-			var inne_miejsce: Vector2 = istniejaca["miejsce"]
-			var inna_pozycja = boisko.position + Vector2(inne_miejsce.x * boisko.size.x, inne_miejsce.y * boisko.size.y)
-			if pozycja.distance_to(inna_pozycja) < 42.0:
-				za_blisko_innej = true
-				break
-		if not za_blisko_innej:
-			for poprzednie_miejsce in demo_poprzednie_miejsca:
-				var poprzednia_pozycja = boisko.position + Vector2(poprzednie_miejsce.x * boisko.size.x, poprzednie_miejsce.y * boisko.size.y)
-				if pozycja.distance_to(poprzednia_pozycja) < 55.0:
-					za_blisko_innej = true
-					break
-		if not za_blisko_innej:
-			nowe_miejsce = kandydat
-			znaleziono_miejsce = true
-			break
-	if znaleziono_miejsce:
-		demo_przeszkody.append({
-			"miejsce": nowe_miejsce,
-			"blysk": 0.0,
-			"pojawienie": 0.0,
-			"wiek": 0.0,
-			"zycie": randf_range(7.0, 11.0),
-		})
 
 
 func _styluj_menu():
@@ -453,41 +282,8 @@ func _styluj_menu():
 
 
 
-func _styluj_przycisk(guzik: Button):
-	guzik.custom_minimum_size = Vector2(420.0, 52.0)
-	guzik.add_theme_font_size_override("font_size", 21)
-	guzik.add_theme_color_override("font_color", Color("#e8f4ff"))
-	guzik.add_theme_color_override("font_hover_color", Color.WHITE)
-	guzik.add_theme_color_override("font_pressed_color", Color("#b8f5ff"))
-	guzik.add_theme_color_override("font_focus_color", Color.WHITE)
-	guzik.add_theme_stylebox_override("normal", _nowy_styl_przycisku(Color("#14243a"), Color("#31506b")))
-	guzik.add_theme_stylebox_override("hover", _nowy_styl_przycisku(Color("#1b3049"), KOLOR_TURKUS_NEON))
-	guzik.add_theme_stylebox_override("pressed", _nowy_styl_przycisku(Color("#102638"), Color("#35bcd5")))
-	guzik.add_theme_stylebox_override("focus", _nowy_styl_przycisku(Color("#14243a"), KOLOR_TURKUS_NEON))
-	guzik.add_theme_stylebox_override("disabled", _nowy_styl_przycisku(Color("#151d2b"), Color("#293a4e")))
-	guzik.pivot_offset = guzik.custom_minimum_size * 0.5
-	guzik.resized.connect(func(): guzik.pivot_offset = guzik.size * 0.5)
-	guzik.mouse_entered.connect(_animuj_najechanie.bind(guzik, true))
-	guzik.mouse_exited.connect(_animuj_najechanie.bind(guzik, false))
-
-
-func _animuj_najechanie(guzik: Control, aktywne: bool):
-	if aktywne and guzik.has_meta("neon_akcent"):
-		var akcent: Color = guzik.get_meta("neon_akcent")
-		var styl_hover = _nowy_styl_przycisku(Color("#1a2d47"), akcent)
-		styl_hover.set_border_width_all(2)
-		styl_hover.shadow_color = Color(akcent, 0.38)
-		styl_hover.shadow_size = 15
-		styl_hover.shadow_offset = Vector2.ZERO
-		guzik.add_theme_stylebox_override("hover", styl_hover)
-	if guzik.has_meta("animacja_najechania"):
-		var stara_animacja = guzik.get_meta("animacja_najechania")
-		if is_instance_valid(stara_animacja):
-			stara_animacja.kill()
-	var animacja = create_tween()
-	guzik.set_meta("animacja_najechania", animacja)
-	animacja.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	animacja.tween_property(guzik, "scale", Vector2(1.035, 1.035) if aktywne else Vector2.ONE, 0.14)
+func _styluj_przycisk(guzik: Button) -> void:
+	StylMenu.styluj_przycisk(guzik, Vector2(420.0, 52.0), KOLOR_TURKUS_NEON, Color("#14243a"), Color("#31506b"), Color("#1b3049"), Color("#102638"), Color("#35bcd5"), 21)
 
 
 func _dodaj_opis_trybu(przycisk: Button, tytul: String, opis: String, akcent: Color):
@@ -629,13 +425,13 @@ func _utworz_ekran_online() -> void:
 	host_menu.text = "Utwórz mecz"
 	host_menu.custom_minimum_size.y = 58.0
 	_styluj_przycisk(host_menu)
-	host_menu.pressed.connect(_pokaz_ustawienia_hosta_online)
+	host_menu.pressed.connect(konfiguracja_online.pokaz_ustawienia_hosta)
 	wybor_online.add_child(host_menu)
 	var dolacz_menu = Button.new()
 	dolacz_menu.text = "Dołącz do meczu"
 	dolacz_menu.custom_minimum_size.y = 58.0
 	_styluj_przycisk(dolacz_menu)
-	dolacz_menu.pressed.connect(_pokaz_ustawienia_dolaczania_online)
+	dolacz_menu.pressed.connect(konfiguracja_online.pokaz_ustawienia_dolaczania)
 	wybor_online.add_child(dolacz_menu)
 	ekran_host_online = VBoxContainer.new()
 	ekran_host_online.add_theme_constant_override("separation", 9)
@@ -652,7 +448,6 @@ func _utworz_ekran_online() -> void:
 	kopiuj_adres_hosta = Button.new()
 	kopiuj_adres_hosta.custom_minimum_size.y = 48.0
 	_styluj_przycisk(kopiuj_adres_hosta)
-	kopiuj_adres_hosta.pressed.connect(_kopiuj_adres_hosta)
 	ekran_host_online.add_child(kopiuj_adres_hosta)
 
 	var hostuj = Button.new()
@@ -686,10 +481,6 @@ func _utworz_ekran_online() -> void:
 	przycisk_tryb_online_klasyczny.custom_minimum_size = Vector2(0.0, 54.0)
 	_styluj_przycisk(przycisk_tryb_online_klasyczny)
 	przycisk_tryb_online_klasyczny.custom_minimum_size.x = 0.0
-	przycisk_tryb_online_klasyczny.toggled.connect(func(wybrany: bool):
-		if wybrany:
-			tryb_online_arena = false
-	)
 	wybory_trybu.add_child(przycisk_tryb_online_klasyczny)
 	przycisk_tryb_online_arena = Button.new()
 	przycisk_tryb_online_arena.text = "Arena"
@@ -701,10 +492,6 @@ func _utworz_ekran_online() -> void:
 	przycisk_tryb_online_arena.custom_minimum_size.x = 0.0
 	przycisk_tryb_online_arena.add_theme_stylebox_override("pressed", _nowy_styl_przycisku(Color("#302616"), Color("#ffb454")))
 	przycisk_tryb_online_arena.add_theme_stylebox_override("hover", _nowy_styl_przycisku(Color("#2c251d"), Color("#ffb454")))
-	przycisk_tryb_online_arena.toggled.connect(func(wybrany: bool):
-		if wybrany:
-			tryb_online_arena = true
-	)
 	wybory_trybu.add_child(przycisk_tryb_online_arena)
 	var etykieta_rodzaju_warunku = Label.new()
 	etykieta_rodzaju_warunku.text = "Warunek zwycięstwa"
@@ -715,7 +502,6 @@ func _utworz_ekran_online() -> void:
 	warunek_online.add_item("Na czas", 1)
 	warunek_online.custom_minimum_size.y = 50.0
 	_styluj_przycisk(warunek_online)
-	warunek_online.item_selected.connect(_zmien_warunek_online)
 	ekran_host_online.add_child(warunek_online)
 	var popup_warunku = warunek_online.get_popup()
 	var styl_popup_warunku = StyleBoxFlat.new()
@@ -778,7 +564,7 @@ func _utworz_ekran_online() -> void:
 	hostuj.text = "Utwórz mecz jako host"
 	hostuj.custom_minimum_size.y = 58.0
 	_styluj_przycisk(hostuj)
-	hostuj.pressed.connect(_utworz_mecz_online)
+	hostuj.pressed.connect(konfiguracja_online.utworz_mecz)
 	ekran_host_online.add_child(hostuj)
 
 	var opis_adresu = Label.new()
@@ -814,7 +600,7 @@ func _utworz_ekran_online() -> void:
 	dolacz.text = "Dołącz do meczu"
 	dolacz.custom_minimum_size.y = 58.0
 	_styluj_przycisk(dolacz)
-	dolacz.pressed.connect(_dolacz_do_meczu_online)
+	dolacz.pressed.connect(konfiguracja_online.dolacz_do_meczu)
 	ekran_dolacz_online.add_child(dolacz)
 
 	status_online = Label.new()
@@ -855,13 +641,31 @@ func _utworz_ekran_online() -> void:
 	wroc.text = "Wróć"
 	wroc.custom_minimum_size.y = 54.0
 	_styluj_przycisk(wroc)
-	wroc.pressed.connect(_wroc_z_ekranu_online)
+	wroc.pressed.connect(konfiguracja_online.wroc)
 	ekran_online.add_child(wroc)
 	_styluj_scrollbar_multiplayer(przewijanie.get_v_scroll_bar())
 
-	Siec.polaczono_z_hostem.connect(_online_polaczono_z_hostem)
-	Siec.otrzymano_ustawienia_meczu.connect(_online_tryb_meczu_otrzymany)
-	Siec.blad_polaczenia.connect(_online_blad_polaczenia)
+	konfiguracja_online.pokaz_ekran_requested.connect(_pokaz_ekran)
+	konfiguracja_online.pokaz_wybor_trybu_requested.connect(_pokaz_wybor_trybu)
+	var kontrolki = KontrolkiKonfiguracjiOnline.new()
+	kontrolki.ekran = ekran_online
+	kontrolki.wybor = wybor_online
+	kontrolki.host = ekran_host_online
+	kontrolki.dolacz = ekran_dolacz_online
+	kontrolki.tytul = tytul_online
+	kontrolki.instrukcje = instrukcje_polaczenia
+	kontrolki.status = status_online
+	kontrolki.adres = adres_online
+	kontrolki.nazwa_hosta = nazwa_hosta_online
+	kontrolki.nazwa_dolaczajacego = nazwa_dolaczajacego_online
+	kontrolki.warunek = warunek_online
+	kontrolki.wartosc_warunku = wartosc_warunku_online
+	kontrolki.etykieta_warunku = etykieta_warunku_online
+	kontrolki.wskazowka_warunku = wskazowka_warunku_online
+	kontrolki.adresy_hosta = adresy_hosta_label
+	kontrolki.kopiuj_adres = kopiuj_adres_hosta
+	kontrolki.tryb_arena = przycisk_tryb_online_arena
+	konfiguracja_online.inicjalizuj(kontrolki)
 
 
 func _styluj_scrollbar_multiplayer(pasek: VScrollBar) -> void:
@@ -890,119 +694,6 @@ func _styluj_scrollbar_multiplayer(pasek: VScrollBar) -> void:
 	pasek.add_theme_stylebox_override("grabber_highlight", hover)
 
 
-func _zmien_warunek_online(indeks: int) -> void:
-	if indeks == 1:
-		etykieta_warunku_online.text = "Czas gry"
-		wartosc_warunku_online.min_value = 1
-		wartosc_warunku_online.max_value = 60
-		wartosc_warunku_online.value = 3
-		wartosc_warunku_online.suffix = " min"
-		wskazowka_warunku_online.show()
-	else:
-		etykieta_warunku_online.text = "Limit punktów"
-		wartosc_warunku_online.min_value = 1
-		wartosc_warunku_online.max_value = 50
-		wartosc_warunku_online.value = 5
-		wartosc_warunku_online.suffix = " pkt"
-		wskazowka_warunku_online.hide()
-
-
-func _odswiez_adresy_hosta() -> void:
-	var adresy_tailscale = Siec.adresy_tailscale()
-	var adresy_lokalne = Siec.adresy_ipv4_lokalne()
-	kopiuj_adres_hosta.disabled = false
-	var tekst_tailscale = ", ".join(adresy_tailscale) if not adresy_tailscale.is_empty() else "niedostępny — uruchom Tailscale"
-	var tekst_lokalny = ", ".join(adresy_lokalne) if not adresy_lokalne.is_empty() else "brak"
-	adresy_hosta_label.text = "Adresy do udostępnienia jako host\nTailscale: %s\nSieć lokalna: %s" % [tekst_tailscale, tekst_lokalny]
-	if not adresy_tailscale.is_empty():
-		adres_hosta_do_skopiowania = adresy_tailscale[0]
-		kopiuj_adres_hosta.text = "Kopiuj adres Tailscale"
-	elif not adresy_lokalne.is_empty():
-		adres_hosta_do_skopiowania = adresy_lokalne[0]
-		kopiuj_adres_hosta.text = "Kopiuj adres lokalny"
-	else:
-		adres_hosta_do_skopiowania = ""
-		kopiuj_adres_hosta.text = "Brak adresu do skopiowania"
-		kopiuj_adres_hosta.disabled = true
-	return
-
-
-func _kopiuj_adres_hosta() -> void:
-	if adres_hosta_do_skopiowania.is_empty():
-		return
-	DisplayServer.clipboard_set(adres_hosta_do_skopiowania)
-	status_online.text = "Skopiowano adres: %s" % adres_hosta_do_skopiowania
-
-
-func _utworz_mecz_online() -> void:
-	var tryb = "arena" if tryb_online_arena else "klasyczny"
-	var warunek = "czas" if warunek_online.selected == 1 else "punkty"
-	var blad = Siec.utworz_serwer(tryb, nazwa_hosta_online.text, warunek, int(wartosc_warunku_online.value))
-	if blad != OK:
-		status_online.text = "Nie udało się uruchomić hosta. Zamknij inne uruchomione mecze i spróbuj ponownie."
-		return
-	_przygotuj_tryb_online(tryb_online_arena)
-	get_tree().change_scene_to_file("res://scena_główna.tscn")
-
-
-func _dolacz_do_meczu_online() -> void:
-	Siec.nazwa_gracza_2 = nazwa_dolaczajacego_online.text.strip_edges()
-	var blad = Siec.dolacz_do_serwera(adres_online.text)
-	if blad != OK:
-		status_online.text = "Nie udało się rozpocząć połączenia. Sprawdź adres IP."
-		return
-	status_online.text = "Łączenie z hostem…"
-
-
-func _online_polaczono_z_hostem() -> void:
-	if not is_inside_tree() or not ekran_online.visible:
-		return
-	status_online.text = "Pobieranie ustawień meczu…"
-	Siec.popros_o_ustawienia_meczu(nazwa_dolaczajacego_online.text)
-
-
-func _online_tryb_meczu_otrzymany(ustawienia: Dictionary) -> void:
-	if not is_inside_tree() or not ekran_online.visible:
-		return
-	_przygotuj_tryb_online(str(ustawienia.get("tryb", "klasyczny")) == "arena")
-	get_tree().change_scene_to_file("res://scena_główna.tscn")
-
-
-func _online_blad_polaczenia() -> void:
-	if not is_inside_tree():
-		return
-	Siec.rozlacz()
-	if is_instance_valid(status_online):
-		status_online.text = "Nie udało się połączyć. Sprawdź IP, zaporę i dostępność hosta."
-
-
-func _przygotuj_tryb_online(arena: bool) -> void:
-	Ustawienia.tryb = "online"
-	Ustawienia.arena_dwoch_graczy = false
-	Ustawienia.online_arena = arena
-	Ustawienia.rozmiar_planszy = "standardowa"
-	Ustawienia.limit_punktow = Siec.limit_punktow_meczu
-	Ustawienia.ustaw_geometrie_planszy()
-	Siec.pauza_lokalna = false
-
-
-func _wroc_z_ekranu_online() -> void:
-	if tryb_ekranu_online != "wybor":
-		if Siec.czy_klient():
-			Siec.rozlacz()
-		status_online.text = ""
-		tryb_ekranu_online = "wybor"
-		wybor_online.show()
-		ekran_host_online.hide()
-		ekran_dolacz_online.hide()
-		tytul_online.text = "Gra online"
-		instrukcje_polaczenia.text = "Obaj gracze muszą być połączeni przez Tailscale. Wybierz swoją rolę."
-		return
-	if Siec.czy_klient():
-		Siec.rozlacz()
-	_pokaz_wybor_trybu()
-
-
 func _dodaj_karte_wyboru(ekran: VBoxContainer, tytul: String, opis: String, akcent: Color, akcja: Callable, tylko_przycisk: bool = false):
 	var przycisk = Button.new()
 	przycisk.name = "Wybor" + str(ekran.get_child_count())
@@ -1028,15 +719,7 @@ func _wycentruj_teksty(wezel: Node) -> void:
 
 
 func _nowy_styl_przycisku(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
-	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.78))
-	styl.border_color = obramowanie
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(10)
-	styl.content_margin_left = 18.0
-	styl.content_margin_right = 18.0
-	styl.content_margin_top = 8.0
-	styl.content_margin_bottom = 8.0
+	var styl = StylMenu.styl(tlo, obramowanie)
 	styl.shadow_color = Color(0.0, 0.0, 0.0, 0.22)
 	styl.shadow_size = 5
 	styl.shadow_offset = Vector2(0.0, 2.0)
@@ -1054,21 +737,6 @@ func _nowy_styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	styl.content_margin_top = 8.0
 	styl.content_margin_bottom = 8.0
 	return styl
-
-
-func _stworz_teksture_uchwytu(akcent: Color) -> ImageTexture:
-	var obraz = Image.create(24, 24, false, Image.FORMAT_RGBA8)
-	obraz.fill(Color.TRANSPARENT)
-
-	for y in range(24):
-		for x in range(24):
-			var odleglosc = Vector2(x - 11.5, y - 11.5).length()
-			if odleglosc <= 10.5:
-				obraz.set_pixel(x, y, akcent)
-			elif odleglosc <= 11.5:
-				obraz.set_pixel(x, y, Color("#d9fbff"))
-
-	return ImageTexture.create_from_image(obraz)
 
 
 func _wybierz_rozmiar_na_liscie(lista):
@@ -1094,7 +762,7 @@ func _zapisz_wybor_rozmiaru(lista):
 
 
 func _pokaz_ekran(ekran):
-	docelowe_przyciemnienie = 0.0 if ekran == ekran_glowny else 0.42
+	tlo_menu.ustaw_przyciemnienie(ekran != ekran_glowny)
 	ekran_glowny.hide()
 	wybor_trybu.hide()
 	wybor_gier_jeden.hide()
@@ -1128,37 +796,7 @@ func _pokaz_wybor_gier_dwoch():
 
 
 func _pokaz_ekran_online():
-	status_online.text = ""
-	tryb_ekranu_online = "wybor"
-	wybor_online.show()
-	ekran_host_online.hide()
-	ekran_dolacz_online.hide()
-	tytul_online.text = "Gra online"
-	instrukcje_polaczenia.text = "Obaj gracze muszą być połączeni przez Tailscale. Wybierz swoją rolę."
-	_odswiez_adresy_hosta()
-	_pokaz_ekran(ekran_online)
-
-
-func _pokaz_ustawienia_hosta_online() -> void:
-	tryb_ekranu_online = "host"
-	status_online.text = ""
-	wybor_online.hide()
-	ekran_dolacz_online.hide()
-	ekran_host_online.show()
-	tytul_online.text = "Utwórz mecz"
-	instrukcje_polaczenia.text = "Wybierz tryb, utwórz mecz i wyślij adres drugiemu graczowi."
-	_odswiez_adresy_hosta()
-
-
-func _pokaz_ustawienia_dolaczania_online() -> void:
-	tryb_ekranu_online = "dolacz"
-	status_online.text = ""
-	wybor_online.hide()
-	ekran_host_online.hide()
-	ekran_dolacz_online.show()
-	tytul_online.text = "Dołącz do meczu"
-	instrukcje_polaczenia.text = "Wpisz adres Tailscale hosta, aby dołączyć do jego meczu."
-	adres_online.grab_focus()
+	konfiguracja_online.pokaz()
 
 
 func _pokaz_opcje_jednego_gracza():

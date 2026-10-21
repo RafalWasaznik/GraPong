@@ -12,7 +12,6 @@ const PORT = 24567
 const LIMIT_GRACZY = 2
 
 var rola = ""
-var adres_hosta = ""
 var pauza_lokalna = false
 var runda_online = 0
 var tryb_online = "klasyczny"
@@ -63,7 +62,6 @@ func dolacz_do_serwera(adres: String) -> Error:
 		return blad
 	multiplayer.multiplayer_peer = peer
 	rola = "klient"
-	adres_hosta = docelowy_adres
 	return OK
 
 

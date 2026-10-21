@@ -73,46 +73,8 @@ func _styluj_panel(panel: PanelContainer, akcent: Color):
 	panel.add_theme_stylebox_override("panel", styl)
 
 
-func _styluj_przycisk(guzik: Button):
-	guzik.custom_minimum_size = Vector2(420.0, 54.0)
-	guzik.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	guzik.add_theme_font_size_override("font_size", 20)
-	guzik.add_theme_color_override("font_color", Color("#e8f4ff"))
-	guzik.add_theme_color_override("font_hover_color", Color.WHITE)
-	guzik.add_theme_color_override("font_pressed_color", Color("#b8f5ff"))
-	var akcent = KOLOR_TURKUS
-	guzik.add_theme_stylebox_override("normal", _styl_przycisku(Color("#111e32"), Color("#344d64")))
-	guzik.add_theme_stylebox_override("hover", _styl_przycisku(Color("#192d45"), akcent))
-	guzik.add_theme_stylebox_override("pressed", _styl_przycisku(Color("#102638"), akcent.darkened(0.18)))
-	guzik.add_theme_stylebox_override("focus", _styl_przycisku(Color("#111e32"), akcent))
-	guzik.pivot_offset = guzik.custom_minimum_size * 0.5
-	guzik.resized.connect(func(): guzik.pivot_offset = guzik.size * 0.5)
-	guzik.mouse_entered.connect(_animuj_najechanie.bind(guzik, true))
-	guzik.mouse_exited.connect(_animuj_najechanie.bind(guzik, false))
-
-
-func _animuj_najechanie(guzik: Control, aktywne: bool):
-	if guzik.has_meta("animacja_najechania"):
-		var poprzednia = guzik.get_meta("animacja_najechania")
-		if is_instance_valid(poprzednia):
-			poprzednia.kill()
-	var animacja = create_tween()
-	guzik.set_meta("animacja_najechania", animacja)
-	animacja.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	animacja.tween_property(guzik, "scale", Vector2(1.035, 1.035) if aktywne else Vector2.ONE, 0.14)
-
-
-func _styl_przycisku(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
-	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.78))
-	styl.border_color = obramowanie
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(10)
-	styl.content_margin_left = 18.0
-	styl.content_margin_right = 18.0
-	styl.content_margin_top = 8.0
-	styl.content_margin_bottom = 8.0
-	return styl
+func _styluj_przycisk(guzik: Button) -> void:
+	StylMenu.styluj_przycisk(guzik, Vector2(420.0, 54.0), KOLOR_TURKUS, Color("#111e32"), Color("#344d64"), Color("#192d45"), Color("#102638"), KOLOR_TURKUS.darkened(0.18), 20)
 
 
 func _styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
@@ -128,19 +90,6 @@ func _styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	styl.content_margin_top = 4.0
 	styl.content_margin_bottom = 4.0
 	return styl
-
-
-func _tekstura_uchwytu(kolor: Color) -> ImageTexture:
-	var obraz = Image.create(24, 24, false, Image.FORMAT_RGBA8)
-	obraz.fill(Color.TRANSPARENT)
-	for y in range(24):
-		for x in range(24):
-			var odleglosc = Vector2(x - 11.5, y - 11.5).length()
-			if odleglosc <= 10.5:
-				obraz.set_pixel(x, y, kolor)
-			elif odleglosc <= 11.5:
-				obraz.set_pixel(x, y, Color("#d9fbff"))
-	return ImageTexture.create_from_image(obraz)
 
 
 func _input(event):
