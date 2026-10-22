@@ -11,6 +11,7 @@ signal statystyki_odbicia(strona: String, mocne: bool)
 signal runda_rozpoczeta
 
 const SPEED = 620.0
+const CZAS_STARTOWEJ_PREDKOSCI_ENDLESS = 2.0
 const MAX_SPEED = 1120.0
 const MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE = 1.002
 const MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY = 1.30
@@ -207,8 +208,11 @@ func dodaj_dodatkowa_pilke(pozycja_bonusu: Vector2) -> void:
 
 
 func _mnoznik_przyspieszenia_za_czas() -> float:
+	var czas_przyspieszania: float = czas_rundy
+	if Ustawienia.tryb == "endless":
+		czas_przyspieszania = maxf(0.0, czas_rundy - CZAS_STARTOWEJ_PREDKOSCI_ENDLESS)
 	return minf(
-		pow(MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE, czas_rundy),
+		pow(MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE, czas_przyspieszania),
 		MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY
 	)
 

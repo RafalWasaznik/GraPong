@@ -9,6 +9,14 @@ static func utworz_dzwiek_modyfikatora() -> AudioStreamWAV:
 	return _utworz_dwutonowy_dzwiek(620.0, 480.0, 0.15, 17.0, 0.24)
 
 
+static func utworz_dzwiek_kamienia_milowego() -> AudioStreamWAV:
+	return _utworz_dwutonowy_dzwiek(740.0, 1110.0, 0.2, 12.0, 0.38)
+
+
+static func utworz_dzwiek_rekordu() -> AudioStreamWAV:
+	return _utworz_dwutonowy_dzwiek(880.0, 1320.0, 0.34, 7.0, 0.52)
+
+
 static func _utworz_dwutonowy_dzwiek(pierwszy_ton: float, drugi_ton: float, czas: float, tempo_wygaszania: float, glosnosc: float) -> AudioStreamWAV:
 	const CZESTOTLIWOSC = 22050
 	var liczba_probek = int(CZESTOTLIWOSC * czas)

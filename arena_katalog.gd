@@ -6,7 +6,6 @@ static func wszystkie() -> Array[ArenaDefinicja]:
 		_def("wiatr_gora", "Podmuch w górę", "Piłka skręca ku górze.", 5.5, ["wiatr_dol"]),
 		_def("wiatr_dol", "Podmuch w dół", "Piłka skręca ku dołowi.", 5.5, ["wiatr_gora"]),
 		_def("przyspieszenie", "Przyspieszenie", "Piłka przyspiesza podczas wymiany.", 5.5),
-		_def("przyciaganie_srodka", "Przyciąganie do środka", "Piłka ciągnie ku środkowi.", 5.5),
 		_def("sciana_srodka", "Ściana na środku", "Okrąg pośrodku odbija piłkę.", 5.5, ["ruchoma_bramka"]),
 		_def("waska_arena", "Mała arena", "Zwęża planszę w pionie.", 5.5, ["wieksza_arena"]),
 		_def("strefa_przyspieszenia", "Strefa przyspieszenia", "Środek planszy przyspiesza piłkę.", 5.5),

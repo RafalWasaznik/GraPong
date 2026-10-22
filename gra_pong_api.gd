@@ -194,6 +194,14 @@ func odtworz_dzwiek_punktu() -> void:
 	_brak_implementacji("odtworz_dzwiek_punktu")
 
 
+func odtworz_dzwiek_kamienia_milowego() -> void:
+	_brak_implementacji("odtworz_dzwiek_kamienia_milowego")
+
+
+func odtworz_dzwiek_rekordu() -> void:
+	_brak_implementacji("odtworz_dzwiek_rekordu")
+
+
 func ustaw_tekst_konca_online(_tekst: String) -> void:
 	_brak_implementacji("ustaw_tekst_konca_online")
 

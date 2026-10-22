@@ -9,13 +9,14 @@ const CZAS_DODATKOWEJ_PILKI = 8.0
 const MNOZNIK_PREDKOSCI_DODATKOWEJ = 0.8
 const WYSOKOSC_SCIANY = 20.0
 const ODSTEP_PALETKI = 30.0
-
 const KOLOR_GRACZA = Color("#55d8f2")
 const KOLOR_AI = Color("#ff647a")
 
 var dzwiek_bonusu: AudioStreamPlayer
 var dzwiek_modyfikatora: AudioStreamPlayer
 var dzwiek_punktu: AudioStreamPlayer
+var dzwiek_kamienia_milowego: AudioStreamPlayer
+var dzwiek_rekordu: AudioStreamPlayer
 var panel_informacyjny: PanelContainer
 var animacja_granic_areny: Tween
 var animacja_wymiarow_areny: Tween
@@ -276,6 +277,16 @@ func _ready():
 		DZWIEKI_GRY.utworz_dzwiek_modyfikatora(),
 		-7.0
 	)
+	dzwiek_kamienia_milowego = _stworz_odtwarzacz_efektu(
+		"DzwiekKamieniaMilowego",
+		DZWIEKI_GRY.utworz_dzwiek_kamienia_milowego(),
+		-4.0
+	)
+	dzwiek_rekordu = _stworz_odtwarzacz_efektu(
+		"DzwiekRekordu",
+		DZWIEKI_GRY.utworz_dzwiek_rekordu(),
+		-1.0
+	)
 
 	if Ustawienia.tryb == "online":
 		if Ustawienia.online_arena:
@@ -350,6 +361,14 @@ func ustaw_tekst_konca_online(tekst: String) -> void:
 
 func odtworz_dzwiek_modyfikatora() -> void:
 	dzwiek_modyfikatora.play()
+
+
+func odtworz_dzwiek_kamienia_milowego() -> void:
+	dzwiek_kamienia_milowego.play()
+
+
+func odtworz_dzwiek_rekordu() -> void:
+	dzwiek_rekordu.play()
 
 
 func _pokaz_styl_bota():

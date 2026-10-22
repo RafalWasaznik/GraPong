@@ -1,7 +1,11 @@
 class_name PrzebiegMeczu
 extends Node
 
-const PREDKOSC_BAZOWA_ENDLESS = 560.0
+const SZEROKOSC_INFO_ENDLESS = 440.0
+const CZCIONKA_ENDLESS = preload("res://assets/fonts/Oxanium.ttf")
+const KOLOR_TURKUS_ENDLESS = Color("#55e7ff")
+const KOLOR_FIOLET_ENDLESS = Color("#ad83ff")
+const KOLOR_REKORD_ENDLESS = Color("#ffc76a")
 
 var gra: GraPongAPI
 var wynik_gracza = 0
@@ -14,10 +18,15 @@ var stat_mocne_odbicia_rywala = 0
 var biezaca_wymiana = 0
 var najdluzsza_wymiana = 0
 var endless_odbicia = 0
+var endless_przyspieszenia_oczekujace = 0
+var endless_rekord_pobity = false
 var endless_wysokosc_startowa = 120.0
 var endless_wysokosc_aktualna = 120.0
 var mecz_zakonczony = false
-var endless_info: Label
+var endless_info: HBoxContainer
+var endless_wartosci: Array[Label] = []
+var endless_powiadomienie: Label
+var animacja_powiadomienia: Tween
 
 
 func uruchom(gra_glowna: GraPongAPI) -> void:
@@ -32,6 +41,20 @@ func uruchom(gra_glowna: GraPongAPI) -> void:
 func _process(delta: float) -> void:
 	if not mecz_zakonczony:
 		czas_meczu += delta
+		_uruchom_odlozone_przyspieszenia_endless()
+		if Ustawienia.tryb == "endless" and is_instance_valid(endless_info):
+			_odswiez_info_endless()
+
+
+func _uruchom_odlozone_przyspieszenia_endless() -> void:
+	if Ustawienia.tryb != "endless" or endless_przyspieszenia_oczekujace <= 0:
+		return
+	var pilka := gra.pilka()
+	if pilka.czas_rundy < Pilka.CZAS_STARTOWEJ_PREDKOSCI_ENDLESS:
+		return
+	while endless_przyspieszenia_oczekujace > 0:
+		pilka.przyspiesz(1.08)
+		endless_przyspieszenia_oczekujace -= 1
 
 
 func zarejestruj_odbicie(strona: String, mocne: bool) -> void:
@@ -114,10 +137,21 @@ func zarejestruj_odbicie_endless(idealne: bool) -> void:
 	endless_odbicia += 1
 	wynik_gracza += (3 if idealne else 1)
 	gra.ustaw_wyniki(wynik_gracza, Ustawienia.rekord_endless)
+	if endless_odbicia % 10 == 0:
+		_pokaz_powiadomienie("%d ODBIĆ" % endless_odbicia, KOLOR_TURKUS_ENDLESS, false)
 	if endless_odbicia % 5 == 0:
-		(gra.pilka()).przyspiesz(1.08)
+		if (gra.pilka()).czas_rundy < Pilka.CZAS_STARTOWEJ_PREDKOSCI_ENDLESS:
+			endless_przyspieszenia_oczekujace += 1
+		else:
+			(gra.pilka()).przyspiesz(1.08)
 	if endless_odbicia % 12 == 0:
 		_zmniejsz_paletke_endless()
+	if not endless_rekord_pobity and wynik_gracza > Ustawienia.rekord_endless:
+		endless_rekord_pobity = true
+		_pokaz_powiadomienie("NOWY REKORD OSOBISTY!", KOLOR_REKORD_ENDLESS, true)
+		gra.odtworz_dzwiek_rekordu()
+	elif endless_odbicia % 10 == 0:
+		gra.odtworz_dzwiek_kamienia_milowego()
 	_odswiez_info_endless()
 
 
@@ -138,6 +172,32 @@ func _zakoncz_endless() -> void:
 	zakoncz_mecz("Nowy rekord!" if nowy_rekord else "Koniec próby")
 
 
+func _pokaz_powiadomienie(tekst: String, kolor: Color, rekord: bool) -> void:
+	if endless_powiadomienie == null:
+		return
+	if is_instance_valid(animacja_powiadomienia):
+		animacja_powiadomienia.kill()
+	endless_powiadomienie.text = tekst
+	endless_powiadomienie.add_theme_color_override("font_color", kolor)
+	endless_powiadomienie.add_theme_font_size_override("font_size", 30 if rekord else 25)
+	endless_powiadomienie.scale = Vector2(0.92, 0.92) if rekord else Vector2.ONE
+	endless_powiadomienie.modulate.a = 0.0
+	endless_powiadomienie.show()
+	animacja_powiadomienia = create_tween()
+	animacja_powiadomienia.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	animacja_powiadomienia.tween_property(endless_powiadomienie, "modulate:a", 1.0, 0.16)
+	if rekord:
+		animacja_powiadomienia.parallel().tween_property(endless_powiadomienie, "scale", Vector2.ONE, 0.24)
+	animacja_powiadomienia.tween_interval(1.25)
+	animacja_powiadomienia.tween_property(endless_powiadomienie, "modulate:a", 0.0, 0.35)
+	animacja_powiadomienia.tween_callback(_ukryj_powiadomienie_endless)
+
+
+func _ukryj_powiadomienie_endless() -> void:
+	if is_instance_valid(endless_powiadomienie):
+		endless_powiadomienie.hide()
+
+
 func zakoncz_po_czasie() -> void:
 	if wynik_gracza > wynik_ai:
 		zakoncz_mecz("Koniec czasu — wygrywa %s!" % Siec.nazwa_gracza_1)
@@ -148,37 +208,107 @@ func zakoncz_po_czasie() -> void:
 
 
 func dodaj_info_endless() -> void:
-	endless_info = Label.new()
+	endless_info = HBoxContainer.new()
 	endless_info.name = "InformacjaEndless"
-	endless_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	endless_info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	endless_info.add_theme_font_size_override("font_size", 14)
-	endless_info.add_theme_color_override("font_color", Color("#a9bdd0"))
+	endless_info.custom_minimum_size = Vector2(SZEROKOSC_INFO_ENDLESS, 58.0)
+	endless_info.add_theme_constant_override("separation", 10)
 	endless_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	endless_info.z_index = 10
+	_dodaj_grupe_info_endless(endless_info, "IDEALNE ODBICIE", 150.0, KOLOR_TURKUS_ENDLESS)
+	_dodaj_grupe_info_endless(endless_info, "PRĘDKOŚĆ PIŁKI", 150.0, Color("#b8c9dc"))
+	_dodaj_grupe_info_endless(endless_info, "PALETKA", 120.0, KOLOR_FIOLET_ENDLESS)
 	gra.add_child(endless_info)
+	endless_powiadomienie = Label.new()
+	endless_powiadomienie.name = "PowiadomienieEndless"
+	endless_powiadomienie.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	endless_powiadomienie.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	endless_powiadomienie.add_theme_font_override("font", CZCIONKA_ENDLESS)
+	endless_powiadomienie.add_theme_color_override("font_color", KOLOR_TURKUS_ENDLESS)
+	endless_powiadomienie.add_theme_color_override("font_shadow_color", Color(KOLOR_TURKUS_ENDLESS, 0.5))
+	endless_powiadomienie.add_theme_constant_override("shadow_offset_x", 0)
+	endless_powiadomienie.add_theme_constant_override("shadow_offset_y", 0)
+	endless_powiadomienie.add_theme_constant_override("shadow_outline_size", 12)
+	endless_powiadomienie.position = Vector2(
+		(Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5 - 280.0,
+		Ustawienia.gorna_granica + 42.0
+	)
+	endless_powiadomienie.size = Vector2(560.0, 62.0)
+	endless_powiadomienie.pivot_offset = endless_powiadomienie.size * 0.5
+	endless_powiadomienie.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	endless_powiadomienie.z_index = 20
+	gra.add_child(endless_powiadomienie)
+	endless_powiadomienie.hide()
 	get_viewport().size_changed.connect(_ustaw_pozycje_info_endless)
 	_ustaw_pozycje_info_endless()
 	_odswiez_info_endless()
 
 
+func _dodaj_grupe_info_endless(uklad: HBoxContainer, tytul: String, szerokosc: float, akcent: Color, rozmiar_wartosci: int = 15) -> void:
+	var karta := PanelContainer.new()
+	karta.custom_minimum_size = Vector2(szerokosc, 58.0)
+	karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var styl := StyleBoxFlat.new()
+	styl.bg_color = Color("#101f34d9")
+	styl.border_color = Color(akcent, 0.45)
+	styl.set_border_width_all(1)
+	styl.set_corner_radius_all(10)
+	styl.content_margin_left = 6.0
+	styl.content_margin_right = 6.0
+	styl.content_margin_top = 4.0
+	styl.content_margin_bottom = 4.0
+	karta.add_theme_stylebox_override("panel", styl)
+	uklad.add_child(karta)
+	var kolumna := VBoxContainer.new()
+	kolumna.alignment = BoxContainer.ALIGNMENT_CENTER
+	kolumna.add_theme_constant_override("separation", 1)
+	kolumna.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	karta.add_child(kolumna)
+	var etykieta := Label.new()
+	etykieta.text = tytul
+	etykieta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	etykieta.add_theme_font_override("font", CZCIONKA_ENDLESS)
+	etykieta.add_theme_font_size_override("font_size", 10)
+	etykieta.add_theme_color_override("font_color", Color("#9fb3ca"))
+	etykieta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	kolumna.add_child(etykieta)
+	var wartosc := Label.new()
+	wartosc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wartosc.add_theme_font_override("font", CZCIONKA_ENDLESS)
+	wartosc.add_theme_font_size_override("font_size", rozmiar_wartosci)
+	wartosc.add_theme_color_override("font_color", akcent)
+	wartosc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	kolumna.add_child(wartosc)
+	endless_wartosci.append(wartosc)
+
+
 func _ustaw_pozycje_info_endless() -> void:
-	if endless_info == null:
-		return
 	var wymiar = get_viewport().get_visible_rect().size
-	endless_info.position = Vector2(24.0, minf(Ustawienia.dolna_granica + 18.0, wymiar.y - 42.0))
-	endless_info.size = Vector2(wymiar.x - 48.0, 24.0)
+	var szerokosc_planszy = Ustawienia.prawa_granica - Ustawienia.lewa_granica
+	var szerokosc = minf(SZEROKOSC_INFO_ENDLESS, maxf(0.0, szerokosc_planszy - 24.0))
+	var prawa_krawedz = minf(Ustawienia.prawa_granica - 12.0, wymiar.x - 12.0)
+	var x = prawa_krawedz - szerokosc
+	var y = minf(Ustawienia.dolna_granica + 12.0, wymiar.y - 70.0)
+	if is_instance_valid(endless_info):
+		endless_info.position = Vector2(x, y)
+		endless_info.size = Vector2(szerokosc, 58.0)
+	if is_instance_valid(endless_powiadomienie):
+		endless_powiadomienie.position = Vector2(
+			(Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5 - 280.0,
+			Ustawienia.gorna_granica + 42.0
+		)
 
 
 func _odswiez_info_endless() -> void:
 	if endless_info == null:
 		return
 	var pilka := gra.pilka()
-	var predkosc_razy = pilka.predkosc / PREDKOSC_BAZOWA_ENDLESS
-	var procent_paletki = 100
+	var predkosc_razy = pilka.predkosc / Pilka.SPEED * pilka.mnoznik_ruchu_chwilowy()
+	var procent_paletki := 100
 	if endless_wysokosc_startowa > 0.0:
 		procent_paletki = roundi(endless_wysokosc_aktualna / endless_wysokosc_startowa * 100.0)
-	endless_info.text = "Idealne trafienie: +2 pkt   ·   Prędkość ×%.2f   ·   Paletka %d%%   ·   Przyspieszenie co 5 odbić, skrócenie co 12" % [predkosc_razy, procent_paletki]
+	endless_wartosci[0].text = "+2 PKT"
+	endless_wartosci[1].text = "×%.2f" % predkosc_razy
+	endless_wartosci[2].text = "%d%%" % procent_paletki
 
 
 func zakoncz_mecz(tekst: String) -> void:
@@ -191,6 +321,8 @@ func zakoncz_mecz(tekst: String) -> void:
 	(gra.ekran_konca_meczu()).pokaz(tekst, pobierz_podsumowanie())
 	if is_instance_valid(endless_info):
 		endless_info.hide()
+	if is_instance_valid(endless_powiadomienie):
+		endless_powiadomienie.hide()
 	gra.ukryj_informacje_graczowi()
 	gra.odswiez_rysowanie()
 	(gra.bonusy()).zatrzymaj()
@@ -212,5 +344,11 @@ func pobierz_podsumowanie() -> PodsumowanieMeczu:
 	podsumowanie.odbicia_lacznie = stat_odbicia_gracza + stat_odbicia_rywala
 	podsumowanie.mocne_odbicia_lacznie = stat_mocne_odbicia_gracza + stat_mocne_odbicia_rywala
 	podsumowanie.rekord_endless = Ustawienia.rekord_endless
+	podsumowanie.nowy_rekord_endless = endless_rekord_pobity
+	if Ustawienia.tryb == "endless":
+		var pilka := gra.pilka()
+		podsumowanie.mnoznik_predkosci_endless = pilka.predkosc / Pilka.SPEED * pilka.mnoznik_ruchu_chwilowy()
+		if endless_wysokosc_startowa > 0.0:
+			podsumowanie.rozmiar_paletki_endless = roundi(endless_wysokosc_aktualna / endless_wysokosc_startowa * 100.0)
 	podsumowanie.najdluzsza_wymiana = najdluzsza_wymiana
 	return podsumowanie

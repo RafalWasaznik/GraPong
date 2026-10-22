@@ -7,7 +7,6 @@ const POSZERZENIE_ARENY_X = 40.0
 const POSZERZENIE_ARENY_Y = 32.0
 const PREDKOSC_ZAKRETU = 0.65
 const MNOZNIK_PREDKOSCI = 1.12
-const SILA_PRZYCIAGANIA_DO_SRODKA = 560.0
 const SZEROKOSC_STREFY = 104.0
 const MNOZNIK_STREFY = 1.05
 const MAKS_KAT_ZAKRETU = deg_to_rad(72.0)
@@ -356,13 +355,6 @@ func przygotuj_pilke(pilka: PilkaAPI, delta: float) -> float:
 		sciana_srodka.aktualizuj_pozycje()
 	if stan == "aktywne" and _czy_aktywne("strefa_przyspieszenia"):
 		_obsluz_strefe_przyspieszenia(pilka)
-	if stan == "aktywne" and _czy_aktywne("przyciaganie_srodka") and pilka.velocity.length_squared() > 0.0:
-		var predkosc = pilka.velocity.length()
-		var srodek = Vector2(_srodek_planszy_x(), (Ustawienia.gorna_granica + Ustawienia.dolna_granica) * 0.5)
-		var do_srodka = srodek - pilka.position
-		if do_srodka.length_squared() > 0.0:
-			pilka.velocity = (pilka.velocity + do_srodka.normalized() * SILA_PRZYCIAGANIA_DO_SRODKA * delta).normalized() * predkosc
-
 	if stan == "aktywne" and (_czy_aktywne("wiatr_gora") or _czy_aktywne("wiatr_dol")) and pilka.velocity.length_squared() > 0.0:
 		var predkosc = pilka.velocity.length()
 		var kierunek_x = signf(pilka.velocity.x)

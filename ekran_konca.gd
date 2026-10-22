@@ -8,6 +8,7 @@ const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
 var etykiety_nazw_statystyk: Array[Label] = []
 var etykiety_wartosci_statystyk: Array[Label] = []
+var podsumowanie_endless = false
 
 
 func _ready() -> void:
@@ -89,17 +90,31 @@ func _ustaw_pozycje_ekranu_konca():
 	var wymiar = get_viewport().get_visible_rect().size
 	var srodek = wymiar * 0.5
 	var karta = $KartaKoniecGry
-	karta.position = srodek - Vector2(310.0, 260.0)
-	karta.size = Vector2(620.0, 520.0)
-	$Komunikat.position = srodek + Vector2(-270.0, -228.0)
-	$Komunikat.size = Vector2(540.0, 96.0)
-	$WynikKoncowy.position = srodek + Vector2(-270.0, -132.0)
-	$WynikKoncowy.size = Vector2(540.0, 48.0)
-	$PodsumowanieStatystyk.position = srodek + Vector2(-255.0, -70.0)
-	$PodsumowanieStatystyk.size = Vector2(508.0, 200.0)
-	$PrzyciskPonownie.position = srodek + Vector2(-150.0, 139.0)
+	if podsumowanie_endless:
+		$PodsumowanieStatystyk.custom_minimum_size = Vector2(508.0, 306.0)
+		karta.position = srodek - Vector2(310.0, 325.0)
+		karta.size = Vector2(620.0, 650.0)
+		$Komunikat.position = srodek + Vector2(-270.0, -287.0)
+		$Komunikat.size = Vector2(540.0, 72.0)
+		$WynikKoncowy.position = srodek + Vector2(-270.0, -207.0)
+		$WynikKoncowy.size = Vector2(540.0, 48.0)
+		$PodsumowanieStatystyk.position = srodek + Vector2(-255.0, -148.0)
+		$PodsumowanieStatystyk.size = Vector2(508.0, 306.0)
+		$PrzyciskPonownie.position = srodek + Vector2(-150.0, 171.0)
+		$PrzyciskMenu.position = srodek + Vector2(-150.0, 229.0)
+	else:
+		$PodsumowanieStatystyk.custom_minimum_size = Vector2(508.0, 200.0)
+		karta.position = srodek - Vector2(310.0, 260.0)
+		karta.size = Vector2(620.0, 520.0)
+		$Komunikat.position = srodek + Vector2(-270.0, -228.0)
+		$Komunikat.size = Vector2(540.0, 96.0)
+		$WynikKoncowy.position = srodek + Vector2(-270.0, -132.0)
+		$WynikKoncowy.size = Vector2(540.0, 48.0)
+		$PodsumowanieStatystyk.position = srodek + Vector2(-255.0, -70.0)
+		$PodsumowanieStatystyk.size = Vector2(508.0, 200.0)
+		$PrzyciskPonownie.position = srodek + Vector2(-150.0, 139.0)
+		$PrzyciskMenu.position = srodek + Vector2(-150.0, 198.0)
 	$PrzyciskPonownie.size = Vector2(300.0, 52.0)
-	$PrzyciskMenu.position = srodek + Vector2(-150.0, 198.0)
 	$PrzyciskMenu.size = Vector2(300.0, 52.0)
 
 
@@ -107,8 +122,8 @@ func _utworz_podsumowanie_statystyk() -> void:
 	var siatka = GridContainer.new()
 	siatka.name = "PodsumowanieStatystyk"
 	siatka.columns = 2
-	siatka.custom_minimum_size = Vector2(508.0, 200.0)
-	siatka.size = Vector2(508.0, 200.0)
+	siatka.custom_minimum_size = Vector2(508.0, 306.0)
+	siatka.size = Vector2(508.0, 306.0)
 	siatka.add_theme_constant_override("h_separation", 12)
 	siatka.add_theme_constant_override("v_separation", 12)
 	siatka.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -116,7 +131,7 @@ func _utworz_podsumowanie_statystyk() -> void:
 	add_child(siatka)
 	siatka.hide()
 
-	for i in range(4):
+	for i in range(6):
 		var uklad_statystyki = VBoxContainer.new()
 		uklad_statystyki.custom_minimum_size = Vector2(248.0, 94.0)
 		uklad_statystyki.add_theme_constant_override("separation", 4)
@@ -162,6 +177,8 @@ func _utworz_podsumowanie_statystyk() -> void:
 
 
 func _odswiez_statystyki_koncowe(dane: PodsumowanieMeczu) -> void:
+	podsumowanie_endless = dane.tryb == "endless"
+	_ustaw_pozycje_ekranu_konca()
 	var czas = maxi(0, roundi(dane.czas_meczu))
 	var tekst_czasu = "%02d:%02d" % [floori(float(czas) / 60.0), czas % 60]
 	var nazwy: Array[String]
@@ -172,8 +189,19 @@ func _odswiez_statystyki_koncowe(dane: PodsumowanieMeczu) -> void:
 		$WynikKoncowy.text = "%d     :     %d" % [dane.wynik_gracza, dane.wynik_ai]
 
 	if dane.tryb == "endless":
-		nazwy = ["Czas próby", "Odbicia łącznie", "Mocne odbicia łącznie", "Rekord osobisty"]
-		wartosci = [tekst_czasu, str(dane.odbicia_lacznie), str(dane.mocne_odbicia_lacznie), str(dane.rekord_endless)]
+		nazwy = [
+			"Czas próby", "Odbicia łącznie", "Mocne odbicia · +2 pkt",
+			"NOWY REKORD!" if dane.nowy_rekord_endless else "Rekord osobisty",
+			"Prędkość piłki", "Rozmiar paletki"
+		]
+		wartosci = [
+			tekst_czasu,
+			str(dane.odbicia_lacznie),
+			str(dane.mocne_odbicia_lacznie),
+			str(dane.rekord_endless),
+			"×%.2f" % dane.mnoznik_predkosci_endless,
+			"%d%%" % dane.rozmiar_paletki_endless
+		]
 	else:
 		nazwy = ["Czas meczu", "Odbicia łącznie", "Mocne odbicia łącznie", "Najdłuższa wymiana"]
 		wartosci = [
@@ -183,9 +211,16 @@ func _odswiez_statystyki_koncowe(dane: PodsumowanieMeczu) -> void:
 			str(dane.najdluzsza_wymiana)
 		]
 
-	for i in range(4):
+	for i in range(6):
+		$PodsumowanieStatystyk.get_child(i).visible = i < nazwy.size()
+		if i >= nazwy.size():
+			continue
 		etykiety_nazw_statystyk[i].text = nazwy[i]
 		etykiety_wartosci_statystyk[i].text = wartosci[i]
+		var kolor_wartosci := Color("#55e7ff")
+		if dane.nowy_rekord_endless and i == 3:
+			kolor_wartosci = Color("#ffc76a")
+		etykiety_wartosci_statystyk[i].add_theme_color_override("font_color", kolor_wartosci)
 
 
 func pokaz(tekst: String, dane: PodsumowanieMeczu) -> void:
