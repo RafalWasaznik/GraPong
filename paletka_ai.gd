@@ -1,9 +1,9 @@
 extends "res://paletka_bazowa.gd"
 
-const PROMIEN_PILKI = 13.0
-
 var nieprzewidywalny_czas = 0.0
 var nieprzewidywalne_odchylenie = 0.0
+
+
 func _kolor_paletki() -> Color:
 	return Color("#ff647a")
 
@@ -147,8 +147,9 @@ func _przewidz_przeciecie_y(pilka: CharacterBody2D) -> float:
 		if manager_areny != null:
 			przyspieszenie_y = manager_areny.przyspieszenie_y(pilka.velocity.x)
 	var przewidziane_y = pilka.position.y + pilka.velocity.y * mnoznik * czas_do_paletki + 0.5 * przyspieszenie_y * czas_do_paletki * czas_do_paletki
-	var gora = Ustawienia.gorna_granica + PROMIEN_PILKI
-	var dol = Ustawienia.dolna_granica - PROMIEN_PILKI
+	var promien = pilka.promien_aktualny()
+	var gora = Ustawienia.gorna_granica + promien
+	var dol = Ustawienia.dolna_granica - promien
 	var zakres = maxf(dol - gora, 1.0)
 	var pozycja_zawijana = fposmod(przewidziane_y - gora, zakres * 2.0)
 	if pozycja_zawijana > zakres:

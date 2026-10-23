@@ -360,8 +360,8 @@ func online_odbierz_stan(pakiet_json: String) -> void:
 		_pilka().dzwiek_paletka.play()
 	if nowe_odbicia_sciany > 0:
 		_pilka().dzwiek_sciana.play()
-	odebrane_odbicia_paletka = stan.odbicia_paletki
-	odebrane_odbicia_sciana = stan.odbicia_sciana
+		odebrane_odbicia_paletka = stan.odbicia_paletki
+	odebrane_odbicia_sciana = stan.odbicia_sciany
 	if stan.wynik_gracza != wynik_gracza_poprzedni or stan.wynik_ai != wynik_rywala_poprzedni:
 		gra.odtworz_dzwiek_punktu()
 	if stan.koniec and not gra.mecz_zakonczony:

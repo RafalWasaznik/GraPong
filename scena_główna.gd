@@ -77,11 +77,12 @@ func _ogranicz_paletki_pionowo(gora: float, dol: float) -> void:
 
 func _ogranicz_pilki_do_granic(gora: float, dol: float) -> void:
 	for pilka in get_tree().get_nodes_in_group("pilki"):
-		if pilka.position.y < gora + 13.0:
-			pilka.position.y = gora + 13.0
+		var promien: float = pilka.promien_aktualny()
+		if pilka.position.y < gora + promien:
+			pilka.position.y = gora + promien
 			pilka.velocity.y = absf(pilka.velocity.y)
-		elif pilka.position.y > dol - 13.0:
-			pilka.position.y = dol - 13.0
+		elif pilka.position.y > dol - promien:
+			pilka.position.y = dol - promien
 			pilka.velocity.y = -absf(pilka.velocity.y)
 
 

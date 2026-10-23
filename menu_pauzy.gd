@@ -2,45 +2,50 @@ extends CanvasLayer
 
 const KOLOR_TURKUS = Color("#55e7ff")
 const KOLOR_FIOLET = Color("#ad83ff")
+const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
-@onready var przyciemnienie = $Przyciemnienie
-@onready var panel_pauzy = $Przyciemnienie/CenterContainer/PanelPauzy
-@onready var panel_ustawien = $Przyciemnienie/CenterContainer/PanelUstawien
+@onready var przyciemnienie: ColorRect = $Przyciemnienie
+@onready var panel_pauzy: PanelContainer = $Przyciemnienie/CenterContainer/PanelPauzy
+@onready var panel_ustawien: PanelContainer = $Przyciemnienie/CenterContainer/PanelUstawien
+@onready var uklad_pauzy: VBoxContainer = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer
+@onready var tytul_pauzy: Label = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/TytulPauzy
+@onready var guzik_wroc_do_gry: Button = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry
+@onready var guzik_ustawienia: Button = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia
+@onready var guzik_menu: Button = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu
+@onready var ekran_ustawien = $Przyciemnienie/CenterContainer/PanelUstawien/EkranUstawien
 
 
-
-func _ready():
+func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 	przyciemnienie.hide()
 	panel_ustawien.hide()
 
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/TytulPauzy.text = "Pauza"
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry.text = "Wróć do gry"
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia.text = "Ustawienia"
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu.text = "Menu główne"
+	tytul_pauzy.text = "Pauza"
+	guzik_wroc_do_gry.text = "Wróć do gry"
+	guzik_ustawienia.text = "Ustawienia"
+	guzik_menu.text = "Menu główne"
 
 	_styluj_interfejs()
 
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry.pressed.connect(_wroc_do_gry)
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia.pressed.connect(_otworz_ustawienia)
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu.pressed.connect(_wroc_do_menu)
-	$Przyciemnienie/CenterContainer/PanelUstawien/EkranUstawien.back_requested.connect(_wroc_do_pauzy)
+	guzik_wroc_do_gry.pressed.connect(_wroc_do_gry)
+	guzik_ustawienia.pressed.connect(_otworz_ustawienia)
+	guzik_menu.pressed.connect(_wroc_do_menu)
+	ekran_ustawien.back_requested.connect(_wroc_do_pauzy)
 
 
-func _styluj_interfejs():
+func _styluj_interfejs() -> void:
 	przyciemnienie.color = Color(0.015, 0.03, 0.055, 0.66)
 	_styluj_panel(panel_pauzy, KOLOR_TURKUS)
 	_styluj_panel(panel_ustawien, KOLOR_FIOLET)
 	panel_ustawien.custom_minimum_size = Vector2(560.0, 0.0)
 
-	var tytul_pauzy = $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/TytulPauzy
-	tytul_pauzy.add_theme_font_override("font", load("res://assets/fonts/Oxanium.ttf"))
+	tytul_pauzy.add_theme_font_override("font", FONT_ARCADE)
 	tytul_pauzy.add_theme_font_size_override("font_size", 34)
 	tytul_pauzy.add_theme_color_override("font_color", KOLOR_TURKUS)
 	tytul_pauzy.custom_minimum_size.y = 54.0
-	$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer.add_theme_constant_override("separation", 12)
-	for dziecko in $Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer.get_children():
+	uklad_pauzy.add_theme_constant_override("separation", 12)
+	for dziecko in uklad_pauzy.get_children():
 		if dziecko is Label:
 			dziecko.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			dziecko.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -48,15 +53,11 @@ func _styluj_interfejs():
 			dziecko.add_theme_font_size_override("font_size", 18)
 			dziecko.add_theme_color_override("font_color", Color("#e6f2ff"))
 
-	for guzik in [
-		$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoGry,
-		$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/OtworzUstawienia,
-		$Przyciemnienie/CenterContainer/PanelPauzy/VBoxContainer/WrocDoMenu
-	]:
+	for guzik in [guzik_wroc_do_gry, guzik_ustawienia, guzik_menu]:
 		_styluj_przycisk(guzik)
 
 
-func _styluj_panel(panel: PanelContainer, akcent: Color):
+func _styluj_panel(panel: PanelContainer, akcent: Color) -> void:
 	panel.custom_minimum_size.x = 500.0
 	var styl = StyleBoxFlat.new()
 	styl.bg_color = Color("#0c1628", 0.76)
@@ -77,22 +78,7 @@ func _styluj_przycisk(guzik: Button) -> void:
 	StylMenu.styluj_przycisk(guzik, Vector2(420.0, 54.0), KOLOR_TURKUS, Color("#111e32"), Color("#344d64"), Color("#192d45"), Color("#102638"), KOLOR_TURKUS.darkened(0.18), 20)
 
 
-func _styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
-	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.82))
-	styl.border_color = obramowanie
-	styl.draw_center = true
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(8)
-	# Wysokość stylu wyznacza grubość prowadnicy HSlidera.
-	styl.content_margin_left = 2.0
-	styl.content_margin_right = 2.0
-	styl.content_margin_top = 4.0
-	styl.content_margin_bottom = 4.0
-	return styl
-
-
-func _input(event):
+func _input(event: InputEvent) -> void:
 	if Ustawienia.czeka_na_klawisz:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.is_action_pressed("pauza"):
@@ -100,10 +86,7 @@ func _input(event):
 		if Ustawienia.tryb == "online":
 			if not przyciemnienie.visible:
 				Siec.pauza_lokalna = true
-				przyciemnienie.show()
-				panel_pauzy.show()
-				panel_ustawien.hide()
-				_animuj_wejscie(panel_pauzy)
+				_pokaz_pauze()
 			elif panel_ustawien.visible:
 				_wroc_do_pauzy()
 			else:
@@ -112,17 +95,21 @@ func _input(event):
 
 		if not get_tree().paused:
 			get_tree().paused = true
-			przyciemnienie.show()
-			panel_pauzy.show()
-			panel_ustawien.hide()
-			_animuj_wejscie(panel_pauzy)
+			_pokaz_pauze()
 		elif panel_ustawien.visible:
 			_wroc_do_pauzy()
 		else:
 			_wroc_do_gry()
 
 
-func _wroc_do_gry():
+func _pokaz_pauze() -> void:
+	przyciemnienie.show()
+	panel_pauzy.show()
+	panel_ustawien.hide()
+	_animuj_wejscie(panel_pauzy)
+
+
+func _wroc_do_gry() -> void:
 	przyciemnienie.hide()
 	if Ustawienia.tryb == "online":
 		Siec.pauza_lokalna = false
@@ -130,13 +117,13 @@ func _wroc_do_gry():
 		get_tree().paused = false
 
 
-func _otworz_ustawienia():
+func _otworz_ustawienia() -> void:
 	panel_pauzy.hide()
 	panel_ustawien.show()
 	_animuj_wejscie(panel_ustawien)
 
 
-func _animuj_wejscie(panel: Control):
+func _animuj_wejscie(panel: Control) -> void:
 	panel.pivot_offset = panel.size * 0.5
 	panel.scale = Vector2(0.97, 0.97)
 	panel.modulate.a = 0.0
@@ -147,13 +134,13 @@ func _animuj_wejscie(panel: Control):
 	animacja.parallel().tween_property(panel, "modulate:a", 1.0, 0.18)
 
 
-func _wroc_do_pauzy():
+func _wroc_do_pauzy() -> void:
 	panel_ustawien.hide()
 	panel_pauzy.show()
 	_animuj_wejscie(panel_pauzy)
 
 
-func _wroc_do_menu():
+func _wroc_do_menu() -> void:
 	get_tree().paused = false
 	if Ustawienia.tryb == "online":
 		Siec.rozlacz()

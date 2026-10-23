@@ -197,6 +197,11 @@ func _promien_pilki_aktualny() -> float:
 	return PROMIEN_PILKI * mnoznik_rozmiaru
 
 
+# Publiczna wersja, używana przez bota i scenę główną.
+func promien_aktualny() -> float:
+	return _promien_pilki_aktualny()
+
+
 func pokaz_efekt_mocnego_odbicia() -> void:
 	efekt_strefy_czas = 0.35
 	queue_redraw()
@@ -291,19 +296,19 @@ func _physics_process(delta):
 	_dodaj_probke_sladu()
 	queue_redraw()
 
-	var promien_aktualny = _promien_pilki_aktualny()
-	if Ustawienia.tryb == "endless" and position.x + promien_aktualny >= Ustawienia.prawa_granica:
-		position.x = Ustawienia.prawa_granica - promien_aktualny
+	var promien_teraz = _promien_pilki_aktualny()
+	if Ustawienia.tryb == "endless" and position.x + promien_teraz >= Ustawienia.prawa_granica:
+		position.x = Ustawienia.prawa_granica - promien_teraz
 		velocity.x = -absf(velocity.x)
 		$DzwiekSciana.play()
 		odbicie_sciany.emit()
 		return
 
-	if position.x + promien_aktualny <= Ustawienia.lewa_granica:
+	if position.x + promien_teraz <= Ustawienia.lewa_granica:
 		_rozpocznij_rozpad_punktu("lewa")
 		return
 
-	if position.x - promien_aktualny >= Ustawienia.prawa_granica:
+	if position.x - promien_teraz >= Ustawienia.prawa_granica:
 		_rozpocznij_rozpad_punktu("prawa")
 		return
 

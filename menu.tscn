@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" uid="uid://qm8c2y32p7g5" path="res://menu.gd" id="1_lti8b"]
 [ext_resource type="PackedScene" path="res://ustawienia_menu.tscn" id="2_ustawienia"]
-[ext_resource type="Script" path="res://konfiguracja_online.gd" id="3_konfiguracja_online"]
-[ext_resource type="Script" path="res://tlo_menu.gd" id="4_tlo_menu"]
+[ext_resource type="Script" uid="uid://cbtup3vcm8826" path="res://konfiguracja_online.gd" id="3_konfiguracja_online"]
+[ext_resource type="Script" uid="uid://itsnj1pi5u07" path="res://tlo_menu.gd" id="4_tlo_menu"]
 
 [node name="Menu" type="Control" unique_id=689527288]
 layout_mode = 3
@@ -14,7 +14,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lti8b")
 
-[node name="Tlo" type="Control" parent="." z_index=-1]
+[node name="Tlo" type="Control" parent="." unique_id=1468830745]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -50,7 +50,7 @@ text = "Do 5 punktów"
 layout_mode = 2
 text = "2 graczy"
 
-[node name="Wyjdz" type="Button" parent="CenterContainer/EkranGlowny"]
+[node name="Wyjdz" type="Button" parent="CenterContainer/EkranGlowny" unique_id=2011510985]
 layout_mode = 2
 text = "Wyjdź z gry"
 
@@ -140,9 +140,9 @@ text = "Graj"
 layout_mode = 2
 text = "Wróć"
 
-[node name="EkranUstawien" parent="CenterContainer" instance=ExtResource("2_ustawienia")]
+[node name="EkranUstawien" parent="CenterContainer" unique_id=19825565 instance=ExtResource("2_ustawienia")]
 visible = false
 layout_mode = 2
 
-[node name="KonfiguracjaOnline" type="Node" parent="."]
+[node name="KonfiguracjaOnline" type="Node" parent="." unique_id=961680972]
 script = ExtResource("3_konfiguracja_online")
