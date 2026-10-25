@@ -10,6 +10,7 @@ const DZWIEK_DASH_GENERATOR = preload("res://dzwiek_dash.gd")
 @onready var start_x: float = position.x
 @onready var kolizja: CollisionShape2D = $CollisionShape2D
 
+var run_state: RunState
 var czas_blysku = 0.0
 var idealne_odbicie = false
 var dash_aktywne = false
@@ -120,6 +121,17 @@ func ustaw_pozycje_x(nowa_pozycja: float) -> void:
 	position.x = nowa_pozycja
 
 
+func reset_po_punkcie() -> void:
+	position = Vector2(start_x, (Ustawienia.gorna_granica + Ustawienia.dolna_granica) * 0.5)
+	velocity = Vector2.ZERO
+	dash_aktywne = false
+	dash_czas = 0.0
+	dash_odnowienie = 0.0
+	dash_efekt_czas = 0.0
+	sieciowy_dash_zadany = false
+	queue_redraw()
+
+
 func wykonaj_ruch(delta: float, docelowa_predkosc_y: float) -> void:
 	_odlicz_cooldown_dash(delta)
 	if not _aktualizuj_dash(delta):
@@ -147,7 +159,9 @@ func _rozpocznij_dash(kierunek: float) -> void:
 	dash_cel_y = cel
 	dash_efekt_kierunek = signf(kierunek)
 	dash_efekt_czas = 0.28
-	dash_odnowienie = CZAS_ODNOWIENIA_DASHU
+	dash_odnowienie = CZAS_ODNOWIENIA_DASHU * (run_state.dashCooldownMult if run_state != null else 1.0)
+	if run_state != null:
+		run_state.rozpocznij_dash()
 	dzwiek_dasha.play()
 	queue_redraw()
 

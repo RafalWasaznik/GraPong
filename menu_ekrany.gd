@@ -5,8 +5,8 @@ enum Akcja { OPCJE_JEDNEGO_GRACZA, START_ENDLESS, OPCJE_ARENY, WYBOR_TRYBU, OPCJ
 signal akcja_zadana(akcja: Akcja)
 
 const KOLOR_TURKUS_NEON = Color("#55e7ff")
-const KOLOR_FIOLET_NEON = Color("#ad83ff")
-const KOLOR_ROZ_NEON = Color("#ff5fb7")
+const KOLOR_FIOLET_NEON = KOLOR_TURKUS_NEON
+const KOLOR_ROZ_NEON = KOLOR_TURKUS_NEON
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
 var kontekst: MenuEkranyKontekst
@@ -44,8 +44,8 @@ func utworz_ekrany_wyboru_gier() -> void:
 	wybor_gier_jeden.hide()
 	_dodaj_ekran_wyboru_gier(wybor_gier_jeden, "Tryb dla jednego gracza")
 	_dodaj_karte_wyboru(wybor_gier_jeden, "Klasyczny", "", KOLOR_TURKUS_NEON, Akcja.OPCJE_JEDNEGO_GRACZA)
-	_dodaj_karte_wyboru(wybor_gier_jeden, "Nieskończony", "", KOLOR_FIOLET_NEON, Akcja.START_ENDLESS)
-	_dodaj_karte_wyboru(wybor_gier_jeden, "Arena", "", Color("#ffb454"), Akcja.OPCJE_ARENY)
+	_dodaj_karte_wyboru(wybor_gier_jeden, "Nieskończony", "3 życia - ulepszenie co %d odbić" % RunState.UPGRADE_EVERY_HITS, KOLOR_FIOLET_NEON, Akcja.START_ENDLESS)
+	_dodaj_karte_wyboru(wybor_gier_jeden, "Arena", "", KOLOR_TURKUS_NEON, Akcja.OPCJE_ARENY)
 	_dodaj_karte_wyboru(wybor_gier_jeden, "Wróć", "", Color("#7892ad"), Akcja.WYBOR_TRYBU, true)
 
 	wybor_gier_dwoch = VBoxContainer.new()
@@ -54,8 +54,8 @@ func utworz_ekrany_wyboru_gier() -> void:
 	kontekst.center_container.add_child(wybor_gier_dwoch)
 	wybor_gier_dwoch.hide()
 	_dodaj_ekran_wyboru_gier(wybor_gier_dwoch, "Tryb dla dwóch graczy")
-	_dodaj_karte_wyboru(wybor_gier_dwoch, "KLASYCZNY POJEDYNEK", "", KOLOR_ROZ_NEON, Akcja.OPCJE_DWOCH_GRACZY)
-	_dodaj_karte_wyboru(wybor_gier_dwoch, "ARENA", "", Color("#ffb454"), Akcja.START_ARENA)
+	_dodaj_karte_wyboru(wybor_gier_dwoch, "Klasyczny", "", KOLOR_ROZ_NEON, Akcja.OPCJE_DWOCH_GRACZY)
+	_dodaj_karte_wyboru(wybor_gier_dwoch, "Arena", "", KOLOR_TURKUS_NEON, Akcja.START_ARENA)
 	_dodaj_karte_wyboru(wybor_gier_dwoch, "Wróć", "", Color("#7892ad"), Akcja.WYBOR_TRYBU, true)
 
 
@@ -71,7 +71,7 @@ func utworz_ekran_online() -> void:
 	ekran_online = VBoxContainer.new()
 	ekran_online.name = "EkranOnline"
 	ekran_online.alignment = BoxContainer.ALIGNMENT_CENTER
-	ekran_online.add_theme_constant_override("separation", 14)
+	ekran_online.add_theme_constant_override("separation", 24)
 	ekran_online.custom_minimum_size = Vector2(500.0, 0.0)
 	kontekst.center_container.add_child(ekran_online)
 	ekran_online.hide()
@@ -91,7 +91,7 @@ func utworz_ekran_online() -> void:
 	przewijanie.add_child(odstep_paska)
 	zawartosc_online = VBoxContainer.new()
 	zawartosc_online.name = "ZawartoscMultiplayer"
-	zawartosc_online.add_theme_constant_override("separation", 16)
+	zawartosc_online.add_theme_constant_override("separation", 24)
 	zawartosc_online.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	odstep_paska.add_child(zawartosc_online)
 
@@ -109,7 +109,7 @@ func utworz_ekran_online() -> void:
 	opis_hosta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	zawartosc_online.add_child(opis_hosta)
 	wybor_online = VBoxContainer.new()
-	wybor_online.add_theme_constant_override("separation", 14)
+	wybor_online.add_theme_constant_override("separation", 24)
 	zawartosc_online.add_child(wybor_online)
 	var host_menu = Button.new()
 	host_menu.text = "Utwórz mecz"
@@ -124,11 +124,11 @@ func utworz_ekran_online() -> void:
 	dolacz_menu.pressed.connect(kontekst.konfiguracja_online.pokaz_ustawienia_dolaczania)
 	wybor_online.add_child(dolacz_menu)
 	ekran_host_online = VBoxContainer.new()
-	ekran_host_online.add_theme_constant_override("separation", 9)
+	ekran_host_online.add_theme_constant_override("separation", 20)
 	ekran_host_online.hide()
 	zawartosc_online.add_child(ekran_host_online)
 	ekran_dolacz_online = VBoxContainer.new()
-	ekran_dolacz_online.add_theme_constant_override("separation", 16)
+	ekran_dolacz_online.add_theme_constant_override("separation", 24)
 	ekran_dolacz_online.hide()
 	zawartosc_online.add_child(ekran_dolacz_online)
 	adresy_hosta_label = Label.new()
@@ -180,8 +180,8 @@ func utworz_ekran_online() -> void:
 	przycisk_tryb_online_arena.custom_minimum_size = Vector2(0.0, 54.0)
 	_styluj_przycisk(przycisk_tryb_online_arena)
 	przycisk_tryb_online_arena.custom_minimum_size.x = 0.0
-	przycisk_tryb_online_arena.add_theme_stylebox_override("pressed", StylMenu.styl_przycisku_karty(Color("#302616"), Color("#ffb454")))
-	przycisk_tryb_online_arena.add_theme_stylebox_override("hover", StylMenu.styl_przycisku_karty(Color("#2c251d"), Color("#ffb454")))
+	przycisk_tryb_online_arena.add_theme_stylebox_override("pressed", StylMenu.styl_przycisku_karty(Color("#102638"), KOLOR_TURKUS_NEON))
+	przycisk_tryb_online_arena.add_theme_stylebox_override("hover", StylMenu.styl_przycisku_karty(Color("#1b3049"), KOLOR_TURKUS_NEON))
 	wybory_trybu.add_child(przycisk_tryb_online_arena)
 	var etykieta_rodzaju_warunku = Label.new()
 	etykieta_rodzaju_warunku.text = "Warunek zwycięstwa"
@@ -197,7 +197,7 @@ func utworz_ekran_online() -> void:
 	var styl_popup_warunku = StyleBoxFlat.new()
 	styl_popup_warunku.bg_color = Color("#0c1727", 0.9)
 	styl_popup_warunku.border_color = Color("#3b5a73")
-	styl_popup_warunku.set_border_width_all(1)
+	styl_popup_warunku.set_border_width_all(0)
 	styl_popup_warunku.set_corner_radius_all(10)
 	styl_popup_warunku.content_margin_left = 8.0
 	styl_popup_warunku.content_margin_right = 8.0
@@ -212,7 +212,7 @@ func utworz_ekran_online() -> void:
 	var styl_najechania_warunku = StyleBoxFlat.new()
 	styl_najechania_warunku.bg_color = Color("#1b3049", 0.92)
 	styl_najechania_warunku.border_color = KOLOR_TURKUS_NEON
-	styl_najechania_warunku.set_border_width_all(1)
+	styl_najechania_warunku.border_width_bottom = 2
 	styl_najechania_warunku.set_corner_radius_all(6)
 	popup_warunku.add_theme_stylebox_override("hover", styl_najechania_warunku)
 	etykieta_warunku_online = Label.new()
@@ -364,23 +364,23 @@ func _styluj_scrollbar_multiplayer(pasek: VScrollBar) -> void:
 	var tor = StyleBoxFlat.new()
 	tor.bg_color = Color("#081321", 0.9)
 	tor.border_color = Color(KOLOR_TURKUS_NEON, 0.14)
-	tor.set_border_width_all(1)
+	tor.set_border_width_all(0)
 	tor.set_corner_radius_all(7)
 	pasek.add_theme_stylebox_override("scroll", tor)
 	pasek.add_theme_stylebox_override("scroll_focus", tor)
 	var uchwyt = StyleBoxFlat.new()
 	uchwyt.bg_color = Color("#315b70")
 	uchwyt.border_color = Color(KOLOR_TURKUS_NEON, 0.62)
-	uchwyt.set_border_width_all(1)
+	uchwyt.set_border_width_all(0)
 	uchwyt.set_corner_radius_all(7)
 	uchwyt.shadow_color = Color(KOLOR_TURKUS_NEON, 0.12)
-	uchwyt.shadow_size = 4
+	uchwyt.shadow_size = 0
 	pasek.add_theme_stylebox_override("grabber", uchwyt)
 	var hover = uchwyt.duplicate()
 	hover.bg_color = Color("#3f8298")
 	hover.border_color = Color(KOLOR_TURKUS_NEON, 0.92)
 	hover.shadow_color = Color(KOLOR_TURKUS_NEON, 0.28)
-	hover.shadow_size = 7
+	hover.shadow_size = 0
 	pasek.add_theme_stylebox_override("grabber_highlight", hover)
 
 

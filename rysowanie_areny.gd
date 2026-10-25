@@ -91,8 +91,8 @@ func _draw():
 			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, Siec.nazwa_gracza_1.to_upper())
 			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, Siec.nazwa_gracza_2.to_upper())
 		elif Ustawienia.tryb == "endless":
-			_rysuj_nazwe_wyniku(karta_gracza, "SERIA", KOLOR_GRACZA)
-			_rysuj_nazwe_wyniku(karta_ai, "REKORD", Color("#c4b5fd"))
+			_rysuj_nazwe_wyniku(karta_gracza, "WYNIK", KOLOR_GRACZA)
+			_rysuj_nazwe_wyniku(karta_ai, "ŻYCIA", Color("#c4b5fd"))
 
 
 func _rysuj_znaczniki_srodka(srodek: Vector2, gora: float, dol: float) -> void:

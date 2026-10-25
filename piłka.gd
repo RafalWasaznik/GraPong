@@ -11,7 +11,6 @@ signal statystyki_odbicia(strona: String, mocne: bool)
 signal runda_rozpoczeta
 
 const SPEED = 620.0
-const CZAS_STARTOWEJ_PREDKOSCI_ENDLESS = 2.0
 const MAX_SPEED = 1120.0
 const MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE = 1.002
 const MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY = 1.30
@@ -30,6 +29,7 @@ const MAKS_UGIECIA_GUMA_WYSOKA = 24.0
 const CZAS_ROZPADU = 0.38
 const LICZBA_FRAGMENTOW = 18
 
+var run_state: RunState
 var predkosc = SPEED
 var czas_rundy = 0.0
 var intro_aktywne = false
@@ -215,7 +215,7 @@ func dodaj_dodatkowa_pilke(pozycja_bonusu: Vector2) -> void:
 func _mnoznik_przyspieszenia_za_czas() -> float:
 	var czas_przyspieszania: float = czas_rundy
 	if Ustawienia.tryb == "endless":
-		czas_przyspieszania = maxf(0.0, czas_rundy - CZAS_STARTOWEJ_PREDKOSCI_ENDLESS)
+		return run_state.mnoznik_predkosci() if run_state != null else 1.0
 	return minf(
 		pow(MNOZNIK_PRZYSPIESZENIA_NA_SEKUNDE, czas_przyspieszania),
 		MAKS_MNOZNIK_PRZYSPIESZENIA_RUNDY
@@ -254,6 +254,7 @@ func _physics_process(delta):
 			mnoznik_predkosci_areny = manager_areny.przygotuj_pilke(self, delta)
 
 	var mnoznik_ruchu = mnoznik_predkosci_areny * mnoznik_przyspieszenia_rundy
+	_przyciagnij_do_paletki(delta)
 	var collision = move_and_collide(velocity * delta * mnoznik_ruchu)
 	_aktualizuj_kontakt_z_gumowa_sciana(mnoznik_ruchu, delta)
 
@@ -284,7 +285,8 @@ func _physics_process(delta):
 			else:
 				$DzwiekPaletka.play()
 
-		else:
+		# Kontakt z granicą podczas odsuwania nie jest kolejnym uderzeniem.
+		elif obiekt.name not in ["górna ściana", "dolna ściana"] or velocity.dot(normalna) < 0.0:
 			velocity = velocity.bounce(normalna)
 			if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
 				var manager_areny := gra.menedzer_areny()
@@ -305,6 +307,14 @@ func _physics_process(delta):
 		return
 
 	if position.x + promien_teraz <= Ustawienia.lewa_granica:
+		if run_state != null and run_state.uzyj_tarczy():
+			position.x = Ustawienia.lewa_granica + promien_teraz
+			velocity.x = absf(velocity.x)
+			_odpusc_gumowa_sciane()
+			pokaz_efekt_mocnego_odbicia()
+			$DzwiekSciana.play()
+			odbicie_sciany.emit()
+			return
 		_rozpocznij_rozpad_punktu("lewa")
 		return
 
@@ -438,7 +448,8 @@ func _odbicie_od_paletki(
 	position.x += kierunek_x * 0.5
 
 	if absf(trafienie) >= GRANICA_PERFECT_HIT:
-		predkosc = minf(predkosc * 1.07, MAX_SPEED)
+		if Ustawienia.tryb != "endless":
+			predkosc = minf(predkosc * 1.07, MAX_SPEED)
 		velocity = velocity.normalized() * predkosc
 		perfect_hit_czas = CZAS_EFEKTU_PERFECT_HIT
 		queue_redraw()
@@ -467,7 +478,7 @@ func _odbicie_od_pilki(inna_pilka: CharacterBody2D, normalna: Vector2):
 func _aktualizuj_intro(delta):
 	intro_czas -= delta
 
-	var nastepna_pozycja = position + velocity * delta
+	var nastepna_pozycja = position + velocity * delta * (run_state.mnoznik_predkosci() if run_state != null else 1.0)
 	var odleglosc = nastepna_pozycja.distance_to(srodek_intro)
 	var maksymalna_odleglosc = PROMIEN_OKREGU - _promien_pilki_aktualny()
 
@@ -483,3 +494,14 @@ func _aktualizuj_intro(delta):
 		runda_rozpoczeta.emit()
 
 	queue_redraw()
+
+
+func _przyciagnij_do_paletki(delta: float) -> void:
+	if run_state == null or run_state.magnetRadius <= 0.0 or velocity.x >= 0.0 or velocity.is_zero_approx():
+		return
+	var do_paletki := gra.lewa_paletka().global_position - global_position
+	var dystans := do_paletki.length()
+	if dystans <= 0.001 or dystans >= run_state.magnetRadius or do_paletki.x >= 0.0:
+		return
+	var sila := run_state.magnetPull * (1.0 - dystans / run_state.magnetRadius) * delta
+	velocity = velocity.normalized().lerp(do_paletki.normalized(), clampf(sila, 0.0, 1.0)).normalized() * velocity.length()

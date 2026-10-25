@@ -4,104 +4,189 @@
 [ext_resource type="PackedScene" path="res://ustawienia_sterowania.tscn" id="2_sterowanie"]
 
 [node name="EkranUstawien" type="VBoxContainer"]
-custom_minimum_size = Vector2(500, 0)
-alignment = 1
+custom_minimum_size = Vector2(560, 0)
+theme_override_constants/separation = 16
 script = ExtResource("1_script")
 
-[node name="PrzewijanieUstawien" type="ScrollContainer" parent="."]
-custom_minimum_size = Vector2(500, 460)
+[node name="Tytul" type="Label" parent="."]
+layout_mode = 2
+text = "Ustawienia"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 30
+
+[node name="Zakladki" type="TabContainer" parent="."]
+custom_minimum_size = Vector2(560, 380)
 layout_mode = 2
 size_flags_vertical = 3
+current_tab = 0
+tab_alignment = 1
+tabs_position = 0
+clip_tabs = false
+all_tabs_in_front = true
+use_hidden_tabs_for_min_size = false
+
+[node name="Ekran" type="ScrollContainer" parent="Zakladki"]
+layout_mode = 2
 horizontal_scroll_mode = 0
-vertical_scroll_mode = 1
+follow_focus = true
 
-[node name="OdstepPaska" type="MarginContainer" parent="PrzewijanieUstawien"]
+[node name="Margines" type="MarginContainer" parent="Zakladki/Ekran"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
 theme_override_constants/margin_right = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_bottom = 24
 
-[node name="ZawartoscUstawien" type="VBoxContainer" parent="PrzewijanieUstawien/OdstepPaska"]
+[node name="Zawartosc" type="VBoxContainer" parent="Zakladki/Ekran/Margines"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 24
+theme_override_constants/separation = 20
 
-[node name="UstawieniaDzwieku" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+[node name="BlokEkranu" type="PanelContainer" parent="Zakladki/Ekran/Margines/Zawartosc"]
 layout_mode = 2
-text = "USTAWIENIA DŹWIĘKU"
+
+[node name="Uklad" type="VBoxContainer" parent="Zakladki/Ekran/Margines/Zawartosc/BlokEkranu"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Opis" type="Label" parent="Zakladki/Ekran/Margines/Zawartosc/BlokEkranu/Uklad"]
+layout_mode = 2
+text = "Wyświetlanie"
 horizontal_alignment = 1
 
-[node name="SegmentDzwieku" type="PanelContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
-layout_mode = 2
-
-[node name="UkladDzwieku" type="VBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="WierszOgolny" type="HBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="EtykietaOgolna" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszOgolny"]
-custom_minimum_size = Vector2(140, 0)
-layout_mode = 2
-text = "Ogólne"
-
-[node name="GlosnoscOgolna" type="HSlider" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszOgolny"]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="WierszMuzyka" type="HBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="EtykietaMuzyka" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszMuzyka"]
-custom_minimum_size = Vector2(140, 0)
-layout_mode = 2
-text = "Muzyka"
-
-[node name="GlosnoscMuzyki" type="HSlider" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszMuzyka"]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="WierszDzwieki" type="HBoxContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="EtykietaDzwieki" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszDzwieki"]
-custom_minimum_size = Vector2(140, 0)
-layout_mode = 2
-text = "Dźwięki"
-
-[node name="GlosnoscDzwiekow" type="HSlider" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentDzwieku/UkladDzwieku/WierszDzwieki"]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="UstawieniaEkranu" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
-layout_mode = 2
-text = "USTAWIENIA EKRANU"
-horizontal_alignment = 1
-
-[node name="SegmentEkran" type="PanelContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
-layout_mode = 2
-
-[node name="PelnyEkran" type="CheckButton" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentEkran"]
+[node name="PelnyEkran" type="CheckButton" parent="Zakladki/Ekran/Margines/Zawartosc/BlokEkranu/Uklad"]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 text = "Pełny ekran"
 
-[node name="UstawieniaSterowaniaNaglowek" type="Label" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+[node name="Dzwiek" type="ScrollContainer" parent="Zakladki"]
 layout_mode = 2
-text = "STEROWANIE"
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Margines" type="MarginContainer" parent="Zakladki/Dzwiek"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Zawartosc" type="VBoxContainer" parent="Zakladki/Dzwiek/Margines"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="BlokOgolny" type="PanelContainer" parent="Zakladki/Dzwiek/Margines/Zawartosc"]
+layout_mode = 2
+
+[node name="Uklad" type="VBoxContainer" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokOgolny"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="EtykietaOgolna" type="Label" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokOgolny/Uklad"]
+layout_mode = 2
+text = "Ogólne"
 horizontal_alignment = 1
 
-[node name="SegmentSterowanie" type="PanelContainer" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien"]
+[node name="GlosnoscOgolna" type="HSlider" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokOgolny/Uklad"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BlokMuzyki" type="PanelContainer" parent="Zakladki/Dzwiek/Margines/Zawartosc"]
 layout_mode = 2
 
-[node name="UstawieniaSterowania" parent="PrzewijanieUstawien/OdstepPaska/ZawartoscUstawien/SegmentSterowanie" instance=ExtResource("2_sterowanie")]
+[node name="Uklad" type="VBoxContainer" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokMuzyki"]
 layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="EtykietaMuzyka" type="Label" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokMuzyki/Uklad"]
+layout_mode = 2
+text = "Muzyka"
+horizontal_alignment = 1
+
+[node name="GlosnoscMuzyka" type="HSlider" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokMuzyki/Uklad"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BlokEfektow" type="PanelContainer" parent="Zakladki/Dzwiek/Margines/Zawartosc"]
+layout_mode = 2
+
+[node name="Uklad" type="VBoxContainer" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokEfektow"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="EtykietaDzwiekow" type="Label" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokEfektow/Uklad"]
+layout_mode = 2
+text = "Efekty dźwiękowe"
+horizontal_alignment = 1
+
+[node name="GlosnoscDzwiekow" type="HSlider" parent="Zakladki/Dzwiek/Margines/Zawartosc/BlokEfektow/Uklad"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Sterowanie" type="ScrollContainer" parent="Zakladki"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Margines" type="MarginContainer" parent="Zakladki/Sterowanie"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Zawartosc" type="VBoxContainer" parent="Zakladki/Sterowanie/Margines"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="UstawieniaSterowania" parent="Zakladki/Sterowanie/Margines/Zawartosc" instance=ExtResource("2_sterowanie")]
+layout_mode = 2
+
+[node name="Inne" type="ScrollContainer" parent="Zakladki"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Margines" type="MarginContainer" parent="Zakladki/Inne"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Zawartosc" type="VBoxContainer" parent="Zakladki/Inne/Margines"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="BlokKursora" type="PanelContainer" parent="Zakladki/Inne/Margines/Zawartosc"]
+layout_mode = 2
+
+[node name="Uklad" type="VBoxContainer" parent="Zakladki/Inne/Margines/Zawartosc/BlokKursora"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="KursorNeonowy" type="CheckButton" parent="Zakladki/Inne/Margines/Zawartosc/BlokKursora/Uklad"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Neonowy kursor"
+
+[node name="Opis" type="Label" parent="Zakladki/Inne/Margines/Zawartosc/BlokKursora/Uklad"]
+layout_mode = 2
+text = "Ustawienia zapisują się automatycznie.\nKursor obowiązuje we wszystkich ekranach gry."
+horizontal_alignment = 1
+autowrap_mode = 3
 
 [node name="WrocUstawienia" type="Button" parent="."]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 text = "Wróć"

@@ -1,7 +1,7 @@
 extends CanvasLayer
 
 const KOLOR_TURKUS = Color("#55e7ff")
-const KOLOR_FIOLET = Color("#ad83ff")
+const KOLOR_FIOLET = KOLOR_TURKUS
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
 @onready var przyciemnienie: ColorRect = $Przyciemnienie
@@ -44,7 +44,7 @@ func _styluj_interfejs() -> void:
 	tytul_pauzy.add_theme_font_size_override("font_size", 34)
 	tytul_pauzy.add_theme_color_override("font_color", KOLOR_TURKUS)
 	tytul_pauzy.custom_minimum_size.y = 54.0
-	uklad_pauzy.add_theme_constant_override("separation", 12)
+	uklad_pauzy.add_theme_constant_override("separation", 24)
 	for dziecko in uklad_pauzy.get_children():
 		if dziecko is Label:
 			dziecko.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -55,21 +55,21 @@ func _styluj_interfejs() -> void:
 
 	for guzik in [guzik_wroc_do_gry, guzik_ustawienia, guzik_menu]:
 		_styluj_przycisk(guzik)
+	tytul_pauzy.add_theme_font_size_override("font_size", 34)
+	tytul_pauzy.add_theme_color_override("font_color", KOLOR_TURKUS)
 
 
 func _styluj_panel(panel: PanelContainer, akcent: Color) -> void:
 	panel.custom_minimum_size.x = 500.0
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color("#0c1628", 0.76)
-	styl.border_color = Color(akcent, 0.68)
-	styl.set_border_width_all(2)
-	styl.set_corner_radius_all(22)
+	styl.bg_color = Color("#0c1628", 0.96)
+	styl.set_corner_radius_all(8)
 	styl.content_margin_left = 30.0
 	styl.content_margin_right = 30.0
 	styl.content_margin_top = 18.0
 	styl.content_margin_bottom = 18.0
-	styl.shadow_color = Color(akcent, 0.12)
-	styl.shadow_size = 22
+	styl.shadow_color = Color(akcent, 0.0)
+	styl.shadow_size = 0
 	styl.shadow_offset = Vector2(0.0, 8.0)
 	panel.add_theme_stylebox_override("panel", styl)
 
@@ -79,6 +79,10 @@ func _styluj_przycisk(guzik: Button) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if Ustawienia.tryb == "endless":
+		var gra := get_parent() as GraPongAPI
+		if gra != null and gra.przebieg().run_state != null and gra.przebieg().run_state.wybor_aktywny:
+			return
 	if Ustawienia.czeka_na_klawisz:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.is_action_pressed("pauza"):

@@ -3,8 +3,8 @@ extends Control
 
 const CHARAKTERY_BOTA = ["defensywny", "ofensywny", "agresywny", "nieprzewidywalny"]
 const KOLOR_TURKUS_NEON = Color("#55e7ff")
-const KOLOR_FIOLET_NEON = Color("#ad83ff")
-const KOLOR_ROZ_NEON = Color("#ff5fb7")
+const KOLOR_FIOLET_NEON = KOLOR_TURKUS_NEON
+const KOLOR_ROZ_NEON = KOLOR_TURKUS_NEON
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 const DZWIEK_MENU_GENERATOR = preload("res://dzwiek_menu.gd")
 const SKRYPT_EKRANOW_MENU = preload("res://menu_ekrany.gd")
@@ -162,12 +162,12 @@ func _styluj_menu():
 	karta.offset_bottom = -24.0
 	karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var styl_karty = StyleBoxFlat.new()
-	styl_karty.bg_color = Color("#0c1628", 0.56)
+	styl_karty.bg_color = Color("#0c1628", 0.82)
 	styl_karty.border_color = Color(KOLOR_TURKUS_NEON, 0.28)
-	styl_karty.set_border_width_all(1)
-	styl_karty.set_corner_radius_all(20)
+	styl_karty.set_border_width_all(0)
+	styl_karty.set_corner_radius_all(16)
 	styl_karty.shadow_color = Color(KOLOR_TURKUS_NEON, 0.08)
-	styl_karty.shadow_size = 18
+	styl_karty.shadow_size = 0
 	styl_karty.shadow_offset = Vector2.ZERO
 	karta.add_theme_stylebox_override("panel", styl_karty)
 	add_child(karta)
@@ -175,7 +175,7 @@ func _styluj_menu():
 
 	for ekran in [ekran_glowny, wybor_trybu, ekrany_menu.wybor_gier_jeden, ekrany_menu.wybor_gier_dwoch, ekrany_menu.ekran_online, opcje_jeden_gracz, opcje_dwoch_graczy]:
 		ekran.custom_minimum_size = Vector2(420.0, 0.0)
-		ekran.add_theme_constant_override("separation", 14)
+		ekran.add_theme_constant_override("separation", 24)
 		_wycentruj_teksty(ekran)
 		for dziecko in ekran.get_children():
 			if dziecko is Control:
@@ -184,13 +184,15 @@ func _styluj_menu():
 				dziecko.add_theme_font_size_override("font_size", 21)
 				dziecko.add_theme_color_override("font_color", Color("#e8f4ff"))
 
-	ekran_ustawien.add_theme_constant_override("separation", 8)
+	ekran_ustawien.add_theme_constant_override("separation", 24)
+	for opcje in [opcje_jeden_gracz, opcje_dwoch_graczy]:
+		opcje.add_theme_constant_override("separation", 16)
 
 	var tytul = $CenterContainer/EkranGlowny/Tytuł
 	tytul.add_theme_font_override("font", FONT_ARCADE)
-	tytul.add_theme_font_size_override("font_size", 68)
+	tytul.add_theme_font_size_override("font_size", 76)
 	tytul.add_theme_color_override("font_color", Color("#69edff"))
-	tytul.custom_minimum_size.y = 92.0
+	tytul.custom_minimum_size.y = 104.0
 
 	var tytul_trybu = $CenterContainer/WyborTrybu/TytulTrybu
 	tytul_trybu.add_theme_font_override("font", FONT_ARCADE)
@@ -231,14 +233,14 @@ func _styluj_menu():
 	guzik_graj.add_theme_color_override("font_color", Color("#eaffff"))
 	guzik_graj.add_theme_color_override("font_hover_color", Color.WHITE)
 	var styl_graj = _nowy_styl_przycisku(Color("#123b4a"), KOLOR_TURKUS_NEON)
-	styl_graj.set_border_width_all(2)
+	styl_graj.border_width_bottom = 2
 	styl_graj.shadow_color = Color(KOLOR_TURKUS_NEON, 0.18)
-	styl_graj.shadow_size = 10
+	styl_graj.shadow_size = 0
 	guzik_graj.add_theme_stylebox_override("normal", styl_graj)
 	var styl_graj_hover = _nowy_styl_przycisku(Color("#18536a"), Color("#b4f8ff"))
-	styl_graj_hover.set_border_width_all(2)
-	styl_graj_hover.shadow_color = Color(KOLOR_TURKUS_NEON, 0.42)
-	styl_graj_hover.shadow_size = 17
+	styl_graj_hover.border_width_bottom = 2
+	styl_graj_hover.shadow_color = Color(KOLOR_TURKUS_NEON, 0.12)
+	styl_graj_hover.shadow_size = 0
 	guzik_graj.add_theme_stylebox_override("hover", styl_graj_hover)
 	$CenterContainer/EkranGlowny/Ustawienia.set_meta("neon_akcent", KOLOR_FIOLET_NEON)
 	$CenterContainer/EkranGlowny/Wyjdz.set_meta("neon_akcent", KOLOR_ROZ_NEON)
@@ -256,7 +258,7 @@ func _styluj_menu():
 		var styl_popup = StyleBoxFlat.new()
 		styl_popup.bg_color = Color("#111c2b", 0.9)
 		styl_popup.border_color = Color("#3b5a73")
-		styl_popup.set_border_width_all(1)
+		styl_popup.set_border_width_all(0)
 		styl_popup.set_corner_radius_all(10)
 		popup.add_theme_stylebox_override("panel", styl_popup)
 		popup.add_theme_color_override("font_color", Color("#e8f4ff"))
@@ -265,7 +267,7 @@ func _styluj_menu():
 		var styl_najechania = StyleBoxFlat.new()
 		styl_najechania.bg_color = Color("#1b304a", 0.92)
 		styl_najechania.border_color = KOLOR_TURKUS_NEON
-		styl_najechania.set_border_width_all(1)
+		styl_najechania.border_width_bottom = 2
 		styl_najechania.set_corner_radius_all(6)
 		popup.add_theme_stylebox_override("hover", styl_najechania)
 

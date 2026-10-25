@@ -76,14 +76,20 @@ func _ogranicz_paletki_pionowo(gora: float, dol: float) -> void:
 
 
 func _ogranicz_pilki_do_granic(gora: float, dol: float) -> void:
+	var wewnetrzna_gora = gora + WYSOKOSC_SCIANY * 0.5
+	var wewnetrzny_dol = dol - WYSOKOSC_SCIANY * 0.5
 	for pilka in get_tree().get_nodes_in_group("pilki"):
 		var promien: float = pilka.promien_aktualny()
-		if pilka.position.y < gora + promien:
-			pilka.position.y = gora + promien
-			pilka.velocity.y = absf(pilka.velocity.y)
-		elif pilka.position.y > dol - promien:
-			pilka.position.y = dol - promien
-			pilka.velocity.y = -absf(pilka.velocity.y)
+		var margines_wewnetrzny = 0.5
+		# Granice opisują środki ścian; piłka musi minąć ich wewnętrzne powierzchnie.
+		if pilka.position.y < wewnetrzna_gora + promien:
+			pilka.position.y = wewnetrzna_gora + promien + margines_wewnetrzny
+			if pilka.velocity.y < 0.0:
+				pilka.velocity.y = absf(pilka.velocity.y)
+		elif pilka.position.y > wewnetrzny_dol - promien:
+			pilka.position.y = wewnetrzny_dol - promien - margines_wewnetrzny
+			if pilka.velocity.y > 0.0:
+				pilka.velocity.y = -absf(pilka.velocity.y)
 
 
 func _ustaw_ksztalt_sciany(kolizja: CollisionShape2D, szerokosc: float):
@@ -405,7 +411,7 @@ func pokaz_informacje_graczowi(tytul: String, opis: String, kolor: Color, czas: 
 		(Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5 - szerokosc_panelu * 0.5,
 		Ustawienia.dolna_granica + 14.0
 	)
-	var tylko_jeden_wiersz = opis.strip_edges().is_empty()
+	var tylko_jeden_wiersz = _czy_tryb_areny() or opis.strip_edges().is_empty()
 	panel.size = Vector2(szerokosc_panelu, 48.0 if tylko_jeden_wiersz else 62.0)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.z_index = 20
@@ -436,6 +442,8 @@ func pokaz_informacje_graczowi(tytul: String, opis: String, kolor: Color, czas: 
 	var etykieta_tytulu = Label.new()
 	etykieta_tytulu.text = tytul
 	etykieta_tytulu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	etykieta_tytulu.add_theme_font_override("font", FONT_ARCADE)
+	etykieta_tytulu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	etykieta_tytulu.add_theme_font_size_override("font_size", 19)
 	etykieta_tytulu.add_theme_color_override("font_color", kolor)
 	etykieta_tytulu.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -517,7 +525,7 @@ func _ustaw_etykiety_wyniku():
 	_etykieta_wyniku_rywala.show()
 	if Ustawienia.tryb == "endless":
 		_etykieta_wyniku_gracza.text = str(wynik_gracza)
-		_etykieta_wyniku_rywala.text = str(Ustawienia.rekord_endless)
+		_etykieta_wyniku_rywala.text = str(wynik_ai)
 		_etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
 		_etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
 		_ustaw_etykiete(_etykieta_wyniku_gracza, prostokat_karty_wyniku(0), KOLOR_GRACZA)
@@ -537,6 +545,7 @@ func _ustaw_etykiete(etykieta: Label, karta: Rect2, kolor: Color):
 	etykieta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	etykieta.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	etykieta.add_theme_color_override("font_color", kolor)
+	etykieta.add_theme_font_override("font", FONT_ARCADE)
 	if Ustawienia.tryb != "endless":
 		etykieta.add_theme_font_size_override("font_size", 32)
 	etykieta.z_index = 10

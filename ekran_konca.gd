@@ -28,15 +28,15 @@ func _ready() -> void:
 	karta.z_index = 10
 	var styl = StyleBoxFlat.new()
 	styl.bg_color = Color("#0c1628f7")
-	styl.border_color = Color("#55e7ff")
-	styl.set_border_width_all(2)
-	styl.set_corner_radius_all(22)
+	styl.border_color = Color("#55e7ff", 0.48)
+	styl.set_border_width_all(0)
+	styl.set_corner_radius_all(16)
 	styl.content_margin_left = 30.0
 	styl.content_margin_right = 30.0
 	styl.content_margin_top = 30.0
 	styl.content_margin_bottom = 30.0
 	styl.shadow_color = Color("#55e7ff30")
-	styl.shadow_size = 26
+	styl.shadow_size = 0
 	styl.shadow_offset = Vector2(0.0, 10.0)
 	karta.add_theme_stylebox_override("panel", styl)
 	add_child(karta)
@@ -51,6 +51,7 @@ func _ready() -> void:
 	komunikat.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	komunikat.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	komunikat.add_theme_font_size_override("font_size", 40)
+	komunikat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	komunikat.add_theme_color_override("font_color", Color("#55e7ff"))
 	komunikat.z_index = 11
 	var wynik_koncowy = Label.new()
@@ -69,8 +70,8 @@ func _ready() -> void:
 	add_child(przycisk)
 	przycisk.hide()
 	przycisk.text = "Wróć do menu"
-	przycisk.set_meta("neon_akcent", Color("#ad83ff"))
-	StylMenu.styluj_przycisk(przycisk, Vector2(300.0, 56.0), Color("#ad83ff"), Color("#111e32"), Color("#344d64"), Color("#192d45"), Color("#102638"), Color("#7958c7"), 20)
+	przycisk.set_meta("neon_akcent", Color("#55e7ff"))
+	StylMenu.styluj_przycisk(przycisk, Vector2(300.0, 56.0), Color("#55e7ff"), Color("#111e32"), Color("#344d64"), Color("#192d45"), Color("#102638"), Color("#35bcd5"), 20)
 	przycisk.z_index = 11
 	przycisk.pressed.connect(func(): menu_pressed.emit())
 	var przycisk_ponownie = Button.new()
@@ -104,8 +105,8 @@ func _ustaw_pozycje_ekranu_konca():
 		$PrzyciskMenu.position = srodek + Vector2(-150.0, 229.0)
 	else:
 		$PodsumowanieStatystyk.custom_minimum_size = Vector2(508.0, 200.0)
-		karta.position = srodek - Vector2(310.0, 260.0)
-		karta.size = Vector2(620.0, 520.0)
+		karta.position = srodek - Vector2(310.0, 280.0)
+		karta.size = Vector2(620.0, 560.0)
 		$Komunikat.position = srodek + Vector2(-270.0, -228.0)
 		$Komunikat.size = Vector2(540.0, 96.0)
 		$WynikKoncowy.position = srodek + Vector2(-270.0, -132.0)
@@ -116,6 +117,14 @@ func _ustaw_pozycje_ekranu_konca():
 		$PrzyciskMenu.position = srodek + Vector2(-150.0, 198.0)
 	$PrzyciskPonownie.size = Vector2(300.0, 52.0)
 	$PrzyciskMenu.size = Vector2(300.0, 52.0)
+	# Całe podsumowanie mieści się również w niższym oknie.
+	var wysokosc = 650.0 if podsumowanie_endless else 560.0
+	var skala = clampf(minf((wymiar.x - 48.0) / 620.0, (wymiar.y - 48.0) / wysokosc), 0.1, 1.0)
+	for element: Control in [karta, $Komunikat, $WynikKoncowy, $PodsumowanieStatystyk, $PrzyciskPonownie, $PrzyciskMenu]:
+		element.scale = Vector2.ONE * skala
+		element.position = srodek + (element.position - srodek) * skala - element.pivot_offset * (1.0 - skala)
+		if element is Button:
+			element.set_meta("neon_skala_bazowa", Vector2.ONE * skala)
 
 
 func _utworz_podsumowanie_statystyk() -> void:
@@ -124,7 +133,7 @@ func _utworz_podsumowanie_statystyk() -> void:
 	siatka.columns = 2
 	siatka.custom_minimum_size = Vector2(508.0, 306.0)
 	siatka.size = Vector2(508.0, 306.0)
-	siatka.add_theme_constant_override("h_separation", 12)
+	siatka.add_theme_constant_override("h_separation", 24)
 	siatka.add_theme_constant_override("v_separation", 12)
 	siatka.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	siatka.z_index = 11
@@ -133,13 +142,13 @@ func _utworz_podsumowanie_statystyk() -> void:
 
 	for i in range(6):
 		var uklad_statystyki = VBoxContainer.new()
-		uklad_statystyki.custom_minimum_size = Vector2(248.0, 94.0)
+		uklad_statystyki.custom_minimum_size = Vector2(242.0, 94.0)
 		uklad_statystyki.add_theme_constant_override("separation", 4)
 		uklad_statystyki.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		siatka.add_child(uklad_statystyki)
 
 		var nazwa = Label.new()
-		nazwa.custom_minimum_size = Vector2(248.0, 28.0)
+		nazwa.custom_minimum_size = Vector2(242.0, 28.0)
 		nazwa.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		nazwa.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		nazwa.add_theme_font_size_override("font_size", 16)
@@ -149,15 +158,15 @@ func _utworz_podsumowanie_statystyk() -> void:
 		etykiety_nazw_statystyk.append(nazwa)
 
 		var karta = PanelContainer.new()
-		karta.custom_minimum_size = Vector2(248.0, 62.0)
+		karta.custom_minimum_size = Vector2(242.0, 62.0)
 		karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var styl = StyleBoxFlat.new()
-		styl.bg_color = Color("#101f34")
+		styl.bg_color = Color("#55e7ff", 0.035)
 		styl.border_color = Color("#315270")
-		styl.set_border_width_all(2)
+		styl.set_border_width_all(0)
 		styl.set_corner_radius_all(12)
 		styl.shadow_color = Color("#55e7ff12")
-		styl.shadow_size = 8
+		styl.shadow_size = 0
 		styl.content_margin_left = 10.0
 		styl.content_margin_right = 10.0
 		styl.content_margin_top = 4.0
@@ -184,21 +193,21 @@ func _odswiez_statystyki_koncowe(dane: PodsumowanieMeczu) -> void:
 	var nazwy: Array[String]
 	var wartosci: Array[String]
 	if dane.tryb == "endless":
-		$WynikKoncowy.text = "WYNIK  ·  %d" % dane.wynik_gracza
+		$WynikKoncowy.text = "WYNIK - %d" % dane.wynik_gracza
 	else:
 		$WynikKoncowy.text = "%d     :     %d" % [dane.wynik_gracza, dane.wynik_ai]
 
 	if dane.tryb == "endless":
 		nazwy = [
-			"Czas próby", "Odbicia łącznie", "Mocne odbicia · +2 pkt",
-			"NOWY REKORD!" if dane.nowy_rekord_endless else "Rekord osobisty",
+			"Czas próby", "Odbicia łącznie", "Idealne odbicia",
+			"Zdobyte ulepszenia",
 			"Prędkość piłki", "Rozmiar paletki"
 		]
 		wartosci = [
 			tekst_czasu,
 			str(dane.odbicia_lacznie),
 			str(dane.mocne_odbicia_lacznie),
-			str(dane.rekord_endless),
+			str(dane.ulepszenia_endless),
 			"×%.2f" % dane.mnoznik_predkosci_endless,
 			"%d%%" % dane.rozmiar_paletki_endless
 		]
@@ -218,8 +227,6 @@ func _odswiez_statystyki_koncowe(dane: PodsumowanieMeczu) -> void:
 		etykiety_nazw_statystyk[i].text = nazwy[i]
 		etykiety_wartosci_statystyk[i].text = wartosci[i]
 		var kolor_wartosci := Color("#55e7ff")
-		if dane.nowy_rekord_endless and i == 3:
-			kolor_wartosci = Color("#ffc76a")
 		etykiety_wartosci_statystyk[i].add_theme_color_override("font_color", kolor_wartosci)
 
 

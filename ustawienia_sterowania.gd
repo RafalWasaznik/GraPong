@@ -1,8 +1,8 @@
 extends VBoxContainer
 
 const KOLOR_TURKUS = Color("#55e7ff")
-const KOLOR_ROZ = Color("#ff5fb7")
-const KOLOR_FIOLET = Color("#ad83ff")
+const KOLOR_ROZ = KOLOR_TURKUS
+const KOLOR_FIOLET = KOLOR_TURKUS
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 const MAPOWANIA = [
 	{"akcja": "lewy_gora", "gracz": 1, "opis": "Ruch w górę", "kolor": KOLOR_TURKUS},
@@ -16,7 +16,7 @@ const MAPOWANIA = [
 
 @onready var gracze: HBoxContainer = $Gracze
 @onready var informacja: Label = $Informacja
-@onready var przywroc: Button = $Przywroc
+@onready var przywroc: Button = $BlokPrzywracania/Przywroc
 
 var przyciski: Dictionary = {}
 var aktywna_akcja = ""
@@ -24,15 +24,17 @@ var aktywna_akcja = ""
 
 func _ready() -> void:
 	custom_minimum_size.x = 445.0
-	add_theme_constant_override("separation", 6)
-	gracze.add_theme_constant_override("separation", 10)
+	add_theme_constant_override("separation", 0)
+	gracze.add_theme_constant_override("separation", 40)
 	$Gracze/Gracz1.add_theme_stylebox_override("panel", _styl_panelu(KOLOR_TURKUS))
 	$Gracze/Gracz2.add_theme_stylebox_override("panel", _styl_panelu(KOLOR_ROZ))
-	$InneUstawienia.add_theme_font_override("font", FONT_ARCADE)
-	$InneUstawienia.add_theme_color_override("font_color", KOLOR_TURKUS)
+	$Pauza/Uklad/InneUstawienia.add_theme_font_override("font", FONT_ARCADE)
+	$Pauza/Uklad/InneUstawienia.add_theme_color_override("font_color", KOLOR_TURKUS)
 	$Pauza.add_theme_stylebox_override("panel", _styl_panelu(KOLOR_FIOLET))
+	$BlokPrzywracania.add_theme_stylebox_override("panel", _styl_panelu(KOLOR_TURKUS))
 	$Pauza.custom_minimum_size.x = 190.0
-	$Pauza.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	$Pauza/Uklad/InneUstawienia.text = "Pozostałe skróty"
+	$Pauza.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	for mapowanie in MAPOWANIA:
 		var akcja = str(mapowanie["akcja"])
@@ -42,15 +44,15 @@ func _ready() -> void:
 		elif int(mapowanie["gracz"]) == 2:
 			$Gracze/Gracz2/Klawisze.add_child(kafelek)
 		else:
-			$Pauza/Wiersz.add_child(kafelek)
+			$Pauza/Uklad/Wiersz.add_child(kafelek)
 		przyciski[akcja] = kafelek.get_node("Klawisz")
 
-	for etykieta in [$Gracze/Gracz1/Klawisze/Tytul, $Gracze/Gracz2/Klawisze/Tytul, $Pauza/Wiersz/Tytul]:
+	for etykieta in [$Gracze/Gracz1/Klawisze/Tytul, $Gracze/Gracz2/Klawisze/Tytul, $Pauza/Uklad/Wiersz/Tytul]:
 		etykieta.add_theme_font_override("font", FONT_ARCADE)
 		etykieta.add_theme_font_size_override("font_size", 18)
 	$Gracze/Gracz1/Klawisze/Tytul.add_theme_color_override("font_color", KOLOR_TURKUS)
 	$Gracze/Gracz2/Klawisze/Tytul.add_theme_color_override("font_color", KOLOR_ROZ)
-	$Pauza/Wiersz/Tytul.add_theme_color_override("font_color", KOLOR_FIOLET)
+	$Pauza/Uklad/Wiersz/Tytul.add_theme_color_override("font_color", KOLOR_FIOLET)
 	
 	informacja.add_theme_font_size_override("font_size", 15)
 	informacja.add_theme_color_override("font_color", Color("#b9cde2"))
@@ -60,8 +62,11 @@ func _ready() -> void:
 	
 	przywroc.add_theme_font_size_override("font_size", 16)
 	przywroc.add_theme_color_override("font_color", Color("#dceaff"))
-	przywroc.add_theme_stylebox_override("normal", _styl_kafelka(Color("#72819a", 0.48)))
-	przywroc.add_theme_stylebox_override("hover", _styl_kafelka(Color("#ad83ff", 0.85)))
+	przywroc.add_theme_stylebox_override("normal", _styl_kafelka(Color(KOLOR_TURKUS, 0.3)))
+	for stan: String in ["hover", "focus", "hover_pressed"]:
+		przywroc.add_theme_stylebox_override(stan, _styl_kafelka(KOLOR_TURKUS))
+	przywroc.add_theme_stylebox_override("pressed", _styl_kafelka(KOLOR_TURKUS, true))
+	przywroc.add_theme_stylebox_override("disabled", _styl_kafelka(Color(KOLOR_TURKUS, 0.15)))
 	przywroc.pressed.connect(_przywroc_domyslne)
 	_odswiez_kafelki()
 
@@ -69,11 +74,12 @@ func _ready() -> void:
 func _utworz_wiersz(mapowanie: Dictionary) -> HBoxContainer:
 	var wiersz = HBoxContainer.new()
 	wiersz.custom_minimum_size.y = 40.0
-	wiersz.add_theme_constant_override("separation", 6)
+	wiersz.add_theme_constant_override("separation", 8)
 	if int(mapowanie["gracz"]) > 0:
 		var opis = Label.new()
 		opis.text = str(mapowanie["opis"])
 		opis.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		opis.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		opis.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		opis.add_theme_font_size_override("font_size", 15)
 		opis.add_theme_color_override("font_color", Color("#dceaff"))
@@ -87,10 +93,12 @@ func _utworz_wiersz(mapowanie: Dictionary) -> HBoxContainer:
 	kafelek.add_theme_color_override("font_color", Color("#f2f7ff"))
 	kafelek.add_theme_color_override("font_hover_color", Color.WHITE)
 	var kolor = Color(mapowanie["kolor"])
-	kafelek.add_theme_stylebox_override("normal", _styl_kafelka(kolor.darkened(0.2)))
+	kafelek.add_theme_stylebox_override("normal", _styl_kafelka(Color(kolor, 0.3)))
 	kafelek.add_theme_stylebox_override("hover", _styl_kafelka(kolor))
-	kafelek.add_theme_stylebox_override("pressed", _styl_kafelka(kolor.lightened(0.12)))
+	kafelek.add_theme_stylebox_override("hover_pressed", _styl_kafelka(kolor, true))
+	kafelek.add_theme_stylebox_override("pressed", _styl_kafelka(kolor, true))
 	kafelek.add_theme_stylebox_override("focus", _styl_kafelka(kolor))
+	kafelek.add_theme_stylebox_override("disabled", _styl_kafelka(Color(kolor, 0.15)))
 	kafelek.pressed.connect(_rozpocznij_przypisywanie.bind(str(mapowanie["akcja"])))
 	wiersz.add_child(kafelek)
 	return wiersz
@@ -169,6 +177,10 @@ func _odswiez_kafelki() -> void:
 		else:
 			kafelek.text = Ustawienia.tekst_klawisza(akcja)
 		kafelek.disabled = not aktywna_akcja.is_empty() and aktywna_akcja != akcja
+		var nasluchiwanie: bool = aktywna_akcja == akcja
+		kafelek.add_theme_stylebox_override("normal", _styl_kafelka(Color(KOLOR_TURKUS, 1.0 if nasluchiwanie else 0.3), nasluchiwanie))
+		for stan: String in ["hover", "focus", "hover_pressed", "pressed"]:
+			kafelek.add_theme_stylebox_override(stan, _styl_kafelka(KOLOR_TURKUS, nasluchiwanie))
 
 
 func _nazwa_akcji(akcja: String) -> String:
@@ -179,25 +191,22 @@ func _nazwa_akcji(akcja: String) -> String:
 	return akcja
 
 
-func _styl_panelu(kolor_obramowania: Color) -> StyleBoxFlat:
+func _styl_panelu(_kolor_obramowania: Color) -> StyleBoxFlat:
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color("#101d31")
-	styl.border_color = Color(kolor_obramowania, 0.48)
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(10)
-	styl.content_margin_left = 10.0
-	styl.content_margin_right = 10.0
-	styl.content_margin_top = 6.0
-	styl.content_margin_bottom = 6.0
+	styl.bg_color = Color(KOLOR_TURKUS, 0.035)
+	styl.set_corner_radius_all(8)
+	styl.content_margin_left = 16.0
+	styl.content_margin_right = 16.0
+	styl.content_margin_top = 18.0
+	styl.content_margin_bottom = 18.0
 	return styl
 
 
-func _styl_kafelka(kolor_obramowania: Color) -> StyleBoxFlat:
+func _styl_kafelka(kolor_obramowania: Color, nasluchiwanie: bool = false) -> StyleBoxFlat:
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color("#101d31")
+	styl.bg_color = Color(KOLOR_TURKUS, 0.08) if nasluchiwanie else Color.TRANSPARENT
 	styl.border_color = kolor_obramowania
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(8)
+	styl.border_width_bottom = 2
 	styl.content_margin_left = 8.0
 	styl.content_margin_right = 8.0
 	styl.content_margin_top = 4.0

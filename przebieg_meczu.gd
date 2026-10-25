@@ -1,11 +1,12 @@
 class_name PrzebiegMeczu
 extends Node
 
+const SCENA_PILKI_ENDLESS = preload("res://piłka.tscn")
+
 const SZEROKOSC_INFO_ENDLESS = 440.0
 const CZCIONKA_ENDLESS = preload("res://assets/fonts/Oxanium.ttf")
 const KOLOR_TURKUS_ENDLESS = Color("#55e7ff")
 const KOLOR_FIOLET_ENDLESS = Color("#ad83ff")
-const KOLOR_REKORD_ENDLESS = Color("#ffc76a")
 
 var gra: GraPongAPI
 var wynik_gracza = 0
@@ -18,15 +19,15 @@ var stat_mocne_odbicia_rywala = 0
 var biezaca_wymiana = 0
 var najdluzsza_wymiana = 0
 var endless_odbicia = 0
-var endless_przyspieszenia_oczekujace = 0
-var endless_rekord_pobity = false
+var wybor_oczekuje: bool = false
+var run_state: RunState
+var rejestr_ulepszen: Array[UlepszenieRun] = UlepszenieRun.katalog()
+var wybor_ulepszenia: WyborUlepszenia
 var endless_wysokosc_startowa = 120.0
-var endless_wysokosc_aktualna = 120.0
 var mecz_zakonczony = false
 var endless_info: HBoxContainer
 var endless_wartosci: Array[Label] = []
 var endless_powiadomienie: Label
-var animacja_powiadomienia: Tween
 
 
 func uruchom(gra_glowna: GraPongAPI) -> void:
@@ -35,26 +36,25 @@ func uruchom(gra_glowna: GraPongAPI) -> void:
 		var ksztalt_paletki = gra.lewa_paletka().kolizja.shape as RectangleShape2D
 		if ksztalt_paletki != null:
 			endless_wysokosc_startowa = ksztalt_paletki.size.y
-			endless_wysokosc_aktualna = ksztalt_paletki.size.y
+		run_state = RunState.new()
+		gra.pilka().run_state = run_state
+		gra.lewa_paletka().run_state = run_state
+		wybor_ulepszenia = WyborUlepszenia.new()
+		gra.add_child(wybor_ulepszenia)
+		wybor_ulepszenia.wybrano.connect(_zastosuj_stan_endless)
+		_zastosuj_stan_endless()
+
+
+func _physics_process(delta: float) -> void:
+	if run_state != null and not mecz_zakonczony:
+		run_state.aktualizuj_czas(delta)
 
 
 func _process(delta: float) -> void:
 	if not mecz_zakonczony:
 		czas_meczu += delta
-		_uruchom_odlozone_przyspieszenia_endless()
 		if Ustawienia.tryb == "endless" and is_instance_valid(endless_info):
 			_odswiez_info_endless()
-
-
-func _uruchom_odlozone_przyspieszenia_endless() -> void:
-	if Ustawienia.tryb != "endless" or endless_przyspieszenia_oczekujace <= 0:
-		return
-	var pilka := gra.pilka()
-	if pilka.czas_rundy < Pilka.CZAS_STARTOWEJ_PREDKOSCI_ENDLESS:
-		return
-	while endless_przyspieszenia_oczekujace > 0:
-		pilka.przyspiesz(1.08)
-		endless_przyspieszenia_oczekujace -= 1
 
 
 func zarejestruj_odbicie(strona: String, mocne: bool) -> void:
@@ -86,8 +86,19 @@ func _on_punkt(strona: String) -> void:
 	if mecz_zakonczony:
 		return
 	gra.zresetuj_rozpad_punktu()
+	gra.lewa_paletka().reset_po_punkcie()
+	gra.prawa_paletka().reset_po_punkcie()
 	if Ustawienia.tryb == "endless":
-		_zakoncz_endless()
+		run_state.lives -= 1
+		biezaca_wymiana = 0
+		gra.odtworz_dzwiek_punktu()
+		_zastosuj_stan_endless()
+		if run_state.lives <= 0:
+			_zakoncz_endless()
+		else:
+			gra.lewa_paletka().set_physics_process(true)
+			run_state.slowRemaining = 0.0
+			_odnow_pilki_endless.call_deferred()
 		return
 
 	gra.odtworz_dzwiek_punktu()
@@ -132,70 +143,79 @@ func _on_punkt(strona: String) -> void:
 
 
 func zarejestruj_odbicie_endless(idealne: bool) -> void:
-	if Ustawienia.tryb != "endless" or mecz_zakonczony:
+	if Ustawienia.tryb != "endless" or mecz_zakonczony or run_state == null:
 		return
-	endless_odbicia += 1
-	wynik_gracza += (3 if idealne else 1)
-	gra.ustaw_wyniki(wynik_gracza, Ustawienia.rekord_endless)
-	if endless_odbicia % 10 == 0:
-		_pokaz_powiadomienie("%d ODBIĆ" % endless_odbicia, KOLOR_TURKUS_ENDLESS, false)
-	if endless_odbicia % 5 == 0:
-		if (gra.pilka()).czas_rundy < Pilka.CZAS_STARTOWEJ_PREDKOSCI_ENDLESS:
-			endless_przyspieszenia_oczekujace += 1
-		else:
-			(gra.pilka()).przyspiesz(1.08)
-	if endless_odbicia % 12 == 0:
-		_zmniejsz_paletke_endless()
-	if not endless_rekord_pobity and wynik_gracza > Ustawienia.rekord_endless:
-		endless_rekord_pobity = true
-		_pokaz_powiadomienie("NOWY REKORD OSOBISTY!", KOLOR_REKORD_ENDLESS, true)
-		gra.odtworz_dzwiek_rekordu()
-	elif endless_odbicia % 10 == 0:
-		gra.odtworz_dzwiek_kamienia_milowego()
+	run_state.zarejestruj_odbicie(idealne)
+	endless_odbicia = run_state.hits
+	wynik_gracza = floori(run_state.score)
+	wynik_ai = run_state.lives
+	gra.ustaw_wyniki(wynik_gracza, run_state.lives)
+	if run_state.hits % RunState.UPGRADE_EVERY_HITS == 0 and not wybor_oczekuje and not run_state.wybor_aktywny:
+		wybor_oczekuje = true
+		_pokaz_wybor_endless.call_deferred()
 	_odswiez_info_endless()
 
 
-func _zmniejsz_paletke_endless() -> void:
-	var etap = floori(float(endless_odbicia) / 12.0)
-	var mnoznik = maxf(0.6, 1.0 - float(etap) * 0.08)
-	endless_wysokosc_aktualna = endless_wysokosc_startowa * mnoznik
-	var paletka := gra.lewa_paletka()
-	paletka.ustaw_wysokosc.call_deferred(endless_wysokosc_aktualna)
+func _pokaz_wybor_endless() -> void:
+	wybor_oczekuje = false
+	if mecz_zakonczony or run_state == null:
+		return
+	var oferty := UlepszenieRun.losuj(run_state, rejestr_ulepszen)
+	if not oferty.is_empty():
+		wybor_ulepszenia.pokaz(run_state, oferty)
+
+
+func _zastosuj_stan_endless() -> void:
+	gra.lewa_paletka().ustaw_wysokosc(endless_wysokosc_startowa * run_state.paddleWidthMult)
+	gra.lewa_paletka()._ogranicz_pozycje_y()
+	wynik_ai = run_state.lives
+	wynik_gracza = floori(run_state.score)
+	gra.ustaw_wyniki(wynik_gracza, run_state.lives)
+	_uzupelnij_pilki_endless.call_deferred()
+	_odswiez_info_endless()
+
+
+func _uzupelnij_pilki_endless() -> void:
+	if run_state == null or mecz_zakonczony or run_state.lives <= 0:
+		return
+	var liczba := get_tree().get_nodes_in_group("pilki").size()
+	while liczba < run_state.ballCount:
+		var nowa := SCENA_PILKI_ENDLESS.instantiate() as Pilka
+		nowa.run_state = run_state
+		nowa.punkt.connect(_on_punkt)
+		nowa.odbicie_gracza.connect(zarejestruj_odbicie_endless)
+		nowa.statystyki_odbicia.connect(zarejestruj_odbicie)
+		gra.add_child(nowa)
+		_ustaw_start_pilki_endless(nowa, liczba)
+		liczba += 1
+
+
+func _ustaw_start_pilki_endless(pilka: Pilka, indeks: int) -> void:
+	var odstep := minf(100.0, (Ustawienia.dolna_granica - Ustawienia.gorna_granica) / 4.0)
+	pilka.position.y += (0.0 if indeks == 0 else (-odstep if indeks == 1 else odstep))
+	pilka.srodek_intro = pilka.position
+
+
+func _odnow_pilki_endless() -> void:
+	if run_state == null or mecz_zakonczony:
+		return
+	_uzupelnij_pilki_endless()
+	var indeks := 0
+	for wezel in get_tree().get_nodes_in_group("pilki"):
+		var pilka := wezel as Pilka
+		pilka.reset()
+		_ustaw_start_pilki_endless(pilka, indeks)
+		indeks += 1
 
 
 func _zakoncz_endless() -> void:
-	var nowy_rekord = wynik_gracza > Ustawienia.rekord_endless
-	if nowy_rekord:
-		Ustawienia.rekord_endless = wynik_gracza
-		Ustawienia.zapisz()
-	gra.ustaw_wyniki(wynik_gracza, Ustawienia.rekord_endless)
-	zakoncz_mecz("Nowy rekord!" if nowy_rekord else "Koniec próby")
-
-
-func _pokaz_powiadomienie(tekst: String, kolor: Color, rekord: bool) -> void:
-	if endless_powiadomienie == null:
-		return
-	if is_instance_valid(animacja_powiadomienia):
-		animacja_powiadomienia.kill()
-	endless_powiadomienie.text = tekst
-	endless_powiadomienie.add_theme_color_override("font_color", kolor)
-	endless_powiadomienie.add_theme_font_size_override("font_size", 30 if rekord else 25)
-	endless_powiadomienie.scale = Vector2(0.92, 0.92) if rekord else Vector2.ONE
-	endless_powiadomienie.modulate.a = 0.0
-	endless_powiadomienie.show()
-	animacja_powiadomienia = create_tween()
-	animacja_powiadomienia.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	animacja_powiadomienia.tween_property(endless_powiadomienie, "modulate:a", 1.0, 0.16)
-	if rekord:
-		animacja_powiadomienia.parallel().tween_property(endless_powiadomienie, "scale", Vector2.ONE, 0.24)
-	animacja_powiadomienia.tween_interval(1.25)
-	animacja_powiadomienia.tween_property(endless_powiadomienie, "modulate:a", 0.0, 0.35)
-	animacja_powiadomienia.tween_callback(_ukryj_powiadomienie_endless)
-
-
-func _ukryj_powiadomienie_endless() -> void:
-	if is_instance_valid(endless_powiadomienie):
-		endless_powiadomienie.hide()
+	zakoncz_mecz("Koniec rozgrywki")
+	for pilka in get_tree().get_nodes_in_group("pilki"):
+		(pilka as Pilka).run_state = null
+	gra.lewa_paletka().run_state = null
+	wybor_ulepszenia.stan = null
+	wybor_ulepszenia.oferty.clear()
+	run_state = null
 
 
 func zakoncz_po_czasie() -> void:
@@ -214,30 +234,17 @@ func dodaj_info_endless() -> void:
 	endless_info.add_theme_constant_override("separation", 10)
 	endless_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	endless_info.z_index = 10
-	_dodaj_grupe_info_endless(endless_info, "IDEALNE ODBICIE", 150.0, KOLOR_TURKUS_ENDLESS)
-	_dodaj_grupe_info_endless(endless_info, "PRĘDKOŚĆ PIŁKI", 150.0, Color("#b8c9dc"))
-	_dodaj_grupe_info_endless(endless_info, "PALETKA", 120.0, KOLOR_FIOLET_ENDLESS)
+	_dodaj_grupe_info_endless(endless_info, "DO ULEPSZENIA", 150.0, KOLOR_TURKUS_ENDLESS)
+	_dodaj_grupe_info_endless(endless_info, "ŻYCIA", 150.0, Color("#b8c9dc"))
+	_dodaj_grupe_info_endless(endless_info, "ULEPSZENIA", 120.0, KOLOR_FIOLET_ENDLESS)
 	gra.add_child(endless_info)
 	endless_powiadomienie = Label.new()
-	endless_powiadomienie.name = "PowiadomienieEndless"
 	endless_powiadomienie.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	endless_powiadomienie.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	endless_powiadomienie.add_theme_font_override("font", CZCIONKA_ENDLESS)
+	endless_powiadomienie.add_theme_font_size_override("font_size", 14)
 	endless_powiadomienie.add_theme_color_override("font_color", KOLOR_TURKUS_ENDLESS)
-	endless_powiadomienie.add_theme_color_override("font_shadow_color", Color(KOLOR_TURKUS_ENDLESS, 0.5))
-	endless_powiadomienie.add_theme_constant_override("shadow_offset_x", 0)
-	endless_powiadomienie.add_theme_constant_override("shadow_offset_y", 0)
-	endless_powiadomienie.add_theme_constant_override("shadow_outline_size", 12)
-	endless_powiadomienie.position = Vector2(
-		(Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5 - 280.0,
-		Ustawienia.gorna_granica + 42.0
-	)
-	endless_powiadomienie.size = Vector2(560.0, 62.0)
-	endless_powiadomienie.pivot_offset = endless_powiadomienie.size * 0.5
 	endless_powiadomienie.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	endless_powiadomienie.z_index = 20
+	endless_powiadomienie.size = Vector2(560.0, 42.0)
 	gra.add_child(endless_powiadomienie)
-	endless_powiadomienie.hide()
 	get_viewport().size_changed.connect(_ustaw_pozycje_info_endless)
 	_ustaw_pozycje_info_endless()
 	_odswiez_info_endless()
@@ -299,16 +306,19 @@ func _ustaw_pozycje_info_endless() -> void:
 
 
 func _odswiez_info_endless() -> void:
-	if endless_info == null:
+	if endless_info == null or run_state == null:
 		return
-	var pilka := gra.pilka()
-	var predkosc_razy = pilka.predkosc / Pilka.SPEED * pilka.mnoznik_ruchu_chwilowy()
-	var procent_paletki := 100
-	if endless_wysokosc_startowa > 0.0:
-		procent_paletki = roundi(endless_wysokosc_aktualna / endless_wysokosc_startowa * 100.0)
-	endless_wartosci[0].text = "+2 PKT"
-	endless_wartosci[1].text = "×%.2f" % predkosc_razy
-	endless_wartosci[2].text = "%d%%" % procent_paletki
+	var pozostaly_wybor := false
+	var posiadane: PackedStringArray = []
+	for ulepszenie in rejestr_ulepszen:
+		var stosy := run_state.liczba_stosow(ulepszenie.id)
+		pozostaly_wybor = pozostaly_wybor or stosy < ulepszenie.maxStacks
+		if stosy > 0:
+			posiadane.append("%s ×%d" % [ulepszenie.nazwa, stosy])
+	endless_wartosci[0].text = "%d/%d" % [run_state.hits % RunState.UPGRADE_EVERY_HITS, RunState.UPGRADE_EVERY_HITS] if pozostaly_wybor else "MAKSIMUM"
+	endless_wartosci[1].text = "%d/%d" % [run_state.lives, run_state.maxLives]
+	endless_wartosci[2].text = str(run_state.ownedStacks.size())
+	endless_powiadomienie.text = "  |  ".join(posiadane) if not posiadane.is_empty() else "Co %d odbić wybierasz ulepszenie" % RunState.UPGRADE_EVERY_HITS
 
 
 func zakoncz_mecz(tekst: String) -> void:
@@ -343,12 +353,9 @@ func pobierz_podsumowanie() -> PodsumowanieMeczu:
 	podsumowanie.wynik_ai = wynik_ai
 	podsumowanie.odbicia_lacznie = stat_odbicia_gracza + stat_odbicia_rywala
 	podsumowanie.mocne_odbicia_lacznie = stat_mocne_odbicia_gracza + stat_mocne_odbicia_rywala
-	podsumowanie.rekord_endless = Ustawienia.rekord_endless
-	podsumowanie.nowy_rekord_endless = endless_rekord_pobity
-	if Ustawienia.tryb == "endless":
-		var pilka := gra.pilka()
-		podsumowanie.mnoznik_predkosci_endless = pilka.predkosc / Pilka.SPEED * pilka.mnoznik_ruchu_chwilowy()
-		if endless_wysokosc_startowa > 0.0:
-			podsumowanie.rozmiar_paletki_endless = roundi(endless_wysokosc_aktualna / endless_wysokosc_startowa * 100.0)
+	if Ustawienia.tryb == "endless" and run_state != null:
+		podsumowanie.ulepszenia_endless = run_state.ownedStacks.size()
+		podsumowanie.mnoznik_predkosci_endless = run_state.ballSpeedMult
+		podsumowanie.rozmiar_paletki_endless = roundi(run_state.paddleWidthMult * 100.0)
 	podsumowanie.najdluzsza_wymiana = najdluzsza_wymiana
 	return podsumowanie

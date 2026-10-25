@@ -19,6 +19,10 @@ var glosnosc_ogolna = 80.0
 var glosnosc_muzyki = 80.0
 var glosnosc_efektow = 80.0
 var pelny_ekran = true
+var kursor_neonowy = true
+
+const KURSOR_NEON = preload("res://assets/kursor_neon.svg")
+const KURSOR_TEKST = preload("res://assets/kursor_tekst.svg")
 
 const KLAWISZE_DOMYSLNE = {
 	"lewy_gora": KEY_W,
@@ -37,6 +41,27 @@ var lewa_granica = 32.0
 var prawa_granica = 1120.0
 var gorna_granica = 100.0
 var dolna_granica = 620.0
+
+
+func _ready() -> void:
+	var plik := ConfigFile.new()
+	if plik.load(PLIK_USTAWIEN) == OK:
+		kursor_neonowy = bool(plik.get_value("interfejs", "kursor_neonowy", true))
+	_zastosuj_kursor()
+
+
+func _zastosuj_kursor() -> void:
+	var strzalka: Texture2D = KURSOR_NEON if kursor_neonowy else null
+	var tekst: Texture2D = KURSOR_TEKST if kursor_neonowy else null
+	Input.set_custom_mouse_cursor(strzalka, Input.CURSOR_ARROW, Vector2(4, 3))
+	Input.set_custom_mouse_cursor(strzalka, Input.CURSOR_POINTING_HAND, Vector2(4, 3))
+	Input.set_custom_mouse_cursor(tekst, Input.CURSOR_IBEAM, Vector2(16, 16))
+
+
+func ustaw_kursor_neonowy(wartosc: bool) -> void:
+	kursor_neonowy = wartosc
+	_zastosuj_kursor()
+	zapisz()
 
 
 func ustaw_geometrie_planszy():
@@ -89,6 +114,8 @@ func wczytaj():
 	glosnosc_muzyki = plik.get_value("audio", "muzyka", glosnosc_muzyki)
 	glosnosc_efektow = plik.get_value("audio", "efekty", glosnosc_efektow)
 	pelny_ekran = plik.get_value("ekran", "pelny_ekran", pelny_ekran)
+	kursor_neonowy = plik.get_value("interfejs", "kursor_neonowy", kursor_neonowy)
+	_zastosuj_kursor()
 
 	ustaw_geometrie_planszy()
 	_zastosuj_tryb_okna()
@@ -110,6 +137,7 @@ func zapisz():
 	plik.set_value("audio", "muzyka", glosnosc_muzyki)
 	plik.set_value("audio", "efekty", glosnosc_efektow)
 	plik.set_value("ekran", "pelny_ekran", pelny_ekran)
+	plik.set_value("interfejs", "kursor_neonowy", kursor_neonowy)
 	for akcja in KLAWISZE_DOMYSLNE:
 		plik.set_value("sterowanie", akcja, int(klawisze[akcja]))
 
