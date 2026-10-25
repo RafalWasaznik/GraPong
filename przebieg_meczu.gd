@@ -1,9 +1,7 @@
 class_name PrzebiegMeczu
 extends Node
 
-const SCENA_PILKI_ENDLESS = preload("res://piłka.tscn")
-
-const SZEROKOSC_INFO_ENDLESS = 440.0
+const SZEROKOSC_INFO_ENDLESS = 760.0
 const CZCIONKA_ENDLESS = preload("res://assets/fonts/Oxanium.ttf")
 const KOLOR_TURKUS_ENDLESS = Color("#55e7ff")
 const KOLOR_FIOLET_ENDLESS = Color("#ad83ff")
@@ -20,6 +18,26 @@ var biezaca_wymiana = 0
 var najdluzsza_wymiana = 0
 var endless_odbicia = 0
 var wybor_oczekuje: bool = false
+var wybory_w_kolejce: int = 0
+var indeks_progu_ulepszenia: int = 0
+const DIFFICULTY = TrudnoscRun.DIFFICULTY
+
+var czas_do_krysztalu: float = DIFFICULTY.SPAWN_BASE_MS / 1000.0
+var interwal_krysztalow: float = DIFFICULTY.SPAWN_BASE_MS
+var czas_krysztalow: float = 0.0
+var zniszczenia_krysztalow: Array[float] = []
+var wygasniecia_krysztalow: Array[float] = []
+var krysztaly: Array[KrysztalRun] = []
+var kolejka_wybuchow_krysztalow: Array[KrysztalRun] = []
+var rozstrzyganie_wybuchow_krysztalow: bool = false
+var boss: BossRun
+var nagroda_bossa: bool = false
+var boss_oczekuje: bool = false
+var nagroda_bossa_otwarta: bool = false
+var obrazenia_bossa: Array[BossRun.Trafienie] = []
+var trafienia_pociskow: Array[Vector2] = []
+var strata_pilki_bossa: bool = false
+var rozpad_bossa_zakonczony: bool = false
 var run_state: RunState
 var rejestr_ulepszen: Array[UlepszenieRun] = UlepszenieRun.katalog()
 var wybor_ulepszenia: WyborUlepszenia
@@ -27,7 +45,8 @@ var endless_wysokosc_startowa = 120.0
 var mecz_zakonczony = false
 var endless_info: HBoxContainer
 var endless_wartosci: Array[Label] = []
-var endless_powiadomienie: Label
+var endless_postep: ProgressBar
+var endless_krysztaly: Label
 
 
 func uruchom(gra_glowna: GraPongAPI) -> void:
@@ -36,18 +55,29 @@ func uruchom(gra_glowna: GraPongAPI) -> void:
 		var ksztalt_paletki = gra.lewa_paletka().kolizja.shape as RectangleShape2D
 		if ksztalt_paletki != null:
 			endless_wysokosc_startowa = ksztalt_paletki.size.y
+		process_physics_priority = 100
 		run_state = RunState.new()
 		gra.pilka().run_state = run_state
 		gra.lewa_paletka().run_state = run_state
 		wybor_ulepszenia = WyborUlepszenia.new()
 		gra.add_child(wybor_ulepszenia)
 		wybor_ulepszenia.wybrano.connect(_zastosuj_stan_endless)
+		wybor_ulepszenia.dzwiek_wyboru.connect(gra.odtworz_dzwiek_bonusu)
 		_zastosuj_stan_endless()
 
 
 func _physics_process(delta: float) -> void:
 	if run_state != null and not mecz_zakonczony:
 		run_state.aktualizuj_czas(delta)
+		_rozstrzygnij_zdarzenia_bossa()
+		if run_state == null or mecz_zakonczony or run_state.boss_aktywny or get_tree().paused:
+			return
+		_kolejkuj_wybory_endless()
+		czas_krysztalow += delta
+		czas_do_krysztalu -= delta
+		if czas_do_krysztalu <= 0.0:
+			czas_do_krysztalu = interwal_krysztalow / 1000.0
+			_spawn_krysztalu.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -85,21 +115,12 @@ func ustaw_stan_zdalny(stan: StanMeczuOnline) -> void:
 func _on_punkt(strona: String) -> void:
 	if mecz_zakonczony:
 		return
+	if run_state != null:
+		kolejkuj_strate_pilki_bossa()
+		return
 	gra.zresetuj_rozpad_punktu()
 	gra.lewa_paletka().reset_po_punkcie()
 	gra.prawa_paletka().reset_po_punkcie()
-	if Ustawienia.tryb == "endless":
-		run_state.lives -= 1
-		biezaca_wymiana = 0
-		gra.odtworz_dzwiek_punktu()
-		_zastosuj_stan_endless()
-		if run_state.lives <= 0:
-			_zakoncz_endless()
-		else:
-			gra.lewa_paletka().set_physics_process(true)
-			run_state.slowRemaining = 0.0
-			_odnow_pilki_endless.call_deferred()
-		return
 
 	gra.odtworz_dzwiek_punktu()
 	biezaca_wymiana = 0
@@ -146,23 +167,333 @@ func zarejestruj_odbicie_endless(idealne: bool) -> void:
 	if Ustawienia.tryb != "endless" or mecz_zakonczony or run_state == null:
 		return
 	run_state.zarejestruj_odbicie(idealne)
+	if not run_state.boss_aktywny:
+		_kolejkuj_wybory_endless()
+		run_state.bossHits += 1
+		if run_state.bossHits >= RunState.BOSS_EVERY_HITS:
+			run_state.boss_aktywny = true
+			boss_oczekuje = true
+			for krysztal in krysztaly:
+				if is_instance_valid(krysztal):
+					run_state.score += 5.0 * run_state.targetRewardMult * run_state.scoreMult * krysztal.rozlicz_przed_bossem()
+			krysztaly.clear()
+			gra.pilka().set_physics_process(false)
 	endless_odbicia = run_state.hits
 	wynik_gracza = floori(run_state.score)
 	wynik_ai = run_state.lives
 	gra.ustaw_wyniki(wynik_gracza, run_state.lives)
-	if run_state.hits % RunState.UPGRADE_EVERY_HITS == 0 and not wybor_oczekuje and not run_state.wybor_aktywny:
+	_kolejkuj_wybory_endless()
+	_odswiez_info_endless()
+
+
+func _kolejkuj_wybory_endless() -> void:
+	if run_state.boss_aktywny or nagroda_bossa:
+		return
+	while run_state.upgradeProgress >= _prog_ulepszenia(indeks_progu_ulepszenia):
+		wybory_w_kolejce += 1
+		indeks_progu_ulepszenia += 1
+	if wybory_w_kolejce > 0 and not wybor_oczekuje and not run_state.wybor_aktywny and not get_tree().paused:
 		wybor_oczekuje = true
 		_pokaz_wybor_endless.call_deferred()
-	_odswiez_info_endless()
+
+
+func _prog_ulepszenia(indeks: int) -> int:
+	if indeks < RunState.UPGRADE_HIT_THRESHOLDS.size():
+		return RunState.UPGRADE_HIT_THRESHOLDS[indeks]
+	return RunState.UPGRADE_HIT_THRESHOLDS[-1] + (indeks - RunState.UPGRADE_HIT_THRESHOLDS.size() + 1) * RunState.UPGRADE_EVERY_HITS
 
 
 func _pokaz_wybor_endless() -> void:
 	wybor_oczekuje = false
-	if mecz_zakonczony or run_state == null:
+	if mecz_zakonczony or run_state == null or (run_state.boss_aktywny and not boss_oczekuje and not nagroda_bossa) or run_state.wybor_aktywny or get_tree().paused or (wybory_w_kolejce <= 0 and not nagroda_bossa):
 		return
-	var oferty := UlepszenieRun.losuj(run_state, rejestr_ulepszen)
+	var oferty := UlepszenieRun.losuj(run_state, rejestr_ulepszen, nagroda_bossa)
 	if not oferty.is_empty():
+		if nagroda_bossa:
+			nagroda_bossa_otwarta = true
+		else:
+			wybory_w_kolejce -= 1
 		wybor_ulepszenia.pokaz(run_state, oferty)
+	else:
+		wybory_w_kolejce = 0
+
+
+func _dostosuj_spawn(trudnosc: TrudnoscRun) -> void:
+	for historia in [zniszczenia_krysztalow, wygasniecia_krysztalow]:
+		while not historia.is_empty() and historia[0] < czas_krysztalow - DIFFICULTY.RATE_WINDOW:
+			historia.pop_front()
+	var bazowy := clampf(DIFFICULTY.SPAWN_BASE_MS / (run_state.targetSpawnRateMult * trudnosc.target_spawn_rate_mult), DIFFICULTY.SPAWN_MIN_MS, DIFFICULTY.SPAWN_MAX_MS)
+	var okno := minf(DIFFICULTY.RATE_WINDOW, czas_krysztalow)
+	var tempo := float(zniszczenia_krysztalow.size()) / maxf(1.0, okno)
+	var zdolnosc := maxf(DIFFICULTY.CAPACITY_FLOOR, float(run_state.ballDamage) / trudnosc.crystal_hp)
+	var cel := bazowy / zdolnosc
+	if tempo > 0.0:
+		cel = lerpf(cel, 1000.0 / tempo, DIFFICULTY.ADAPT_SMOOTH)
+	if tempo > 1000.0 / interwal_krysztalow:
+		cel = minf(cel, interwal_krysztalow * (1.0 - DIFFICULTY.ADAPT_STEP))
+	if not wygasniecia_krysztalow.is_empty():
+		cel = maxf(cel, interwal_krysztalow * (1.0 + DIFFICULTY.ADAPT_STEP))
+	cel = clampf(cel, DIFFICULTY.SPAWN_MIN_MS, DIFFICULTY.SPAWN_MAX_MS)
+	interwal_krysztalow = clampf(lerpf(interwal_krysztalow, cel, DIFFICULTY.ADAPT_SMOOTH), interwal_krysztalow * (1.0 - DIFFICULTY.ADAPT_STEP), interwal_krysztalow * (1.0 + DIFFICULTY.ADAPT_STEP))
+	interwal_krysztalow = clampf(interwal_krysztalow, DIFFICULTY.SPAWN_MIN_MS, DIFFICULTY.SPAWN_MAX_MS)
+
+
+func _krysztal_wygasl() -> void:
+	wygasniecia_krysztalow.append(czas_krysztalow)
+
+
+func _spawn_krysztalu() -> void:
+	if run_state == null or mecz_zakonczony or run_state.boss_aktywny or get_tree().paused:
+		return
+	for i in range(krysztaly.size() - 1, -1, -1):
+		if not is_instance_valid(krysztaly[i]) or krysztaly[i].is_queued_for_deletion() or krysztaly[i].rozpad:
+			krysztaly.remove_at(i)
+	var trudnosc := TrudnoscRun.getDifficulty(run_state.hits, run_state.bossIndex)
+	_dostosuj_spawn(trudnosc)
+	czas_do_krysztalu = interwal_krysztalow / 1000.0
+	if krysztaly.size() >= trudnosc.crystal_limit:
+		return
+	var promien := KrysztalRun.PROMIEN
+	var srodek_x: float = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5
+	var minimum := Vector2(srodek_x + DIFFICULTY.FIELD_LEFT_MARGIN + promien, Ustawienia.gorna_granica + DIFFICULTY.FIELD_TOP_MARGIN + promien)
+	var maksimum := Vector2(Ustawienia.prawa_granica - DIFFICULTY.FIELD_RIGHT_MARGIN - promien, Ustawienia.dolna_granica - DIFFICULTY.FIELD_BOTTOM_MARGIN - promien)
+	if maksimum.x <= minimum.x or maksimum.y <= minimum.y:
+		return
+	var warianty: Array[KrysztalRun.Wariant] = []
+	var offsety: Array[Vector2] = []
+	var uklad: int = trudnosc.layouts.pick_random()
+	var odstep := DIFFICULTY.LAYOUT_SPACING
+	match uklad:
+		1:
+			warianty = [KrysztalRun.CRYSTAL_VARIANTS[1], KrysztalRun.losuj_wariant(trudnosc)]
+			offsety = [Vector2.ZERO, Vector2(0.0, odstep)]
+		2:
+			warianty = [KrysztalRun.losuj_wariant(trudnosc), KrysztalRun.CRYSTAL_VARIANTS[2], KrysztalRun.CRYSTAL_VARIANTS[1]]
+			offsety = [Vector2.ZERO, Vector2(odstep, odstep), Vector2(0.0, odstep * 2.0)]
+		3:
+			warianty = [KrysztalRun.CRYSTAL_VARIANTS[3], KrysztalRun.CRYSTAL_VARIANTS[2]]
+			offsety = [Vector2.ZERO, Vector2(odstep, 0.0)]
+		_:
+			warianty = [KrysztalRun.losuj_wariant(trudnosc)]
+			offsety = [Vector2.ZERO]
+	var wolne_miejsca := trudnosc.crystal_limit - krysztaly.size()
+	warianty.resize(mini(warianty.size(), wolne_miejsca))
+	for proba in range(DIFFICULTY.SPAWN_ATTEMPTS):
+		var kotwica := Vector2(randf_range(minimum.x, maksimum.x), randf_range(minimum.y, maksimum.y))
+		var poczatki: Array[Vector2] = []
+		var konce: Array[Vector2] = []
+		var obszary: Array[Rect2] = []
+		var wolne := true
+		for i in range(warianty.size()):
+			var miejsce := kotwica + offsety[i]
+			var polowa_toru := Vector2.DOWN * warianty[i].params.track_length * 0.5
+			var poczatek := miejsce - polowa_toru
+			var koniec := miejsce + polowa_toru
+			if poczatek.x < minimum.x or koniec.x > maksimum.x or poczatek.y < minimum.y or koniec.y > maksimum.y:
+				wolne = false
+			var obszar := Rect2(poczatek, koniec - poczatek).abs().grow(promien + DIFFICULTY.TRACK_PADDING)
+			for krysztal in krysztaly:
+				if obszar.intersects(krysztal.obszar_toru()):
+					wolne = false
+			for zajety in obszary:
+				if obszar.intersects(zajety):
+					wolne = false
+			var pilka := gra.pilka()
+			if Geometry2D.get_closest_point_to_segment(pilka.position, poczatek, koniec).distance_to(pilka.position) < promien + pilka.promien_aktualny() + DIFFICULTY.BALL_MARGIN:
+				wolne = false
+			poczatki.append(poczatek)
+			konce.append(koniec)
+			obszary.append(obszar)
+		if not wolne:
+			continue
+		for i in range(warianty.size()):
+			var nowy := KrysztalRun.new()
+			nowy.skonfiguruj(warianty[i], run_state, poczatki[i], konce[i])
+			nowy.zniszczony.connect(_zniszczono_krysztal.bind(nowy))
+			nowy.wygasl_nietkniety.connect(_krysztal_wygasl)
+			nowy.pancerz_pekl.connect(gra.odtworz_dzwiek_modyfikatora)
+			gra.add_child(nowy)
+			krysztaly.append(nowy)
+		return
+
+
+func _zniszczono_krysztal(zrodlo: KrysztalRun) -> void:
+	if run_state == null or mecz_zakonczony or run_state.boss_aktywny:
+		return
+	zniszczenia_krysztalow.append(czas_krysztalow)
+	run_state.score += 5.0 * run_state.targetRewardMult * run_state.scoreMult
+	run_state.upgradeProgress += 2
+	if zrodlo.wybuch_zniszczenia:
+		kolejka_wybuchow_krysztalow.append(zrodlo)
+	if rozstrzyganie_wybuchow_krysztalow:
+		return
+	rozstrzyganie_wybuchow_krysztalow = true
+	for krok in range(KrysztalRun.MAX_CHAIN_STEPS):
+		if kolejka_wybuchow_krysztalow.is_empty():
+			break
+		var fala: Array[KrysztalRun] = kolejka_wybuchow_krysztalow.duplicate()
+		kolejka_wybuchow_krysztalow.clear()
+		for wybuch in fala:
+			for krysztal in krysztaly:
+				if not is_instance_valid(krysztal) or krysztal.rozpad or krysztal.is_queued_for_deletion():
+					continue
+				if wybuch.position.distance_to(krysztal.position) <= wybuch.wariant.params.burst_radius:
+					krysztal.trafienie(1, false)
+	kolejka_wybuchow_krysztalow.clear()
+	rozstrzyganie_wybuchow_krysztalow = false
+	wynik_gracza = floori(run_state.score)
+	gra.ustaw_wyniki(wynik_gracza, run_state.lives)
+	_kolejkuj_wybory_endless()
+	_odswiez_info_endless()
+
+
+func _wyczysc_krysztaly() -> void:
+	kolejka_wybuchow_krysztalow.clear()
+	for krysztal in krysztaly:
+		if is_instance_valid(krysztal):
+			krysztal.queue_free()
+	krysztaly.clear()
+
+
+func _rozpocznij_bossa() -> void:
+	if run_state == null or mecz_zakonczony:
+		return
+	boss_oczekuje = false
+	_wyczysc_zdarzenia_bossa()
+	var definicje := BossDefinicja.katalog()
+	boss = BossRun.new()
+	boss.definicja = definicje[run_state.bossIndex % definicje.size()]
+	boss.bossIndex = run_state.bossIndex
+	boss.totalHits = run_state.hits
+	boss.paletka = gra.lewa_paletka()
+	boss.pilka = gra.pilka()
+	boss.satelita_zniszczony.connect(_satelita_zniszczony)
+	boss.gotowy.connect(_boss_gotowy)
+	boss.pokonany.connect(_pokonano_bossa)
+	boss.trafiono_gracza.connect(_pocisk_bossa_trafil)
+	gra.add_child(boss)
+	gra.zresetuj_rozpad_punktu()
+	gra.lewa_paletka().set_physics_process(true)
+	_odnow_pilki_endless()
+	gra.pilka().set_physics_process(false)
+
+
+func _satelita_zniszczony() -> void:
+	if run_state == null or mecz_zakonczony:
+		return
+	run_state.score += DIFFICULTY.SAT_SCORE * run_state.scoreMult
+	wynik_gracza = floori(run_state.score)
+	gra.ustaw_wyniki(wynik_gracza, run_state.lives)
+
+
+func _boss_gotowy() -> void:
+	if run_state == null or mecz_zakonczony:
+		return
+	gra.pilka().set_physics_process(true)
+	gra.pilka().intro_czas = 0.0
+
+
+func kolejkuj_trafienie_bossa(cel: BossRun, obrazenia: int, ksztalt: Object = null, normalna: Vector2 = Vector2.ZERO) -> void:
+	if run_state != null and run_state.boss_aktywny and cel == boss and not nagroda_bossa and not mecz_zakonczony:
+		obrazenia_bossa.append(cel.przygotuj_trafienie(obrazenia, ksztalt, normalna))
+
+
+func kolejkuj_strate_pilki_bossa() -> void:
+	if run_state != null and not nagroda_bossa and not mecz_zakonczony:
+		strata_pilki_bossa = true
+
+
+func _pocisk_bossa_trafil(pozycja: Vector2) -> void:
+	if run_state != null and run_state.boss_aktywny and not nagroda_bossa and not mecz_zakonczony:
+		trafienia_pociskow.append(pozycja)
+
+
+func _pokonano_bossa() -> void:
+	rozpad_bossa_zakonczony = true
+
+
+func _wyczysc_zdarzenia_bossa() -> void:
+	obrazenia_bossa.clear()
+	trafienia_pociskow.clear()
+	strata_pilki_bossa = false
+	rozpad_bossa_zakonczony = false
+
+
+func _rozstrzygnij_zdarzenia_bossa() -> void:
+	if run_state.wybor_aktywny or get_tree().paused:
+		return
+	if boss_oczekuje:
+		if wybory_w_kolejce > 0:
+			_pokaz_wybor_endless()
+		else:
+			_rozpocznij_bossa()
+		return
+	if nagroda_bossa:
+		if nagroda_bossa_otwarta:
+			nagroda_bossa = false
+			nagroda_bossa_otwarta = false
+			run_state.boss_aktywny = false
+			run_state.bossHits = 0
+			_wyczysc_zdarzenia_bossa()
+			_odnow_pilki_endless()
+		else:
+			_pokaz_wybor_endless()
+		return
+	if is_instance_valid(boss):
+		for obrazenia in obrazenia_bossa:
+			boss.trafienie(obrazenia)
+	obrazenia_bossa.clear()
+	var zwyciestwo := rozpad_bossa_zakonczony or (is_instance_valid(boss) and boss.hp <= 0)
+	if zwyciestwo:
+		trafienia_pociskow.clear()
+		strata_pilki_bossa = false
+		run_state.lives = maxi(1, run_state.lives)
+		if not rozpad_bossa_zakonczony:
+			return
+		run_state.score += 100.0 * (1.0 + 0.6 * run_state.bossIndex) * run_state.scoreMult
+		run_state.bossIndex += 1
+		czas_do_krysztalu = DIFFICULTY.SPAWN_BASE_MS / 1000.0
+		nagroda_bossa = true
+		wybor_oczekuje = false
+		_wyczysc_zdarzenia_bossa()
+		gra.zresetuj_rozpad_punktu()
+		gra.lewa_paletka().set_physics_process(true)
+		_zastosuj_stan_endless()
+		_pokaz_wybor_endless()
+		return
+	var strata_pilki := strata_pilki_bossa
+	strata_pilki_bossa = false
+	if strata_pilki and run_state.uzyj_tarczy():
+		gra.pilka().odbij_tarcza()
+		gra.odtworz_dzwiek_bonusu()
+		strata_pilki = false
+	var pocisk_trafil := not trafienia_pociskow.is_empty()
+	if pocisk_trafil and run_state.dashIframeRemaining > 0.0:
+		run_state.dodgeSparkPosition = trafienia_pociskow[0]
+		run_state.dodgeSparkRemaining = 0.2
+		pocisk_trafil = false
+	trafienia_pociskow.clear()
+	if run_state.invulnRemaining > 0.0:
+		pocisk_trafil = false
+		if strata_pilki:
+			gra.pilka().reset_bezpieczny()
+		strata_pilki = false
+	if not strata_pilki and not pocisk_trafil:
+		return
+	run_state.lives -= 1
+	run_state.invulnRemaining = RunState.INVULN_MS / 1000.0
+	biezaca_wymiana = 0
+	gra.odtworz_dzwiek_punktu()
+	if is_instance_valid(boss):
+		boss.odrocz_atak_po_stracie()
+	gra.zresetuj_rozpad_punktu()
+	gra.lewa_paletka().reset_po_punkcie()
+	gra.lewa_paletka().set_physics_process(true)
+	gra.pilka().reset_bezpieczny()
+	_zastosuj_stan_endless()
+	if run_state.lives <= 0:
+		_wyczysc_zdarzenia_bossa()
+		_zakoncz_endless()
 
 
 func _zastosuj_stan_endless() -> void:
@@ -171,47 +502,18 @@ func _zastosuj_stan_endless() -> void:
 	wynik_ai = run_state.lives
 	wynik_gracza = floori(run_state.score)
 	gra.ustaw_wyniki(wynik_gracza, run_state.lives)
-	_uzupelnij_pilki_endless.call_deferred()
 	_odswiez_info_endless()
-
-
-func _uzupelnij_pilki_endless() -> void:
-	if run_state == null or mecz_zakonczony or run_state.lives <= 0:
-		return
-	var liczba := get_tree().get_nodes_in_group("pilki").size()
-	while liczba < run_state.ballCount:
-		var nowa := SCENA_PILKI_ENDLESS.instantiate() as Pilka
-		nowa.run_state = run_state
-		nowa.punkt.connect(_on_punkt)
-		nowa.odbicie_gracza.connect(zarejestruj_odbicie_endless)
-		nowa.statystyki_odbicia.connect(zarejestruj_odbicie)
-		gra.add_child(nowa)
-		_ustaw_start_pilki_endless(nowa, liczba)
-		liczba += 1
-
-
-func _ustaw_start_pilki_endless(pilka: Pilka, indeks: int) -> void:
-	var odstep := minf(100.0, (Ustawienia.dolna_granica - Ustawienia.gorna_granica) / 4.0)
-	pilka.position.y += (0.0 if indeks == 0 else (-odstep if indeks == 1 else odstep))
-	pilka.srodek_intro = pilka.position
 
 
 func _odnow_pilki_endless() -> void:
 	if run_state == null or mecz_zakonczony:
 		return
-	_uzupelnij_pilki_endless()
-	var indeks := 0
-	for wezel in get_tree().get_nodes_in_group("pilki"):
-		var pilka := wezel as Pilka
-		pilka.reset()
-		_ustaw_start_pilki_endless(pilka, indeks)
-		indeks += 1
+	gra.pilka().reset()
 
 
 func _zakoncz_endless() -> void:
 	zakoncz_mecz("Koniec rozgrywki")
-	for pilka in get_tree().get_nodes_in_group("pilki"):
-		(pilka as Pilka).run_state = null
+	gra.pilka().run_state = null
 	gra.lewa_paletka().run_state = null
 	wybor_ulepszenia.stan = null
 	wybor_ulepszenia.oferty.clear()
@@ -234,17 +536,30 @@ func dodaj_info_endless() -> void:
 	endless_info.add_theme_constant_override("separation", 10)
 	endless_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	endless_info.z_index = 10
-	_dodaj_grupe_info_endless(endless_info, "DO ULEPSZENIA", 150.0, KOLOR_TURKUS_ENDLESS)
-	_dodaj_grupe_info_endless(endless_info, "ŻYCIA", 150.0, Color("#b8c9dc"))
-	_dodaj_grupe_info_endless(endless_info, "ULEPSZENIA", 120.0, KOLOR_FIOLET_ENDLESS)
+	_dodaj_grupe_info_endless(endless_info, "Życia", 90.0, Color("#b8c9dc"))
+	_dodaj_grupe_info_endless(endless_info, "Ulepszenia", 90.0, KOLOR_FIOLET_ENDLESS)
+	_dodaj_grupe_info_endless(endless_info, "Obrażenia", 90.0, KOLOR_TURKUS_ENDLESS)
+	endless_krysztaly = Label.new()
+	endless_krysztaly.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	endless_krysztaly.add_theme_font_override("font", CZCIONKA_ENDLESS)
+	endless_krysztaly.add_theme_font_size_override("font_size", 10)
+	endless_wartosci[2].get_parent().add_child(endless_krysztaly)
+	_dodaj_grupe_info_endless(endless_info, "Do ulepszenia", 130.0, KOLOR_FIOLET_ENDLESS, 12)
+	endless_postep = ProgressBar.new()
+	endless_postep.custom_minimum_size.y = 4.0
+	endless_postep.show_percentage = false
+	endless_postep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tor := StyleBoxFlat.new()
+	tor.bg_color = Color("#34445d")
+	var wypelnienie := StyleBoxFlat.new()
+	wypelnienie.bg_color = KOLOR_FIOLET_ENDLESS
+	endless_postep.add_theme_stylebox_override("background", tor)
+	endless_postep.add_theme_stylebox_override("fill", wypelnienie)
+	endless_wartosci[3].get_parent().add_child(endless_postep)
+	_dodaj_grupe_info_endless(endless_info, "Tarcza", 100.0, KOLOR_TURKUS_ENDLESS)
+	_dodaj_grupe_info_endless(endless_info, "Regeneracja", 110.0, KOLOR_TURKUS_ENDLESS)
+	endless_info.move_child(endless_wartosci[2].get_parent().get_parent(), 1)
 	gra.add_child(endless_info)
-	endless_powiadomienie = Label.new()
-	endless_powiadomienie.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	endless_powiadomienie.add_theme_font_size_override("font_size", 14)
-	endless_powiadomienie.add_theme_color_override("font_color", KOLOR_TURKUS_ENDLESS)
-	endless_powiadomienie.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	endless_powiadomienie.size = Vector2(560.0, 42.0)
-	gra.add_child(endless_powiadomienie)
 	get_viewport().size_changed.connect(_ustaw_pozycje_info_endless)
 	_ustaw_pozycje_info_endless()
 	_odswiez_info_endless()
@@ -254,15 +569,12 @@ func _dodaj_grupe_info_endless(uklad: HBoxContainer, tytul: String, szerokosc: f
 	var karta := PanelContainer.new()
 	karta.custom_minimum_size = Vector2(szerokosc, 58.0)
 	karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var styl := StyleBoxFlat.new()
-	styl.bg_color = Color("#101f34d9")
-	styl.border_color = Color(akcent, 0.45)
-	styl.set_border_width_all(1)
-	styl.set_corner_radius_all(10)
+	var styl := StylMenu.styl_bloku()
 	styl.content_margin_left = 6.0
 	styl.content_margin_right = 6.0
 	styl.content_margin_top = 4.0
 	styl.content_margin_bottom = 4.0
+	karta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	karta.add_theme_stylebox_override("panel", styl)
 	uklad.add_child(karta)
 	var kolumna := VBoxContainer.new()
@@ -285,6 +597,7 @@ func _dodaj_grupe_info_endless(uklad: HBoxContainer, tytul: String, szerokosc: f
 	wartosc.add_theme_color_override("font_color", akcent)
 	wartosc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	kolumna.add_child(wartosc)
+	kolumna.move_child(wartosc, 0)
 	endless_wartosci.append(wartosc)
 
 
@@ -298,41 +611,52 @@ func _ustaw_pozycje_info_endless() -> void:
 	if is_instance_valid(endless_info):
 		endless_info.position = Vector2(x, y)
 		endless_info.size = Vector2(szerokosc, 58.0)
-	if is_instance_valid(endless_powiadomienie):
-		endless_powiadomienie.position = Vector2(
-			(Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5 - 280.0,
-			Ustawienia.gorna_granica + 42.0
-		)
 
 
 func _odswiez_info_endless() -> void:
 	if endless_info == null or run_state == null:
 		return
-	var pozostaly_wybor := false
-	var posiadane: PackedStringArray = []
-	for ulepszenie in rejestr_ulepszen:
-		var stosy := run_state.liczba_stosow(ulepszenie.id)
-		pozostaly_wybor = pozostaly_wybor or stosy < ulepszenie.maxStacks
-		if stosy > 0:
-			posiadane.append("%s ×%d" % [ulepszenie.nazwa, stosy])
-	endless_wartosci[0].text = "%d/%d" % [run_state.hits % RunState.UPGRADE_EVERY_HITS, RunState.UPGRADE_EVERY_HITS] if pozostaly_wybor else "MAKSIMUM"
-	endless_wartosci[1].text = "%d/%d" % [run_state.lives, run_state.maxLives]
-	endless_wartosci[2].text = str(run_state.ownedStacks.size())
-	endless_powiadomienie.text = "  |  ".join(posiadane) if not posiadane.is_empty() else "Co %d odbić wybierasz ulepszenie" % RunState.UPGRADE_EVERY_HITS
+	endless_wartosci[0].text = "%d/%d" % [run_state.lives, run_state.maxLives]
+	endless_wartosci[1].text = str(run_state.ownedStacks.size())
+	endless_wartosci[2].text = str(run_state.ballDamage)
+	var poprzedni_prog := _prog_ulepszenia(indeks_progu_ulepszenia - 1) if indeks_progu_ulepszenia > 0 else 0
+	var cel := _prog_ulepszenia(indeks_progu_ulepszenia) - poprzedni_prog
+	var postep := clampi(run_state.upgradeProgress - poprzedni_prog, 0, cel)
+	endless_wartosci[3].text = "%d/%d" % [postep, cel]
+	endless_postep.max_value = cel
+	endless_postep.value = postep
+	(endless_wartosci[3].get_parent() as Control).modulate.a = 0.45 if run_state.boss_aktywny else 1.0
+	(endless_wartosci[4].get_parent().get_parent() as Control).visible = run_state.shieldRecharge > 0
+	endless_wartosci[4].text = "Gotowa" if run_state.shieldHits >= run_state.shieldRecharge else "%d/%d" % [run_state.shieldHits, run_state.shieldRecharge]
+	(endless_wartosci[5].get_parent().get_parent() as Control).visible = run_state.regenInterval > 0
+	endless_wartosci[5].text = "%d/%d" % [run_state.regenHits, run_state.regenInterval]
+	var najsilniejszy: KrysztalRun
+	for krysztal in krysztaly:
+		if not is_instance_valid(krysztal) or krysztal.rozpad or krysztal.is_queued_for_deletion():
+			continue
+		if najsilniejszy == null or krysztal.hp > najsilniejszy.hp:
+			najsilniejszy = krysztal
+	endless_krysztaly.text = "%s - %d/%d" % [najsilniejszy.wariant.nazwa, najsilniejszy.hp, najsilniejszy.max_hp] if najsilniejszy != null else ""
+	endless_krysztaly.visible = najsilniejszy != null
+	endless_krysztaly.mouse_filter = Control.MOUSE_FILTER_PASS
+	endless_krysztaly.tooltip_text = "Wariant i HP najsilniejszego kryształu. Pękający: wybuch zadaje 1 obrażenie pobliskim kryształom. Opancerzony: pierwszy kontakt piłki rozbija pancerz. Wędrujący: porusza się po widocznym torze. Do 6 HP: segment = 1 HP. Powyżej 6 HP: segmenty pokazują pozostałą część zdrowia."
 
 
 func zakoncz_mecz(tekst: String) -> void:
 	if mecz_zakonczony:
 		return
 	mecz_zakonczony = true
+	if run_state != null:
+		_wyczysc_krysztaly()
+		if is_instance_valid(boss):
+			boss.set_physics_process(false)
+			boss.queue_free()
 	if Ustawienia.tryb == "online":
 		gra.ustaw_tekst_konca_online(tekst)
 	gra.pokaz_wyniki(false)
 	(gra.ekran_konca_meczu()).pokaz(tekst, pobierz_podsumowanie())
 	if is_instance_valid(endless_info):
 		endless_info.hide()
-	if is_instance_valid(endless_powiadomienie):
-		endless_powiadomienie.hide()
 	gra.ukryj_informacje_graczowi()
 	gra.odswiez_rysowanie()
 	(gra.bonusy()).zatrzymaj()

@@ -4,6 +4,9 @@ const KOLOR_TURKUS = Color("#55e7ff")
 const KOLOR_FIOLET = KOLOR_TURKUS
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
+var efekty_przewijanie: ScrollContainer
+var efekty_lista: VBoxContainer
+
 @onready var przyciemnienie: ColorRect = $Przyciemnienie
 @onready var panel_pauzy: PanelContainer = $Przyciemnienie/CenterContainer/PanelPauzy
 @onready var panel_ustawien: PanelContainer = $Przyciemnienie/CenterContainer/PanelUstawien
@@ -107,10 +110,81 @@ func _input(event: InputEvent) -> void:
 
 
 func _pokaz_pauze() -> void:
+	_odswiez_zdobyte_efekty()
 	przyciemnienie.show()
 	panel_pauzy.show()
 	panel_ustawien.hide()
 	_animuj_wejscie(panel_pauzy)
+
+
+func _odswiez_zdobyte_efekty() -> void:
+	if Ustawienia.tryb != "endless":
+		if is_instance_valid(efekty_przewijanie):
+			efekty_przewijanie.hide()
+		return
+	var gra := get_parent() as GraPongAPI
+	if gra == null or gra.przebieg().run_state == null:
+		return
+	var przebieg := gra.przebieg()
+	var stan := przebieg.run_state
+	if not is_instance_valid(efekty_przewijanie):
+		efekty_przewijanie = ScrollContainer.new()
+		efekty_przewijanie.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		efekty_przewijanie.follow_focus = true
+		efekty_przewijanie.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		uklad_pauzy.add_child(efekty_przewijanie)
+		uklad_pauzy.move_child(efekty_przewijanie, 1)
+		efekty_lista = VBoxContainer.new()
+		efekty_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		efekty_lista.add_theme_constant_override("separation", 8)
+		efekty_przewijanie.add_child(efekty_lista)
+		var pasek := efekty_przewijanie.get_v_scroll_bar()
+		pasek.custom_minimum_size.x = 8.0
+		pasek.add_theme_stylebox_override("scroll_focus", StyleBoxEmpty.new())
+		for nazwa: String in ["scroll", "grabber", "grabber_highlight", "grabber_pressed"]:
+			var styl := StyleBoxFlat.new()
+			styl.bg_color = Color("#101b29") if nazwa == "scroll" else (Color("#344b5e") if nazwa == "grabber" else KOLOR_TURKUS)
+			styl.set_corner_radius_all(6)
+			pasek.add_theme_stylebox_override(nazwa, styl)
+	for dziecko in efekty_lista.get_children():
+		efekty_lista.remove_child(dziecko)
+		dziecko.queue_free()
+	efekty_przewijanie.custom_minimum_size.y = clampf(get_viewport().get_visible_rect().size.y - 420.0, 100.0, 240.0)
+	_dodaj_etykiete_efektu(efekty_lista, "Zdobyte efekty", KOLOR_TURKUS, 20)
+	var statystyki := PanelContainer.new()
+	statystyki.add_theme_stylebox_override("panel", StylMenu.styl_bloku())
+	efekty_lista.add_child(statystyki)
+	_dodaj_etykiete_efektu(statystyki, "%d/%d Życia   •   %d Obrażenia   •   x%s Wynik   •   %d Odbicia" % [stan.lives, stan.maxLives, stan.ballDamage, UlepszenieRun._liczba(stan.scoreMult), stan.hits], Color("#b9cde2"), 13)
+	for rzadkosc in [UlepszenieRun.Rzadkosc.ZWYKLE, UlepszenieRun.Rzadkosc.RZADKIE, UlepszenieRun.Rzadkosc.PRZEKLETE]:
+		var kolumna: VBoxContainer
+		for ulepszenie in przebieg.rejestr_ulepszen:
+			var stosy := stan.liczba_stosow(ulepszenie.id)
+			if stosy <= 0 or ulepszenie.rarity != rzadkosc:
+				continue
+			if kolumna == null:
+				var blok := PanelContainer.new()
+				blok.add_theme_stylebox_override("panel", StylMenu.styl_bloku())
+				efekty_lista.add_child(blok)
+				kolumna = VBoxContainer.new()
+				kolumna.add_theme_constant_override("separation", 8)
+				blok.add_child(kolumna)
+				_dodaj_etykiete_efektu(kolumna, ulepszenie.nazwa_rzadkosci().capitalize(), ulepszenie.kolor_rzadkosci(), 14)
+			_dodaj_etykiete_efektu(kolumna, "%s  %s\n%s" % [ulepszenie.nazwa, "●".repeat(stosy) + "○".repeat(maxi(0, ulepszenie.maxStacks - stosy)), ulepszenie.wartosc_opisu(stosy)], Color("#e6f2ff"), 14)
+	if stan.ownedStacks.is_empty():
+		_dodaj_etykiete_efektu(efekty_lista, "Brak zdobytych ulepszeń", Color("#b9cde2"), 15)
+	efekty_przewijanie.show()
+	efekty_przewijanie.scroll_vertical = 0
+
+
+func _dodaj_etykiete_efektu(rodzic: Control, tekst: String, kolor: Color, rozmiar: int) -> void:
+	var etykieta := Label.new()
+	etykieta.text = tekst
+	etykieta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	etykieta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	etykieta.add_theme_font_override("font", FONT_ARCADE)
+	etykieta.add_theme_font_size_override("font_size", rozmiar)
+	etykieta.add_theme_color_override("font_color", kolor)
+	rodzic.add_child(etykieta)
 
 
 func _wroc_do_gry() -> void:

@@ -24,6 +24,11 @@ func _manager_areny() -> ArenaManagerAPI:
 	return gra.menedzer_areny()
 
 
+func _process(_delta: float) -> void:
+	if Ustawienia.tryb == "endless":
+		queue_redraw()
+
+
 func _draw():
 	var rozmiar_okna = get_viewport_rect().size
 	draw_rect(Rect2(Vector2.ZERO, rozmiar_okna), KOLOR_TLA, true)
@@ -79,9 +84,10 @@ func _draw():
 		var karta_ai = gra.prostokat_karty_wyniku(1)
 
 		draw_rect(karta_gracza, KOLOR_KARTY_WYNIKU, true)
-		draw_rect(karta_ai, KOLOR_KARTY_WYNIKU, true)
 		draw_rect(karta_gracza, KOLOR_GRACZA, false, 2.0)
-		draw_rect(karta_ai, Color("#a78bfa") if Ustawienia.tryb == "endless" else KOLOR_AI, false, 2.0)
+		if Ustawienia.tryb != "endless":
+			draw_rect(karta_ai, KOLOR_KARTY_WYNIKU, true)
+			draw_rect(karta_ai, KOLOR_AI, false, 2.0)
 		if Ustawienia.tryb == "arena":
 			var nazwa_gracza = "GRACZ 1" if Ustawienia.arena_dwoch_graczy else "GRACZ"
 			var nazwa_przeciwnika = "GRACZ 2" if Ustawienia.arena_dwoch_graczy else "BOT"
@@ -90,9 +96,6 @@ func _draw():
 		elif Ustawienia.tryb == "online":
 			_rysuj_wynik_na_srodku(karta_gracza, str(gra.wynik_gracza), KOLOR_GRACZA, Siec.nazwa_gracza_1.to_upper())
 			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, Siec.nazwa_gracza_2.to_upper())
-		elif Ustawienia.tryb == "endless":
-			_rysuj_nazwe_wyniku(karta_gracza, "WYNIK", KOLOR_GRACZA)
-			_rysuj_nazwe_wyniku(karta_ai, "ŻYCIA", Color("#c4b5fd"))
 
 
 func _rysuj_znaczniki_srodka(srodek: Vector2, gora: float, dol: float) -> void:
@@ -211,5 +214,3 @@ func _rysuj_nazwe_wyniku(karta: Rect2, nazwa: String, kolor: Color) -> void:
 		rozmiar_czcionki,
 		kolor
 	)
-
-

@@ -94,7 +94,7 @@ func ustaw_wyniki(wynik_lewy: int, wynik_prawy: int) -> void:
 
 func pokaz_wyniki(pokaz: bool) -> void:
 	_etykieta_wyniku_gracza.visible = pokaz
-	_etykieta_wyniku_rywala.visible = pokaz
+	_etykieta_wyniku_rywala.visible = pokaz and Ustawienia.tryb != "endless"
 
 
 func zresetuj_rozpad_punktu() -> void:

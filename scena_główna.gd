@@ -506,6 +506,7 @@ func prostokat_karty_wyniku(numer_karty: int) -> Rect2:
 		wysokosc = clampf(Ustawienia.gorna_granica - 16.0, 56.0, 78.0)
 		odstep = 10.0
 		gora_karty = maxf(6.0, Ustawienia.gorna_granica - wysokosc - 12.0)
+		return Rect2(Vector2(srodek - szerokosc * 0.5, gora_karty), Vector2(szerokosc, wysokosc))
 	var x_pierwszej = srodek - szerokosc - odstep / 2.0
 	var x = x_pierwszej + numer_karty * (szerokosc + odstep)
 
@@ -525,11 +526,10 @@ func _ustaw_etykiety_wyniku():
 	_etykieta_wyniku_rywala.show()
 	if Ustawienia.tryb == "endless":
 		_etykieta_wyniku_gracza.text = str(wynik_gracza)
-		_etykieta_wyniku_rywala.text = str(wynik_ai)
+		_etykieta_wyniku_rywala.hide()
 		_etykieta_wyniku_gracza.add_theme_font_size_override("font_size", 36)
 		_etykieta_wyniku_rywala.add_theme_font_size_override("font_size", 36)
 		_ustaw_etykiete(_etykieta_wyniku_gracza, prostokat_karty_wyniku(0), KOLOR_GRACZA)
-		_ustaw_etykiete(_etykieta_wyniku_rywala, prostokat_karty_wyniku(1), Color("#c4b5fd"))
 		return
 	_ustaw_etykiete(_etykieta_wyniku_gracza, prostokat_karty_wyniku(0), KOLOR_GRACZA)
 	_ustaw_etykiete(_etykieta_wyniku_rywala, prostokat_karty_wyniku(1), KOLOR_AI)

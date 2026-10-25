@@ -40,7 +40,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	var odswiez = false
+	var odswiez = run_state != null
 	if czas_blysku > 0.0:
 		czas_blysku = maxf(0.0, czas_blysku - delta)
 		odswiez = true

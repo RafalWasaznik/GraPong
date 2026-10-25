@@ -34,6 +34,7 @@ var predkosc = SPEED
 var czas_rundy = 0.0
 var intro_aktywne = false
 var intro_czas = 0.0
+var bezpieczny_start: bool = false
 var srodek_intro = Vector2.ZERO
 var perfect_hit_czas = 0.0
 var efekt_strefy_czas = 0.0
@@ -131,6 +132,7 @@ func _draw():
 
 
 func reset() -> void:
+	bezpieczny_start = false
 	set_physics_process(true)
 	set_process(false)
 	czas_rundy = 0.0
@@ -157,6 +159,22 @@ func reset() -> void:
 	zglasza_kontakt_z_guma = false
 
 	queue_redraw()
+
+
+func reset_bezpieczny() -> void:
+	reset()
+	bezpieczny_start = true
+	intro_czas = 0.6
+	velocity = Vector2.RIGHT * predkosc
+
+
+func odbij_tarcza() -> void:
+	position.x = Ustawienia.lewa_granica + _promien_pilki_aktualny()
+	velocity.x = absf(velocity.x)
+	_odpusc_gumowa_sciane()
+	pokaz_efekt_mocnego_odbicia()
+	set_physics_process(true)
+	odbicie_sciany.emit()
 
 
 func przyspiesz(mnoznik: float = 1.15) -> void:
@@ -262,7 +280,19 @@ func _physics_process(delta):
 		var obiekt = collision.get_collider()
 		var normalna = collision.get_normal()
 
-		if obiekt is CharacterBody2D and obiekt.is_in_group("pilki"):
+		if obiekt is BossRun and run_state != null:
+			if velocity.dot(normalna) < 0.0:
+				velocity = velocity.bounce(normalna)
+				gra.przebieg().kolejkuj_trafienie_bossa(obiekt as BossRun, run_state.ballDamage, collision.get_collider_shape(), normalna)
+				$DzwiekSciana.play()
+
+		elif obiekt is KrysztalRun and run_state != null:
+			if velocity.dot(normalna) < 0.0:
+				velocity = velocity.bounce(normalna)
+				(obiekt as KrysztalRun).trafienie(run_state.ballDamage)
+				$DzwiekSciana.play()
+
+		elif obiekt is CharacterBody2D and obiekt.is_in_group("pilki"):
 			_odbicie_od_pilki(obiekt, normalna)
 			$DzwiekPaletka.play()
 
@@ -307,14 +337,6 @@ func _physics_process(delta):
 		return
 
 	if position.x + promien_teraz <= Ustawienia.lewa_granica:
-		if run_state != null and run_state.uzyj_tarczy():
-			position.x = Ustawienia.lewa_granica + promien_teraz
-			velocity.x = absf(velocity.x)
-			_odpusc_gumowa_sciane()
-			pokaz_efekt_mocnego_odbicia()
-			$DzwiekSciana.play()
-			odbicie_sciany.emit()
-			return
 		_rozpocznij_rozpad_punktu("lewa")
 		return
 
@@ -325,6 +347,10 @@ func _physics_process(delta):
 
 func _rozpocznij_rozpad_punktu(strona: String) -> void:
 	if rozpad_aktywny:
+		return
+	if run_state != null:
+		gra.przebieg().kolejkuj_strate_pilki_bossa()
+		set_physics_process(false)
 		return
 	var scena_glowna := get_parent() as GraPongAPI
 	if not scena_glowna.rozpocznij_rozpad_pilki(self):
@@ -477,6 +503,13 @@ func _odbicie_od_pilki(inna_pilka: CharacterBody2D, normalna: Vector2):
 
 func _aktualizuj_intro(delta):
 	intro_czas -= delta
+	if bezpieczny_start:
+		if intro_czas <= 0.0:
+			intro_aktywne = false
+			bezpieczny_start = false
+			runda_rozpoczeta.emit()
+		queue_redraw()
+		return
 
 	var nastepna_pozycja = position + velocity * delta * (run_state.mnoznik_predkosci() if run_state != null else 1.0)
 	var odleglosc = nastepna_pozycja.distance_to(srodek_intro)
