@@ -35,6 +35,10 @@ var czas_rundy = 0.0
 var intro_aktywne = false
 var intro_czas = 0.0
 var bezpieczny_start: bool = false
+var intro_stacjonarne: bool = false
+var respawn_oczekuje: bool = false
+var proby_respawnu: int = 0
+var czas_proby_respawnu: float = 0.0
 var srodek_intro = Vector2.ZERO
 var perfect_hit_czas = 0.0
 var efekt_strefy_czas = 0.0
@@ -45,9 +49,17 @@ var slady_pozycji: Array[Vector2] = []
 var deformacja_gumowa_pilki = 0.0
 var zglasza_kontakt_z_guma = false
 var rozpad_aktywny = false
+var rozpad_wizualny = false
+var pilka_zniszczona = false
+var pozycja_rozpadu = Vector2.ZERO
 var rozpad_czas = 0.0
 var strona_punktu = ""
 var fragmenty_rozpadu: Array[Dictionary] = []
+var czas_bez_postepu: float = 0.0
+var awaryjne_separacje: int = 0
+var diagnostyka_kolizji: bool = OS.get_environment("PONG_DIAGNOSTYKA_KOLIZJI") == "1"
+var czas_deformacji: float = 0.0
+var kierunek_deformacji: float = 0.0
 
 
 func _ready():
@@ -62,7 +74,12 @@ func _ready():
 
 
 func _draw():
-	if intro_aktywne:
+	if respawn_oczekuje and not pilka_zniszczona:
+		draw_string(ThemeDB.fallback_font, srodek_intro - position + Vector2(-65, 0), "Oczekiwanie na miejsce", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#7ceaff"))
+		return
+	var energia := clampf((velocity.length() * mnoznik_ruchu_chwilowy() - SPEED) / SPEED, 0.0, 1.0)
+	var sila_efektow := Ustawienia.intensywnosc_efektow / 100.0
+	if not pilka_zniszczona and intro_aktywne:
 		var postep = clamp(intro_czas / CZAS_STARTU, 0.0, 1.0)
 		var przezroczystosc = 0.18 * postep
 
@@ -77,18 +94,19 @@ func _draw():
 			true
 		)
 
-	for i in range(maxi(slady_pozycji.size() - 1, 0)):
-		var postep_sladu = float(i + 1) / float(maxi(slady_pozycji.size() - 1, 1))
-		var przezroczystosc_sladu = 0.02 + postep_sladu * 0.12
-		draw_line(
-			slady_pozycji[i] - position,
-			slady_pozycji[i + 1] - position,
-			Color(0.34, 0.84, 0.96, przezroczystosc_sladu),
-			2.0 + postep_sladu * 5.0,
-			true
-		)
+	if not pilka_zniszczona:
+		for i in range(maxi(slady_pozycji.size() - 1, 0)):
+			var postep_sladu = float(i + 1) / float(maxi(slady_pozycji.size() - 1, 1))
+			var przezroczystosc_sladu = (0.025 + postep_sladu * (0.10 + energia * 0.12)) * sila_efektow
+			draw_line(
+				slady_pozycji[i] - position,
+				slady_pozycji[i + 1] - position,
+				Color(0.34, 0.84, 0.96, przezroczystosc_sladu),
+				1.5 + postep_sladu * (4.0 + energia * 3.0),
+				true
+			)
 
-	if rozpad_aktywny:
+	if rozpad_aktywny or rozpad_wizualny:
 		for fragment in fragmenty_rozpadu:
 			var bok = float(fragment["rozmiar"])
 			var ksztalt = PackedVector2Array([
@@ -97,13 +115,18 @@ func _draw():
 				Vector2(bok, bok * 0.55),
 				Vector2(-bok * 0.45, bok)
 			])
-			draw_set_transform(fragment["pozycja"], float(fragment["rotacja"]), Vector2.ONE)
-			draw_colored_polygon(ksztalt, fragment["kolor"])
+			var przesuniecie = pozycja_rozpadu - position if rozpad_wizualny else Vector2.ZERO
+			draw_set_transform(fragment["pozycja"] + przesuniecie, float(fragment["rotacja"]), Vector2.ONE)
+			var kolor_fragmentu: Color = fragment["kolor"]
+			kolor_fragmentu.a *= sila_efektow
+			draw_colored_polygon(ksztalt, kolor_fragmentu)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	else:
+	if not rozpad_aktywny and not pilka_zniszczona:
 		var skala_x = 1.0 - deformacja_gumowa_pilki * 0.216
 		var skala_y = 1.0 + deformacja_gumowa_pilki * 0.168
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2(skala_x * mnoznik_rozmiaru, skala_y * mnoznik_rozmiaru))
+		var nacisk := clampf(czas_deformacji / 0.12, 0.0, 1.0) * sila_efektow
+		draw_set_transform(Vector2.ZERO, kierunek_deformacji if nacisk > 0.0 else 0.0, Vector2(skala_x * (1.0 - nacisk * 0.18), skala_y * (1.0 + nacisk * 0.16)) * mnoznik_rozmiaru)
+		draw_circle(Vector2.ZERO, 23.0 + energia * 4.0, Color(0.25, 0.82, 0.96, (0.035 + energia * 0.045) * sila_efektow))
 		draw_circle(Vector2.ZERO, 19.0, Color(0.25, 0.82, 0.96, 0.07))
 		draw_circle(Vector2.ZERO, 15.0, Color(0.03, 0.09, 0.14, 0.8))
 		draw_circle(Vector2.ZERO, 12.5, Color("#7ceaff"))
@@ -112,7 +135,7 @@ func _draw():
 		draw_arc(Vector2.ZERO, 14.0, 0.0, TAU, 40, Color(0.55, 0.91, 1.0, 0.55), 1.2, true)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	if perfect_hit_czas > 0.0:
+	if not pilka_zniszczona and perfect_hit_czas > 0.0:
 		var alfa = clamp(perfect_hit_czas / CZAS_EFEKTU_PERFECT_HIT, 0.0, 1.0)
 		var promien_odbicia = _promien_pilki_aktualny() + 5.0 + (1.0 - alfa) * 18.0
 		draw_arc(
@@ -126,23 +149,33 @@ func _draw():
 			true
 		)
 
-	if efekt_strefy_czas > 0.0:
+	if not pilka_zniszczona and efekt_strefy_czas > 0.0:
 		var alfa_strefy = clamp(efekt_strefy_czas / 0.35, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, 19.0, 0.0, TAU, 40, Color(1.0, 0.78, 0.3, alfa_strefy), 2.5, true)
 
 
 func reset() -> void:
+	_odpusc_gumowa_sciane()
 	bezpieczny_start = false
 	set_physics_process(true)
-	set_process(false)
+	set_process(rozpad_wizualny)
+	czas_bez_postepu = 0.0
 	czas_rundy = 0.0
 	rozpad_aktywny = false
-	fragmenty_rozpadu.clear()
+	pilka_zniszczona = false
+	if not rozpad_wizualny:
+		fragmenty_rozpadu.clear()
 	strona_punktu = ""
 	position = Vector2(
 		(Ustawienia.lewa_granica + Ustawienia.prawa_granica) / 2.0,
 		(Ustawienia.gorna_granica + Ustawienia.dolna_granica) / 2.0
 	)
+	intro_stacjonarne = false
+	respawn_oczekuje = false
+	proby_respawnu = 0
+	visible = true
+	if run_state != null:
+		_przygotuj_respawn()
 	set_meta("w_strefie_przyspieszenia", true)
 
 	predkosc = SPEED
@@ -164,8 +197,6 @@ func reset() -> void:
 func reset_bezpieczny() -> void:
 	reset()
 	bezpieczny_start = true
-	intro_czas = 0.6
-	velocity = Vector2.RIGHT * predkosc
 
 
 func odbij_tarcza() -> void:
@@ -250,6 +281,7 @@ func mnoznik_ruchu_chwilowy() -> float:
 
 
 func _physics_process(delta):
+	czas_deformacji = maxf(0.0, czas_deformacji - delta)
 	if efekt_strefy_czas > 0.0:
 		efekt_strefy_czas = maxf(0.0, efekt_strefy_czas - delta)
 		queue_redraw()
@@ -258,6 +290,15 @@ func _physics_process(delta):
 		perfect_hit_czas = maxf(0.0, perfect_hit_czas - delta)
 		queue_redraw()
 
+	if respawn_oczekuje:
+		if run_state != null:
+			run_state.invulnRemaining = maxf(run_state.invulnRemaining, 0.6)
+		czas_proby_respawnu -= delta
+		if czas_proby_respawnu <= 0.0:
+			proby_respawnu += 1
+			_przygotuj_respawn()
+			srodek_intro = position
+		return
 	if intro_aktywne:
 		_aktualizuj_intro(delta)
 		return
@@ -273,63 +314,25 @@ func _physics_process(delta):
 
 	var mnoznik_ruchu = mnoznik_predkosci_areny * mnoznik_przyspieszenia_rundy
 	_przyciagnij_do_paletki(delta)
-	var collision = move_and_collide(velocity * delta * mnoznik_ruchu)
+	_ogranicz_pionowy_lot()
+	var pozycja_przed_ruchem := global_position
+	_przesun_z_kolizjami(delta, mnoznik_ruchu)
 	_aktualizuj_kontakt_z_gumowa_sciana(mnoznik_ruchu, delta)
 
-	if collision:
-		var obiekt = collision.get_collider()
-		var normalna = collision.get_normal()
-
-		if obiekt is BossRun and run_state != null:
-			if velocity.dot(normalna) < 0.0:
-				velocity = velocity.bounce(normalna)
-				gra.przebieg().kolejkuj_trafienie_bossa(obiekt as BossRun, run_state.ballDamage, collision.get_collider_shape(), normalna)
-				$DzwiekSciana.play()
-
-		elif obiekt is KrysztalRun and run_state != null:
-			if velocity.dot(normalna) < 0.0:
-				velocity = velocity.bounce(normalna)
-				(obiekt as KrysztalRun).trafienie(run_state.ballDamage)
-				$DzwiekSciana.play()
-
-		elif obiekt is CharacterBody2D and obiekt.is_in_group("pilki"):
-			_odbicie_od_pilki(obiekt, normalna)
-			$DzwiekPaletka.play()
-
-		elif obiekt is CharacterBody2D:
-			var perfect_hit = _odbicie_od_paletki(
-				obiekt,
-				collision.get_position()
-			)
-			if obiekt is PaletkaBazowa:
-				(obiekt as PaletkaBazowa).efekt_odbicia(perfect_hit)
-			odbicie_paletki.emit()
-			statystyki_odbicia.emit("gracz" if obiekt.name == "Paletka" else "rywal", perfect_hit)
-			if Ustawienia.tryb == "endless" and obiekt.name == "Paletka":
-				odbicie_gracza.emit(perfect_hit)
-			if Ustawienia.tryb in ["bot", "arena"] and obiekt.name == "PaletkaAI" and Ustawienia.charakter_bota == "agresywny":
-				przyspiesz(1.04)
-
-			if perfect_hit:
-				$DzwiekPerfectHit.play()
-			else:
-				$DzwiekPaletka.play()
-
-		# Kontakt z granicą podczas odsuwania nie jest kolejnym uderzeniem.
-		elif obiekt.name not in ["górna ściana", "dolna ściana"] or velocity.dot(normalna) < 0.0:
-			velocity = velocity.bounce(normalna)
-			if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
-				var manager_areny := gra.menedzer_areny()
-				if manager_areny != null:
-					manager_areny.wzmocnij_odbicie_od_sciany(self, str(obiekt.name))
-			$DzwiekSciana.play()
-			odbicie_sciany.emit()
-
+	_ogranicz_pionowy_lot()
 	_dodaj_probke_sladu()
 	queue_redraw()
 
 	var promien_teraz = _promien_pilki_aktualny()
 	if Ustawienia.tryb == "endless" and position.x + promien_teraz >= Ustawienia.prawa_granica:
+		if velocity.x > 0.0 and is_instance_valid(gra.efekty_wizualne):
+			var przesuniecie := global_position - pozycja_przed_ruchem
+			var udzial := clampf((Ustawienia.prawa_granica - promien_teraz - pozycja_przed_ruchem.x) / przesuniecie.x, 0.0, 1.0) if przesuniecie.x > 0.0 else 1.0
+			var kontakt_y := lerpf(pozycja_przed_ruchem.y, global_position.y, udzial)
+			gra.efekty_wizualne.odbicie(
+				Vector2(Ustawienia.prawa_granica, kontakt_y),
+				Vector2.LEFT, gra.lewa_paletka()._kolor_paletki(), true
+			)
 		position.x = Ustawienia.prawa_granica - promien_teraz
 		velocity.x = -absf(velocity.x)
 		$DzwiekSciana.play()
@@ -345,9 +348,174 @@ func _physics_process(delta):
 		return
 
 
+const MARGINES_KONTAKTU: float = 0.12
+const LIMIT_KONTAKTOW: int = 16
+
+
+func _predkosc_powierzchni(kontakt: KinematicCollision2D) -> Vector2:
+	var obiekt := kontakt.get_collider()
+	if obiekt is BossRun:
+		return (obiekt as BossRun).predkosc_powierzchni(kontakt.get_collider_shape())
+	var arena := gra.menedzer_areny() as ArenaManager
+	if arena != null and arena.ruchoma_sciana != null and obiekt == arena.ruchoma_sciana.cialo:
+		return arena.ruchoma_sciana.predkosc_powierzchni(kontakt.get_collider_shape(), kontakt.get_normal())
+	return kontakt.get_collider_velocity()
+
+
+func _odbita_predkosc(normalna: Vector2, powierzchnia: Vector2, mnoznik: float) -> Vector2:
+	var rzeczywista := velocity * mnoznik
+	var odbita := (rzeczywista - powierzchnia).bounce(normalna) + powierzchnia
+	# Ruch przeszkody zmienia kierunek, ale nie omija ulepszeń ani limitów szybkości.
+	return odbita.normalized() * velocity.length() if not odbita.is_zero_approx() else velocity.bounce(normalna)
+
+
+func _przesun_z_kolizjami(delta: float, mnoznik: float) -> void:
+	var pozycja_start := global_position
+	var nakladanie := false
+	var pozostaly_czas := delta
+	var postep := 0.0
+	var oczekiwany := velocity.length() * mnoznik * delta
+	var ostatni: KinematicCollision2D
+	var trafione: Array[Object] = []
+	var przenikane: Array[PhysicsBody2D] = []
+	var normalna := Vector2.ZERO
+	for i in range(LIMIT_KONTAKTOW):
+		var ruch := velocity * mnoznik * pozostaly_czas
+		if ruch.length_squared() < 0.000001:
+			break
+		var kontakt := move_and_collide(ruch, false, MARGINES_KONTAKTU, true)
+		if kontakt == null:
+			postep += ruch.length()
+			pozostaly_czas = 0.0
+			break
+		nakladanie = nakladanie or kontakt.get_depth() > MARGINES_KONTAKTU
+		ostatni = kontakt
+		normalna = kontakt.get_normal()
+		var przebyte := clampf(kontakt.get_travel().dot(ruch.normalized()), 0.0, ruch.length())
+		postep += przebyte
+		# Remainder określa niezrealizowaną część czasu; po odbiciu liczymy nowy wektor.
+		pozostaly_czas *= clampf(kontakt.get_remainder().length() / ruch.length(), 0.0, 1.0)
+		var powierzchnia := _predkosc_powierzchni(kontakt)
+		var ksztalt := kontakt.get_collider_shape()
+		if przebyte > MARGINES_KONTAKTU * 2.0:
+			trafione.clear()
+		if not trafione.has(ksztalt):
+			_obsluz_kontakt(kontakt, powierzchnia, mnoznik)
+			trafione.append(ksztalt)
+		elif (velocity * mnoznik - powierzchnia).dot(normalna) < -0.001:
+			velocity = _odbita_predkosc(normalna, powierzchnia, mnoznik)
+		if kontakt.get_collider() is KrysztalRun and (kontakt.get_collider() as KrysztalRun).rozpad:
+			var zniszczony := kontakt.get_collider() as PhysicsBody2D
+			add_collision_exception_with(zniszczony)
+			przenikane.append(zniszczony)
+			continue
+		# Lokalny ruch jest sprawdzany kolizyjnie także względem drugiej przeszkody.
+		var odsuniecie := MARGINES_KONTAKTU + maxf(0.0, powierzchnia.dot(normalna)) * pozostaly_czas
+		move_and_collide(normalna * odsuniecie, false, MARGINES_KONTAKTU)
+	for cialo in przenikane:
+		remove_collision_exception_with(cialo)
+	if ostatni != null and oczekiwany > 0.01 and (postep < oczekiwany * 0.05 or (nakladanie and global_position.distance_to(pozycja_start) < oczekiwany * 0.25)):
+		czas_bez_postepu += delta
+	else:
+		czas_bez_postepu = 0.0
+	if czas_bez_postepu >= 0.12:
+		awaryjne_separacje += 1
+		var przed := global_position
+		# Awaria kontaktu: najpierw wyjście po normalnej, potem lokalne styczne.
+		# Nie zmieniamy kierunku, szybkości ani położenia na środek planszy.
+		for kierunek in [normalna, normalna.orthogonal(), -normalna.orthogonal()]:
+			var krok: Vector2 = kierunek * 1.0
+			var lokalnie_przed := global_position
+			move_and_collide(krok, false, MARGINES_KONTAKTU)
+			if global_position.distance_to(lokalnie_przed) > 0.01:
+				break
+		if diagnostyka_kolizji:
+			print("KOLIZJA brak postepu: obiekt=", ostatni.get_collider(), " normalna=", normalna, " predkosc=", velocity, " powierzchnia=", _predkosc_powierzchni(ostatni), " droga=", postep, "/", oczekiwany, " separacja=", global_position - przed, " czas=", czas_bez_postepu)
+		czas_bez_postepu = 0.0
+
+
+func _obsluz_kontakt(collision: KinematicCollision2D, ruch_powierzchni: Vector2, mnoznik_ruchu: float) -> void:
+	var obiekt = collision.get_collider()
+	var normalna = collision.get_normal()
+	var zbliza_sie := (velocity * mnoznik_ruchu - ruch_powierzchni).dot(normalna) < -0.001
+	if not zbliza_sie:
+		return
+	if zbliza_sie:
+		czas_deformacji = 0.12
+		kierunek_deformacji = normalna.angle()
+		var koncowe_trafienie := obiekt is KrysztalRun and run_state != null and (obiekt as KrysztalRun).armor_hp == 0 and (obiekt as KrysztalRun).hp <= run_state.ballDamage
+		if not koncowe_trafienie and is_instance_valid(gra.efekty_wizualne):
+			var kolor_kontaktu := Color("#ad83ff") if obiekt is KrysztalRun or obiekt is BossRun else Color("#7ceaff")
+			if obiekt is PaletkaBazowa:
+				kolor_kontaktu = (obiekt as PaletkaBazowa)._kolor_paletki()
+			gra.efekty_wizualne.odbicie(collision.get_position(), normalna, kolor_kontaktu, obiekt is PaletkaBazowa)
+
+	if obiekt is BossRun and run_state != null:
+		if zbliza_sie:
+			velocity = _odbita_predkosc(normalna, ruch_powierzchni, mnoznik_ruchu)
+			gra.przebieg().kolejkuj_trafienie_bossa(obiekt as BossRun, run_state.ballDamage, collision.get_collider_shape(), normalna)
+			$DzwiekSciana.play()
+
+	elif obiekt is KrysztalRun and run_state != null:
+		if zbliza_sie:
+			var krysztal := obiekt as KrysztalRun
+			if krysztal is DronRun:
+				(krysztal as DronRun).miejsce_trafienia = krysztal.to_local(collision.get_position())
+			krysztal.trafienie(run_state.ballDamage)
+			if not krysztal.rozpad:
+				velocity = _odbita_predkosc(normalna, ruch_powierzchni, mnoznik_ruchu)
+			$DzwiekSciana.play()
+
+	elif obiekt is CharacterBody2D and obiekt.is_in_group("pilki"):
+		_odbicie_od_pilki(obiekt, normalna)
+		$DzwiekPaletka.play()
+
+	elif obiekt is CharacterBody2D:
+		var perfect_hit = _odbicie_od_paletki(
+			obiekt,
+			collision.get_position()
+		)
+		if obiekt is PaletkaBazowa:
+			(obiekt as PaletkaBazowa).efekt_odbicia(perfect_hit)
+		odbicie_paletki.emit()
+		statystyki_odbicia.emit("gracz" if obiekt.name == "Paletka" else "rywal", perfect_hit)
+		if Ustawienia.tryb == "endless" and obiekt.name == "Paletka":
+			odbicie_gracza.emit(perfect_hit)
+		if Ustawienia.tryb in ["bot", "arena"] and obiekt.name == "PaletkaAI" and Ustawienia.charakter_bota == "agresywny":
+			przyspiesz(1.04)
+
+		if perfect_hit:
+			$DzwiekPerfectHit.play()
+		else:
+			$DzwiekPaletka.play()
+
+	# Kontakt z granicą podczas odsuwania nie jest kolejnym uderzeniem.
+	else:
+		velocity = _odbita_predkosc(normalna, ruch_powierzchni, mnoznik_ruchu)
+		if Ustawienia.tryb == "arena" or (Ustawienia.tryb == "online" and Ustawienia.online_arena):
+			var manager_areny := gra.menedzer_areny()
+			if manager_areny != null:
+				manager_areny.wzmocnij_odbicie_od_sciany(self, str(obiekt.name))
+		$DzwiekSciana.play()
+		odbicie_sciany.emit()
+
+
+func _ogranicz_pionowy_lot() -> void:
+	var szybkosc := velocity.length()
+	if szybkosc <= 0.0:
+		return
+	var kat := deg_to_rad(MAKSYMALNY_KAT_ODBICIA)
+	var minimum_x := szybkosc * cos(kat)
+	if absf(velocity.x) >= minimum_x:
+		return
+	var kierunek_x := signf(velocity.x) if velocity.x != 0.0 else -1.0
+	velocity = Vector2(kierunek_x * minimum_x, signf(velocity.y) * szybkosc * sin(kat))
+
+
 func _rozpocznij_rozpad_punktu(strona: String) -> void:
 	if rozpad_aktywny:
 		return
+	_odpusc_gumowa_sciane()
 	if run_state != null:
 		gra.przebieg().kolejkuj_strate_pilki_bossa()
 		set_physics_process(false)
@@ -356,11 +524,40 @@ func _rozpocznij_rozpad_punktu(strona: String) -> void:
 	if not scena_glowna.rozpocznij_rozpad_pilki(self):
 		set_physics_process(false)
 		return
+	if is_instance_valid(gra.efekty_wizualne):
+		gra.efekty_wizualne.punkt(global_position)
 
-	_odpusc_gumowa_sciane()
 	slady_pozycji.clear()
 	strona_punktu = strona
 	rozpad_aktywny = true
+	pilka_zniszczona = true
+	_przygotuj_fragmenty_rozpadu()
+	set_physics_process(false)
+	set_process(true)
+	queue_redraw()
+
+
+func pokaz_rozpad_endless(ukryj_pilke: bool = false) -> void:
+	if is_instance_valid(gra.efekty_wizualne):
+		gra.efekty_wizualne.punkt(global_position)
+	rozpad_wizualny = true
+	pozycja_rozpadu = position
+	pilka_zniszczona = ukryj_pilke
+	_przygotuj_fragmenty_rozpadu()
+	set_process(true)
+	queue_redraw()
+
+
+func pokaz_rozpad_online(pozycja: Vector2, ukryj_pilke: bool) -> void:
+	rozpad_wizualny = true
+	pozycja_rozpadu = pozycja
+	pilka_zniszczona = ukryj_pilke
+	_przygotuj_fragmenty_rozpadu()
+	set_process(true)
+	queue_redraw()
+
+
+func _przygotuj_fragmenty_rozpadu() -> void:
 	rozpad_czas = 0.0
 	fragmenty_rozpadu.clear()
 	for i in range(LICZBA_FRAGMENTOW):
@@ -374,12 +571,10 @@ func _rozpocznij_rozpad_punktu(strona: String) -> void:
 			"rozmiar": randf_range(2.2, 4.2),
 			"kolor": [Color("#f4fdff"), Color("#7ceaff"), Color("#55d8f2")][i % 3]
 		})
-	set_physics_process(false)
-	set_process(true)
-	queue_redraw()
+
 
 func _process(delta: float) -> void:
-	if not rozpad_aktywny:
+	if not rozpad_aktywny and not rozpad_wizualny:
 		return
 	rozpad_czas += delta
 	var postep = clampf(rozpad_czas / CZAS_ROZPADU, 0.0, 1.0)
@@ -395,6 +590,9 @@ func _process(delta: float) -> void:
 		set_process(false)
 		rozpad_aktywny = false
 		fragmenty_rozpadu.clear()
+		if rozpad_wizualny:
+			rozpad_wizualny = false
+			return
 		punkt.emit(strona_punktu)
 
 
@@ -468,7 +666,7 @@ func _odbicie_od_paletki(
 	var kat = deg_to_rad(trafienie * MAKSYMALNY_KAT_ODBICIA)
 	var spin_paletki = clampf(paletka.velocity.y / 400.0, -1.0, 1.0)
 	kat += deg_to_rad(spin_paletki * MAKSYMALNY_SPIN_PALETKI)
-	kat = clampf(kat, deg_to_rad(-72.0), deg_to_rad(72.0))
+	kat = clampf(kat, deg_to_rad(-MAKSYMALNY_KAT_ODBICIA), deg_to_rad(MAKSYMALNY_KAT_ODBICIA))
 	var kierunek_x = 1.0 if global_position.x > paletka.global_position.x else -1.0
 	velocity = Vector2(kierunek_x * cos(kat), sin(kat)).normalized() * predkosc
 	position.x += kierunek_x * 0.5
@@ -502,16 +700,13 @@ func _odbicie_od_pilki(inna_pilka: CharacterBody2D, normalna: Vector2):
 
 
 func _aktualizuj_intro(delta):
-	intro_czas -= delta
-	if bezpieczny_start:
-		if intro_czas <= 0.0:
-			intro_aktywne = false
-			bezpieczny_start = false
-			runda_rozpoczeta.emit()
-		queue_redraw()
+	if run_state != null and not BezpiecznyRespawn.wolne(self, srodek_intro, promien_aktualny() if intro_stacjonarne else PROMIEN_OKREGU):
+		_przygotuj_respawn()
+		srodek_intro = position
+		intro_czas = CZAS_STARTU
 		return
-
-	var nastepna_pozycja = position + velocity * delta * (run_state.mnoznik_predkosci() if run_state != null else 1.0)
+	intro_czas -= delta
+	var nastepna_pozycja = position if intro_stacjonarne else position + velocity * delta * (run_state.mnoznik_predkosci() if run_state != null else 1.0)
 	var odleglosc = nastepna_pozycja.distance_to(srodek_intro)
 	var maksymalna_odleglosc = PROMIEN_OKREGU - _promien_pilki_aktualny()
 
@@ -524,6 +719,9 @@ func _aktualizuj_intro(delta):
 
 	if intro_czas <= 0.0:
 		intro_aktywne = false
+		if bezpieczny_start:
+			velocity.x = absf(velocity.x)
+			bezpieczny_start = false
 		runda_rozpoczeta.emit()
 
 	queue_redraw()
@@ -538,3 +736,19 @@ func _przyciagnij_do_paletki(delta: float) -> void:
 		return
 	var sila := run_state.magnetPull * (1.0 - dystans / run_state.magnetRadius) * delta
 	velocity = velocity.normalized().lerp(do_paletki.normalized(), clampf(sila, 0.0, 1.0)).normalized() * velocity.length()
+
+
+func _przygotuj_respawn() -> void:
+	var punkt := BezpiecznyRespawn.znajdz(self, maxf(PROMIEN_OKREGU, promien_aktualny()))
+	intro_stacjonarne = false
+	if not punkt.is_finite():
+		punkt = BezpiecznyRespawn.znajdz(self, promien_aktualny(), false)
+		intro_stacjonarne = true
+	respawn_oczekuje = not punkt.is_finite()
+	visible = true
+	czas_proby_respawnu = 0.5 if proby_respawnu < 44 else 2.0
+	if not respawn_oczekuje:
+		global_position = punkt
+		srodek_intro = position
+		intro_czas = CZAS_STARTU
+	queue_redraw()

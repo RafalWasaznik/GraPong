@@ -5,10 +5,11 @@ enum Akcja { OPCJE_JEDNEGO_GRACZA, START_ENDLESS, OPCJE_ARENY, WYBOR_TRYBU, OPCJ
 signal akcja_zadana(akcja: Akcja)
 
 const KOLOR_TURKUS_NEON = Color("#55e7ff")
-const KOLOR_FIOLET_NEON = KOLOR_TURKUS_NEON
-const KOLOR_ROZ_NEON = KOLOR_TURKUS_NEON
+const KOLOR_FIOLET_NEON = Color("#ad83ff")
+const KOLOR_ROZ_NEON = Color("#ff72ac")
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
+var animacja_ekranu: Tween
 var kontekst: MenuEkranyKontekst
 var wybor_gier_jeden: VBoxContainer
 var wybor_gier_dwoch: VBoxContainer
@@ -44,7 +45,7 @@ func utworz_ekrany_wyboru_gier() -> void:
 	wybor_gier_jeden.hide()
 	_dodaj_ekran_wyboru_gier(wybor_gier_jeden, "Tryb dla jednego gracza")
 	_dodaj_karte_wyboru(wybor_gier_jeden, "Klasyczny", "", KOLOR_TURKUS_NEON, Akcja.OPCJE_JEDNEGO_GRACZA)
-	_dodaj_karte_wyboru(wybor_gier_jeden, "Nieskończony", "3 życia - ulepszenie co %d odbić" % RunState.UPGRADE_EVERY_HITS, KOLOR_FIOLET_NEON, Akcja.START_ENDLESS)
+	_dodaj_karte_wyboru(wybor_gier_jeden, "Nieskończony", "", KOLOR_FIOLET_NEON, Akcja.START_ENDLESS, true)
 	_dodaj_karte_wyboru(wybor_gier_jeden, "Arena", "", KOLOR_TURKUS_NEON, Akcja.OPCJE_ARENY)
 	_dodaj_karte_wyboru(wybor_gier_jeden, "Wróć", "", Color("#7892ad"), Akcja.WYBOR_TRYBU, true)
 
@@ -417,9 +418,14 @@ func pokaz_ekran(ekran: Control) -> void:
 		ekran_menu.hide()
 	ekran.show()
 	ekran.modulate.a = 0.0
-	var animacja := kontekst.center_container.create_tween()
-	animacja.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	animacja.tween_property(ekran, "modulate:a", 1.0, 0.18)
+	if is_instance_valid(animacja_ekranu):
+		animacja_ekranu.kill()
+	ekran.pivot_offset = ekran.size * 0.5
+	ekran.scale = Vector2.ONE * 0.985
+	animacja_ekranu = kontekst.center_container.create_tween()
+	animacja_ekranu.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	animacja_ekranu.parallel().tween_property(ekran, "modulate:a", 1.0, 0.20)
+	animacja_ekranu.parallel().tween_property(ekran, "scale", Vector2.ONE, 0.24)
 
 
 func _pokaz_wybor_trybu() -> void:

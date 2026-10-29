@@ -48,3 +48,9 @@ Przy pytaniach o API Godota i GDScript użyj context7, zamiast polegać na pami�
 Przy pytaniach o API Godota i GDScript użyj context7, zamiast polegać na pamięci modelu.
 Zmiany w menu wprowadzaj we wszystkich ekranach naraz: menu główne (`menu.gd`), pauza i ustawienia pod Escape (`menu_pauzy.gd`) oraz ekran końca i statystyk (`scena_główna.gd`).
 W etykietach interfejsu używaj zwykłego ` - ` zamiast długiego myślnika.
+
+## Zwięzłe teksty interfejsu
+
+- Nie dodawaj dopisku ani podtytułu pod nazwą trybu „Nieskończony”.
+- Opisy ulepszeń i nowych elementów UI mają zawierać tylko najpotrzebniejsze informacje: krótki efekt, wartość oraz warunek lub czas działania, jeśli są istotne. Bez rozległych opisów i powtórzeń.
+- W Nieskończonym stosuj wspólne opisy efektów w wyborze ulepszeń i pod Escape. Karta wyboru pokazuje nazwę, rzadkość, poziom i efekt po wyborze.

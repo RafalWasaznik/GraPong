@@ -1,0 +1,155 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+TextServer: Added interface "Dummy"
+TextServer: Added interface "ICU / HarfBuzz / Graphite (Built-in)"
+Accessibility: AccessKit driver loaded.
+Native OpenGL API detected: 3.3: NVIDIA - NVIDIA GeForce RTX 4070
+NVAPI: Init OK!
+NVAPI: Profile not found, creating...
+NVAPI: Application not found in profile, creating...
+NVAPI: Error creating application: NVAPI_EXECUTABLE_ALREADY_IN_USE(code -167)
+Accessibility: window 0 adapter created.
+SDL: Init OK!
+Using "winink" pen tablet driver...
+ERROR: Can't create shader cache folder, no shader caching will happen: user://
+   at: RasterizerGLES3 (drivers/gles3/rasterizer_gles3.cpp:345)
+OpenGL API 3.3.0 NVIDIA 617.42 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 4070
+WASAPI: Activated output_device using IAudioClient3 interface
+WASAPI: wFormatTag = 65534
+WASAPI: nChannels = 2
+WASAPI: nSamplesPerSec = 48000
+WASAPI: nAvgBytesPerSec = 384000
+WASAPI: nBlockAlign = 8
+WASAPI: wBitsPerSample = 32
+WASAPI: cbSize = 22
+WASAPI: mix_rate = 48000
+WASAPI: fundamental_period_frames = 480
+WASAPI: min_period_frames = 480
+WASAPI: max_period_frames = 480
+WASAPI: selected a period frame size of 480
+WASAPI: detected 2 channels
+WASAPI: audio buffer frames: 480 calculated latency: 10ms
+
+TextServer: Primary interface set to: "ICU / HarfBuzz / Graphite (Built-in)".
+Loading resource: res://neon_arcade_theme.tres remapped: res://neon_arcade_theme.tres
+Loading resource: res://assets/fonts/Oxanium.ttf remapped: res://assets/fonts/Oxanium.ttf
+Loading resource: res://.godot/imported/Oxanium.ttf-64b22b5d09ad4ae58af5aeff560442ee.fontdata remapped: res://.godot/imported/Oxanium.ttf-64b22b5d09ad4ae58af5aeff560442ee.fontdata
+Completed load for: 'res://assets/fonts/Oxanium.ttf' remapped 'res://assets/fonts/Oxanium.ttf' at thread -1
+Loading resource: res://assets/kenney_ui/Vector/Blue/arrow_basic_s_small.svg remapped: res://assets/kenney_ui/Vector/Blue/arrow_basic_s_small.svg
+Loading resource: res://.godot/imported/arrow_basic_s_small.svg-7abe2ee6141c8b2536a6ca0d9cba9301.ctex remapped: res://.godot/imported/arrow_basic_s_small.svg-7abe2ee6141c8b2536a6ca0d9cba9301.ctex
+Completed load for: 'res://assets/kenney_ui/Vector/Blue/arrow_basic_s_small.svg' remapped 'res://assets/kenney_ui/Vector/Blue/arrow_basic_s_small.svg' at thread -1
+Loading resource: res://assets/kenney_ui/Vector/Blue/check_square_color_checkmark.svg remapped: res://assets/kenney_ui/Vector/Blue/check_square_color_checkmark.svg
+Loading resource: res://.godot/imported/check_square_color_checkmark.svg-6c272be2b36f4780466fd6bf98a94feb.ctex remapped: res://.godot/imported/check_square_color_checkmark.svg-6c272be2b36f4780466fd6bf98a94feb.ctex
+Completed load for: 'res://assets/kenney_ui/Vector/Blue/check_square_color_checkmark.svg' remapped 'res://assets/kenney_ui/Vector/Blue/check_square_color_checkmark.svg' at thread -1
+Loading resource: res://assets/kenney_ui/Vector/Blue/check_square_color.svg remapped: res://assets/kenney_ui/Vector/Blue/check_square_color.svg
+Loading resource: res://.godot/imported/check_square_color.svg-de5d2f208adc0ce27477a6dbf3c9eb55.ctex remapped: res://.godot/imported/check_square_color.svg-de5d2f208adc0ce27477a6dbf3c9eb55.ctex
+Completed load for: 'res://assets/kenney_ui/Vector/Blue/check_square_color.svg' remapped 'res://assets/kenney_ui/Vector/Blue/check_square_color.svg' at thread -1
+Completed load for: 'res://neon_arcade_theme.tres' remapped 'res://neon_arcade_theme.tres' at thread -1
+Loading resource: res://default_bus_layout.tres remapped: res://default_bus_layout.tres
+Completed load for: 'res://default_bus_layout.tres' remapped 'res://default_bus_layout.tres' at thread -1
+CORE API HASH: 2004498165
+EDITOR API HASH: 1696660745
+SceneTreeFTI: traversal method DEFAULT
+Loading resource: res://ustawienia.gd remapped: res://ustawienia.gd
+Completed load for: 'res://ustawienia.gd' remapped 'res://ustawienia.gd' at thread -1
+Loading resource: res://muzyka.gd remapped: res://muzyka.gd
+Completed load for: 'res://muzyka.gd' remapped 'res://muzyka.gd' at thread -1
+Loading resource: res://siec.gd remapped: res://siec.gd
+Completed load for: 'res://siec.gd' remapped 'res://siec.gd' at thread -1
+Loaded system CA certificates
+Loading resource: res://docs/test_rzadkosci.tscn remapped: res://docs/test_rzadkosci.tscn
+Loading resource: res://docs/test_rzadkosci.gd remapped: res://docs/test_rzadkosci.gd
+Loading resource: res://assets/kenney_ui/Sounds/tap-a.ogg remapped: res://assets/kenney_ui/Sounds/tap-a.ogg
+Loading resource: res://.godot/imported/tap-a.ogg-08ba0cc0ead7dce8d8ac294c864fe6a9.oggvorbisstr remapped: res://.godot/imported/tap-a.ogg-08ba0cc0ead7dce8d8ac294c864fe6a9.oggvorbisstr
+Completed load for: 'res://assets/kenney_ui/Sounds/tap-a.ogg' remapped 'res://assets/kenney_ui/Sounds/tap-a.ogg' at thread -1
+Loading resource: res://shaders/rdzen_mechaniczny.gdshader remapped: res://shaders/rdzen_mechaniczny.gdshader
+Completed load for: 'res://shaders/rdzen_mechaniczny.gdshader' remapped 'res://shaders/rdzen_mechaniczny.gdshader' at thread -1
+Loading resource: res://bonusy_kulki.tscn remapped: res://bonusy_kulki.tscn
+Loading resource: res://bonusy_kulki.gd remapped: res://bonusy_kulki.gd
+Completed load for: 'res://bonusy_kulki.gd' remapped 'res://bonusy_kulki.gd' at thread -1
+Completed load for: 'res://bonusy_kulki.tscn' remapped 'res://bonusy_kulki.tscn' at thread -1
+Completed load for: 'res://docs/test_rzadkosci.gd' remapped 'res://docs/test_rzadkosci.gd' at thread -1
+Completed load for: 'res://docs/test_rzadkosci.tscn' remapped 'res://docs/test_rzadkosci.tscn' at thread -1
+Loading resource: res://assets/kursor_neon.svg remapped: res://assets/kursor_neon.svg
+Loading resource: res://.godot/imported/kursor_neon.svg-994d3ab476096462996070758c51e5fd.ctex remapped: res://.godot/imported/kursor_neon.svg-994d3ab476096462996070758c51e5fd.ctex
+Completed load for: 'res://assets/kursor_neon.svg' remapped 'res://assets/kursor_neon.svg' at thread -1
+Loading resource: res://assets/kursor_tekst.svg remapped: res://assets/kursor_tekst.svg
+Loading resource: res://.godot/imported/kursor_tekst.svg-cc4efc4ea6e6d36ae8e9ec65a9d8c255.ctex remapped: res://.godot/imported/kursor_tekst.svg-cc4efc4ea6e6d36ae8e9ec65a9d8c255.ctex
+Completed load for: 'res://assets/kursor_tekst.svg' remapped 'res://assets/kursor_tekst.svg' at thread -1
+Loading resource: res://muzyka_arcade.wav remapped: res://muzyka_arcade.wav
+Loading resource: res://.godot/imported/muzyka_arcade.wav-2ddecbe2c00e8db3ba6a4a048d16e1ef.sample remapped: res://.godot/imported/muzyka_arcade.wav-2ddecbe2c00e8db3ba6a4a048d16e1ef.sample
+Completed load for: 'res://muzyka_arcade.wav' remapped 'res://muzyka_arcade.wav' at thread -1
+FULL_AVAILABILITY_100000: [48350, 27790, 14761, 7020, 2079]
+PER_UPGRADE: { &"paletka": 16216, &"pilka": 9268, &"wieksza_pilka": 16129, &"zycie": 3530, &"dash": 16005, &"magnes": 9298, &"tarcza": 3490, &"precyzja": 9224, &"regeneracja": 2079, &"spowolnienie": 3674, &"obrazenia": 3705, &"kruszyciel": 3759, &"roj": 3623 }
+PASS: category 0 within 0.7 percentage point
+PASS: category 1 within 0.7 percentage point
+PASS: category 2 within 0.7 percentage point
+PASS: category 3 within 0.7 percentage point
+PASS: category 4 within 0.7 percentage point
+PASS: uniform upgrade selection within each category
+PASS: 13 original upgrades, no curse
+PASS: 10000 ordinary offers: three unique nonmaxed upgrades
+PASS: 10000 boss offers: unique, capped, rare or better guarantee
+PASS: 6400 offers across all 32 exhausted-category combinations
+WITHOUT_COMMON_100000: [0, 53880, 28755, 13485, 3880]
+PASS: weights renormalize to remaining sum 52
+PASS: all caps enforced; empty pool stays empty even for boss
+PASS: preserved max-rank values
+PASS: 1 remaining upgrades produce 1 valid cards
+PASS: 2 remaining upgrades produce 2 valid cards
+PASS: isolated legacy settings fixture saved
+PASS: real settings loader with isolated fixture path
+PASS: legacy record preserved; obsolete run/curse fields ignored
+PASS: resave removes obsolete fields and preserves record
+Loading resource: res://scena_główna.tscn remapped: res://scena_główna.tscn
+Loading resource: res://paletka.tscn remapped: res://paletka.tscn
+Loading resource: res://paletka.gd remapped: res://paletka.gd
+Completed load for: 'res://paletka.gd' remapped 'res://paletka.gd' at thread -1
+Completed load for: 'res://paletka.tscn' remapped 'res://paletka.tscn' at thread -1
+Loading resource: res://scena_główna.gd remapped: res://scena_główna.gd
+Loading resource: res://piłka.tscn remapped: res://piłka.tscn
+Loading resource: res://odbicie_paletka.wav remapped: res://odbicie_paletka.wav
+Loading resource: res://.godot/imported/odbicie_paletka.wav-73fff2e16859fc0286ebb813cf5e90c8.sample remapped: res://.godot/imported/odbicie_paletka.wav-73fff2e16859fc0286ebb813cf5e90c8.sample
+Completed load for: 'res://odbicie_paletka.wav' remapped 'res://odbicie_paletka.wav' at thread -1
+Loading resource: res://odbicie_sciana.wav remapped: res://odbicie_sciana.wav
+Loading resource: res://.godot/imported/odbicie_sciana.wav-c442522e771b031fbc91e6fc08756331.sample remapped: res://.godot/imported/odbicie_sciana.wav-c442522e771b031fbc91e6fc08756331.sample
+Completed load for: 'res://odbicie_sciana.wav' remapped 'res://odbicie_sciana.wav' at thread -1
+Loading resource: res://punkt.wav remapped: res://punkt.wav
+Loading resource: res://.godot/imported/punkt.wav-fa0d4363afb5cf1178600ff17c952c1e.sample remapped: res://.godot/imported/punkt.wav-fa0d4363afb5cf1178600ff17c952c1e.sample
+Completed load for: 'res://punkt.wav' remapped 'res://punkt.wav' at thread -1
+Completed load for: 'res://piłka.tscn' remapped 'res://piłka.tscn' at thread -1
+Loading resource: res://punkt_sukces.wav remapped: res://punkt_sukces.wav
+Loading resource: res://.godot/imported/punkt_sukces.wav-844f1ce111e6bec5b5427cabb4b1d49d.sample remapped: res://.godot/imported/punkt_sukces.wav-844f1ce111e6bec5b5427cabb4b1d49d.sample
+Completed load for: 'res://punkt_sukces.wav' remapped 'res://punkt_sukces.wav' at thread -1
+Completed load for: 'res://scena_główna.gd' remapped 'res://scena_główna.gd' at thread -1
+Loading resource: res://paletka_ai.tscn remapped: res://paletka_ai.tscn
+Loading resource: res://paletka_ai.gd remapped: res://paletka_ai.gd
+Completed load for: 'res://paletka_ai.gd' remapped 'res://paletka_ai.gd' at thread -1
+Completed load for: 'res://paletka_ai.tscn' remapped 'res://paletka_ai.tscn' at thread -1
+Loading resource: res://menu_pauzy.gd remapped: res://menu_pauzy.gd
+Completed load for: 'res://menu_pauzy.gd' remapped 'res://menu_pauzy.gd' at thread -1
+Loading resource: res://rysowanie_areny.gd remapped: res://rysowanie_areny.gd
+Loading resource: res://shaders/tlo_meczu.gdshader remapped: res://shaders/tlo_meczu.gdshader
+Completed load for: 'res://shaders/tlo_meczu.gdshader' remapped 'res://shaders/tlo_meczu.gdshader' at thread -1
+Completed load for: 'res://rysowanie_areny.gd' remapped 'res://rysowanie_areny.gd' at thread -1
+Loading resource: res://ekran_konca.tscn remapped: res://ekran_konca.tscn
+Completed load for: 'res://ekran_konca.tscn' remapped 'res://ekran_konca.tscn' at thread -1
+Loading resource: res://wskazniki_dasha.gd remapped: res://wskazniki_dasha.gd
+Completed load for: 'res://wskazniki_dasha.gd' remapped 'res://wskazniki_dasha.gd' at thread -1
+Loading resource: res://ustawienia_menu.tscn remapped: res://ustawienia_menu.tscn
+Loading resource: res://ustawienia_menu.gd remapped: res://ustawienia_menu.gd
+Completed load for: 'res://ustawienia_menu.gd' remapped 'res://ustawienia_menu.gd' at thread -1
+Loading resource: res://ustawienia_sterowania.tscn remapped: res://ustawienia_sterowania.tscn
+Loading resource: res://ustawienia_sterowania.gd remapped: res://ustawienia_sterowania.gd
+Completed load for: 'res://ustawienia_sterowania.gd' remapped 'res://ustawienia_sterowania.gd' at thread -1
+Completed load for: 'res://ustawienia_sterowania.tscn' remapped 'res://ustawienia_sterowania.tscn' at thread -1
+Completed load for: 'res://ustawienia_menu.tscn' remapped 'res://ustawienia_menu.tscn' at thread -1
+Completed load for: 'res://scena_główna.tscn' remapped 'res://scena_główna.tscn' at thread -1
+PASS: exhausted boss reward resumes game without blocking
+PASS: selection applies and releases pause/energy animation
+PASS: legendary energy tween runs while paused
+PASS: selection applies and releases pause/energy animation
+PASS: rarity border visible in every button state across five tiers
+PASS: pause lists all five rarity groups
+PASS: pause settings open
+PASS: end statistics count actual upgrade levels
+RESULT: 27 checks, 0 failures

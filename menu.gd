@@ -3,10 +3,10 @@ extends Control
 
 const CHARAKTERY_BOTA = ["defensywny", "ofensywny", "agresywny", "nieprzewidywalny"]
 const KOLOR_TURKUS_NEON = Color("#55e7ff")
-const KOLOR_FIOLET_NEON = KOLOR_TURKUS_NEON
-const KOLOR_ROZ_NEON = KOLOR_TURKUS_NEON
+const KOLOR_FIOLET_NEON = Color("#ad83ff")
+const KOLOR_ROZ_NEON = Color("#ff72ac")
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
-const DZWIEK_MENU_GENERATOR = preload("res://dzwiek_menu.gd")
+const DZWIEK_MENU = preload("res://assets/kenney_ui/Sounds/click-a.ogg")
 const SKRYPT_EKRANOW_MENU = preload("res://menu_ekrany.gd")
 
 @onready var ekran_glowny = $CenterContainer/EkranGlowny
@@ -60,8 +60,8 @@ func _ready():
 	ekrany_menu.instrukcje_polaczenia.add_theme_font_size_override("font_size", 16)
 	dzwiek_klikniecia = AudioStreamPlayer.new()
 	dzwiek_klikniecia.name = "DzwiekKliknieciaMenu"
-	dzwiek_klikniecia.stream = DZWIEK_MENU_GENERATOR.utworz_plumkniecie()
-	dzwiek_klikniecia.volume_db = -8.0
+	dzwiek_klikniecia.stream = DZWIEK_MENU
+	dzwiek_klikniecia.volume_db = -15.0
 	dzwiek_klikniecia.bus = &"Efekty"
 	add_child(dzwiek_klikniecia)
 
@@ -162,9 +162,9 @@ func _styluj_menu():
 	karta.offset_bottom = -24.0
 	karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var styl_karty = StyleBoxFlat.new()
-	styl_karty.bg_color = Color("#0c1628", 0.82)
+	styl_karty.bg_color = Color("#081321", 0.42)
 	styl_karty.border_color = Color(KOLOR_TURKUS_NEON, 0.28)
-	styl_karty.set_border_width_all(0)
+	styl_karty.set_border_width_all(1)
 	styl_karty.set_corner_radius_all(16)
 	styl_karty.shadow_color = Color(KOLOR_TURKUS_NEON, 0.08)
 	styl_karty.shadow_size = 0
@@ -235,12 +235,12 @@ func _styluj_menu():
 	var styl_graj = _nowy_styl_przycisku(Color("#123b4a"), KOLOR_TURKUS_NEON)
 	styl_graj.border_width_bottom = 2
 	styl_graj.shadow_color = Color(KOLOR_TURKUS_NEON, 0.18)
-	styl_graj.shadow_size = 0
+	styl_graj.shadow_size = 6
 	guzik_graj.add_theme_stylebox_override("normal", styl_graj)
 	var styl_graj_hover = _nowy_styl_przycisku(Color("#18536a"), Color("#b4f8ff"))
 	styl_graj_hover.border_width_bottom = 2
 	styl_graj_hover.shadow_color = Color(KOLOR_TURKUS_NEON, 0.12)
-	styl_graj_hover.shadow_size = 0
+	styl_graj_hover.shadow_size = 8
 	guzik_graj.add_theme_stylebox_override("hover", styl_graj_hover)
 	$CenterContainer/EkranGlowny/Ustawienia.set_meta("neon_akcent", KOLOR_FIOLET_NEON)
 	$CenterContainer/EkranGlowny/Wyjdz.set_meta("neon_akcent", KOLOR_ROZ_NEON)

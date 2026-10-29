@@ -43,3 +43,22 @@ static func _utworz_dwutonowy_dzwiek(pierwszy_ton: float, drugi_ton: float, czas
 	stream.stereo = false
 	stream.data = dane
 	return stream
+
+
+static func utworz_energie(rodzaj: int) -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	var czas := 0.11 if rodzaj < 2 else 0.21
+	var dane := PackedByteArray()
+	dane.resize(int(czas * stream.mix_rate) * 2)
+	var faza := 0.0
+	for i in range(dane.size() / 2):
+		var t := float(i) / stream.mix_rate
+		var f := lerpf(1250.0 if rodzaj == 0 else 650.0, 180.0 if rodzaj != 3 else 1100.0, t / czas)
+		faza += TAU * f / stream.mix_rate
+		var sygnal := sin(faza) * 0.7 + sin(faza * (1.7 if rodzaj < 2 else 2.3)) * 0.3
+		var obwiednia := minf(t / 0.003, 1.0) * pow(1.0 - t / czas, 2.0)
+		dane.encode_s16(i * 2, int(sygnal * obwiednia * 8500.0))
+	stream.data = dane
+	return stream

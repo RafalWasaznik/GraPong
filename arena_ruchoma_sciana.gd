@@ -9,6 +9,7 @@ const CZAS_ZANIKANIA = 0.28
 const WYSOKOSC_PODWOJNEGO_OTWORU = 104.0
 const ODSTEP_PODWOJNYCH_OTWOROW = 166.0
 
+var predkosci_krawedzi: Array[Vector2] = []
 var gra: GraPongAPI
 var wariant = ""
 var zdalna = false
@@ -72,7 +73,23 @@ func aktywuj(nowy_wariant: String) -> void:
 	_utworz()
 
 
+func predkosc_powierzchni(ksztalt: Object, normalna: Vector2) -> Vector2:
+	var indeks := kolizje.find(ksztalt)
+	if indeks < 0 or indeks >= predkosci_krawedzi.size() or absf(normalna.y) < 0.5:
+		return Vector2.ZERO
+	return Vector2(0.0, predkosci_krawedzi[indeks].x if normalna.y < 0.0 else predkosci_krawedzi[indeks].y)
+
+
 func aktualizuj(delta: float, aktywny_wydarzeniem: bool) -> void:
+	var przed := _zamkniete_segmenty()
+	_aktualizuj_ruch(delta, aktywny_wydarzeniem)
+	var po := _zamkniete_segmenty()
+	predkosci_krawedzi.clear()
+	for i in range(po.size()):
+		predkosci_krawedzi.append(Vector2(po[i].position.y - przed[i].position.y, po[i].end.y - przed[i].end.y) / maxf(delta, 0.000001) if i < przed.size() else Vector2.ZERO)
+
+
+func _aktualizuj_ruch(delta: float, aktywny_wydarzeniem: bool) -> void:
 	if not istnieje():
 		return
 	if zdalna:

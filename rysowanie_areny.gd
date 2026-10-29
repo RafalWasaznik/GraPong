@@ -1,15 +1,17 @@
 class_name RysowanieAreny
 extends Node2D
 
+const TLO_MECZU = preload("res://tlo_meczu.gd")
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
-const KOLOR_TLA = Color("#080e18")
-const KOLOR_PLANSZY = Color("#142235")
 const KOLOR_RAMKI = Color("#46627e")
 const KOLOR_KARTY_WYNIKU = Color("#0b1725")
 const KOLOR_GRACZA = Color("#55d8f2")
 const KOLOR_AI = Color("#ff647a")
 
 var gra: GraPongAPI
+var tlo_meczu: TloMeczu
+var poprzedni_akcent: Color = Color.TRANSPARENT
+var czas_hologramu: float = 0.0
 
 
 func _czy_tryb_areny() -> bool:
@@ -18,20 +20,39 @@ func _czy_tryb_areny() -> bool:
 
 func _ready() -> void:
 	gra = get_parent()
+	tlo_meczu = TLO_MECZU.new()
+	tlo_meczu.name = "TloMeczu"
+	tlo_meczu.show_behind_parent = true
+	add_child(tlo_meczu)
+
 
 
 func _manager_areny() -> ArenaManagerAPI:
 	return gra.menedzer_areny()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	czas_hologramu += delta
+	queue_redraw()
+	tlo_meczu.ustaw_obszar(Rect2(
+		Vector2(Ustawienia.lewa_granica, Ustawienia.gorna_granica),
+		Vector2(Ustawienia.prawa_granica - Ustawienia.lewa_granica, Ustawienia.dolna_granica - Ustawienia.gorna_granica)
+	), get_viewport_rect().size)
+	var akcent := KOLOR_GRACZA
 	if Ustawienia.tryb == "endless":
-		queue_redraw()
+		akcent = Color("#ad83ff")
+	elif _czy_tryb_areny():
+		akcent = Color("#ffb454")
+		var manager := _manager_areny()
+		if manager != null and manager.strefa_przyspieszenia_aktywna():
+			akcent = Color("#55e7ff")
+		elif manager != null and manager.sciana_srodka_aktywna():
+			akcent = Color("#fa789e")
+	if akcent != poprzedni_akcent:
+		poprzedni_akcent = akcent
 
 
 func _draw():
-	var rozmiar_okna = get_viewport_rect().size
-	draw_rect(Rect2(Vector2.ZERO, rozmiar_okna), KOLOR_TLA, true)
 
 	var plansza = Rect2(
 		Vector2(Ustawienia.lewa_granica, Ustawienia.gorna_granica),
@@ -41,9 +62,7 @@ func _draw():
 		)
 	)
 
-	draw_rect(plansza, KOLOR_PLANSZY, true)
-	draw_rect(plansza, KOLOR_RAMKI, false, 3.0)
-	draw_rect(plansza.grow(-10.0), Color(0.24, 0.39, 0.54, 0.2), false, 1.0)
+	_rysuj_rame(plansza)
 	_rysuj_gumowe_sciany()
 	var manager_areny := _manager_areny()
 	if _czy_tryb_areny() and manager_areny != null and manager_areny.wieksza_arena_aktywna():
@@ -85,6 +104,13 @@ func _draw():
 
 		draw_rect(karta_gracza, KOLOR_KARTY_WYNIKU, true)
 		draw_rect(karta_gracza, KOLOR_GRACZA, false, 2.0)
+		if is_instance_valid(gra.efekty_wizualne):
+			for strona in range(2 if Ustawienia.tryb != "endless" else 1):
+				var impuls := gra.efekty_wizualne.impuls_wyniku[strona] / 0.35
+				if impuls > 0.0:
+					var karta: Rect2 = karta_gracza if strona == 0 else karta_ai
+					var kolor := KOLOR_GRACZA if strona == 0 else KOLOR_AI
+					draw_rect(karta.grow((1.0 - impuls) * 10.0), Color(kolor, impuls * Ustawienia.intensywnosc_efektow / 100.0 * 0.5), false, 2.0, true)
 		if Ustawienia.tryb != "endless":
 			draw_rect(karta_ai, KOLOR_KARTY_WYNIKU, true)
 			draw_rect(karta_ai, KOLOR_AI, false, 2.0)
@@ -98,31 +124,67 @@ func _draw():
 			_rysuj_wynik_na_srodku(karta_ai, str(gra.wynik_ai), KOLOR_AI, Siec.nazwa_gracza_2.to_upper())
 
 
+func _rysuj_rame(plansza: Rect2) -> void:
+	var sila := Ustawienia.intensywnosc_efektow / 100.0
+	var kolor := poprzedni_akcent
+	draw_rect(plansza.grow(5.0), Color("#080e18"), false, 10.0)
+	draw_rect(plansza.grow(7.0), Color(KOLOR_RAMKI, 0.65), false, 1.5, true)
+	draw_rect(plansza.grow(3.0), Color(kolor, 0.12 * sila), false, 6.0, true)
+	draw_rect(plansza, KOLOR_RAMKI.lerp(kolor, 0.38), false, 2.0, true)
+	for i in range(4):
+		var naroznik := Vector2(plansza.position.x if i % 2 == 0 else plansza.end.x, plansza.position.y if i < 2 else plansza.end.y)
+		var kierunek := Vector2(1.0 if i % 2 == 0 else -1.0, 1.0 if i < 2 else -1.0)
+		for os in [Vector2(kierunek.x, 0.0), Vector2(0.0, kierunek.y)]:
+			draw_line(naroznik, naroznik + os * 30.0, Color(kolor, 0.10 * sila), 8.0, true)
+			draw_line(naroznik, naroznik + os * 30.0, Color(kolor, 0.7), 2.0, true)
+	if sila > 0.0:
+		for i in range(4):
+			var poziomo := i < 2
+			var poczatek := Vector2(plansza.position.x, plansza.position.y if i == 0 else plansza.end.y) if poziomo else Vector2(plansza.position.x if i == 2 else plansza.end.x, plansza.position.y)
+			var kierunek := Vector2.RIGHT if poziomo else Vector2.DOWN
+			var dlugosc := plansza.size.x if poziomo else plansza.size.y
+			var pozycja := fposmod(czas_hologramu * 28.0 + i * 153.0, dlugosc + 70.0) - 35.0
+			for j in range(7):
+				var od := clampf(pozycja + j * 5.0, 0.0, dlugosc)
+				var do := clampf(pozycja + (j + 1) * 5.0, 0.0, dlugosc)
+				draw_line(poczatek + kierunek * od, poczatek + kierunek * do, Color(kolor, sin(float(j + 1) / 8.0 * PI) * 0.32 * sila), 2.5, true)
+	if is_instance_valid(gra.efekty_wizualne):
+		for kontakt in gra.efekty_wizualne.kontakty_ramy:
+			var miejsce := to_local(kontakt.miejsce)
+			var styczna := kontakt.normalna.orthogonal()
+			var alfa := pow(1.0 - kontakt.czas / 0.3, 2.0) * sila
+			for j in range(7):
+				var od := float(j - 3) * 7.0
+				var a := miejsce + styczna * (od - 3.5)
+				var b := miejsce + styczna * (od + 3.5)
+				a = a.clamp(plansza.position, plansza.end)
+				b = b.clamp(plansza.position, plansza.end)
+				var jasnosc := alfa * (1.0 - absf(float(j - 3)) / 4.0)
+				draw_line(a, b, Color(kolor, jasnosc * 0.22), 8.0, true)
+				draw_line(a, b, Color(kolor.lerp(Color.WHITE, 0.5), jasnosc), 2.5, true)
+
+
 func _rysuj_znaczniki_srodka(srodek: Vector2, gora: float, dol: float) -> void:
-	var promien_okregu = 58.0
-	var przerwa_okregu = 68.0
-	var dlugosc_segmentu = 14.0
-	var odstep_segmentow = 14.0
-	var szerokosc_poswiaty = 7.0
-	var kolor_poswiaty = Color(0.32, 0.89, 1.0, 0.045)
-	var kolor_linii = Color(0.64, 0.77, 0.87, 0.48)
-
-	for zakres in [Vector2(gora, srodek.y - przerwa_okregu), Vector2(srodek.y + przerwa_okregu, dol)]:
-		var y = zakres.x
+	var sila := Ustawienia.intensywnosc_efektow / 100.0
+	var kolor := KOLOR_RAMKI.lerp(poprzedni_akcent, 0.45)
+	var impuls_punktu := 0.0
+	if is_instance_valid(gra.efekty_wizualne):
+		impuls_punktu = maxf(gra.efekty_wizualne.impuls_wyniku.x, gra.efekty_wizualne.impuls_wyniku.y) / 0.35 * sila
+	var pozycja_impulsu := gora + fposmod(czas_hologramu * 48.0, dol - gora + 100.0) - 50.0
+	for zakres in [Vector2(gora, srodek.y - 68.0), Vector2(srodek.y + 68.0, dol)]:
+		var y: float = zakres.x
 		while y < zakres.y:
-			var koniec = minf(y + dlugosc_segmentu, zakres.y)
-			draw_line(Vector2(srodek.x, y), Vector2(srodek.x, koniec), kolor_poswiaty, szerokosc_poswiaty, true)
-			draw_line(Vector2(srodek.x, y), Vector2(srodek.x, koniec), kolor_linii, 2.2, true)
-			draw_circle(Vector2(srodek.x, y), 1.1, kolor_linii)
-			draw_circle(Vector2(srodek.x, koniec), 1.1, kolor_linii)
-			y += dlugosc_segmentu + odstep_segmentow
-
-	# Wielowarstwowe obręcze i delikatne akcenty zastępują płaski, domyślny okrąg.
-	draw_arc(srodek, promien_okregu, 0.0, TAU, 128, Color(0.32, 0.89, 1.0, 0.035), 9.0, true)
-	draw_arc(srodek, promien_okregu, 0.0, TAU, 128, Color(0.31, 0.52, 0.68, 0.30), 1.8, true)
-	draw_arc(srodek, promien_okregu - 6.0, 0.0, TAU, 128, Color(0.31, 0.52, 0.68, 0.10), 1.0, true)
-	draw_circle(srodek, 4.0, Color(0.32, 0.89, 1.0, 0.045))
-	draw_circle(srodek, 1.7, Color(0.69, 0.86, 0.96, 0.34))
+			var koniec := minf(y + 11.0, zakres.y)
+			var impuls := exp(-pow((y - pozycja_impulsu) / 35.0, 2.0)) * sila
+			var alfa := 0.45 + impuls * 0.25 + impuls_punktu * 0.25
+			draw_line(Vector2(srodek.x, y), Vector2(srodek.x, koniec), Color(poprzedni_akcent, (0.035 + impuls * 0.06 + impuls_punktu * 0.08) * sila), 6.0, true)
+			draw_line(Vector2(srodek.x, y), Vector2(srodek.x, koniec), Color(kolor.lerp(poprzedni_akcent, impuls), alfa), 1.8, true)
+			y += 23.0
+	var puls := (0.5 + 0.5 * sin(czas_hologramu * 1.25)) * sila
+	var detale := 40 if Ustawienia.jakosc_tla == 0 else 72
+	draw_arc(srodek, 58.0, 0.0, TAU, detale, Color(kolor, 0.20 + puls * 0.03), 1.2, true)
+	draw_circle(srodek, 7.0, Color(poprzedni_akcent, (0.025 + puls * 0.015) * sila))
+	draw_circle(srodek, 2.5, Color(kolor.lerp(poprzedni_akcent, 0.35), 0.4 + puls * 0.08))
 
 
 func _rysuj_gumowe_sciany() -> void:

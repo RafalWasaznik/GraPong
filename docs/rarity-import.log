@@ -1,0 +1,41 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+ERROR: Could not create editor data directory: C:/Users/mojei/AppData/Roaming/Godot
+   at: EditorPaths (editor/file_system/editor_paths.cpp:201)
+ERROR: Could not create editor config directory: C:/Users/mojei/AppData/Roaming/Godot
+   at: EditorPaths (editor/file_system/editor_paths.cpp:216)
+
+ERROR: Could not open 'user://' directory: 'user://'.
+   at: _get_and_create_snapshot_storage_dir (modules/objectdb_profiler/editor/objectdb_profiler_panel.cpp:157)
+ERROR: Safe save failed. This may be a permissions problem, but also may happen because you are running a paranoid antivirus. If this is the case, please switch to Windows Defender or disable the 'safe save' option in editor settings. This makes it work, but increases the risk of file corruption in a crash.
+   at: _close (drivers/windows/file_access_windows.cpp:277)
+ERROR: Cannot open directory 'C:/Users/mojei/AppData/Roaming/Godot/feature_profiles'.
+   at: _update_profile_list (editor/settings/editor_feature_profile.cpp:392)
+[   0% ] first_scan_filesystem | Started Inicjalizacja projektu (5 steps)
+[   0% ] first_scan_filesystem | Skanowanie struktury plików...
+[  16% ] first_scan_filesystem | Wczytywanie globalnych nazw klas...
+[  33% ] first_scan_filesystem | Weryfikowanie GDExtension...
+[  50% ] first_scan_filesystem | Tworzenie skryptów autoładowania...
+[  66% ] first_scan_filesystem | Inicjalizacja wtyczek...
+[  83% ] first_scan_filesystem | Uruchamianie skanu systemu plików...
+[ DONE ] first_scan_filesystem
+
+WARNING: UID duplicate detected between res://shaders/glow_effect_2d.gdshader and res://shaders/2D Outline Shader.gdshader.
+   at: _process_file_system (editor/file_system/editor_file_system.cpp:1405)
+[   0% ] update_scripts_classes | Started Rejestrowanie globalnych klas... (2 steps)
+[   0% ] update_scripts_classes | 
+[  33% ] update_scripts_classes | 
+[ DONE ] update_scripts_classes
+
+[   0% ] loading_editor_layout | Started Wczytywanie edytora (5 steps)
+[   0% ] loading_editor_layout | Wczytywanie układu edytora...
+[  16% ] loading_editor_layout | Wczytywanie doków...
+[  33% ] loading_editor_layout | Przywracanie scen...
+[  50% ] loading_editor_layout | Wczytywanie centralnego układu edytora...
+[  66% ] loading_editor_layout | Wczytywanie układu okien wtyczek...
+[  83% ] loading_editor_layout | Układ edytora gotowy.
+[ DONE ] loading_editor_layout
+
+ERROR: Can't save resource to empty path. Provide non-empty path or a Resource with non-empty resource_path.
+   at: save (core/io/resource_saver.cpp:108)
+ERROR: Error saving editor settings to 
+   at: save (editor/settings/editor_settings.cpp:1525)

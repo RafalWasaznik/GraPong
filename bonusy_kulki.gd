@@ -12,13 +12,13 @@ var czas_animacji = 0.0
 var pozycja_bazowa_y = 0.0
 var zebrany = false
 var czas_zebrania = 0.0
+var skala_wizualna: float = 0.45
 
 
 func _ready() -> void:
 	add_to_group("bonus")
 	pozycja_bazowa_y = position.y
 	body_entered.connect(_on_body_entered)
-	scale = Vector2(0.78, 0.78)
 	modulate.a = 0.0
 	queue_redraw()
 
@@ -28,7 +28,7 @@ func _process(delta: float) -> void:
 	if zebrany:
 		czas_zebrania += delta
 		var postep_zebrania = clampf(czas_zebrania / CZAS_ZEBRANIA, 0.0, 1.0)
-		scale = Vector2.ONE * (1.0 + postep_zebrania * 0.16)
+		skala_wizualna = 1.0
 		modulate.a = 1.0 - postep_zebrania
 		queue_redraw()
 		if postep_zebrania >= 1.0:
@@ -37,18 +37,26 @@ func _process(delta: float) -> void:
 
 	var postep = clampf(czas_animacji / CZAS_POJAWIENIA, 0.0, 1.0)
 	var wygladzone = 1.0 - pow(1.0 - postep, 3.0)
-	scale = Vector2.ONE * lerpf(0.78, 1.0, wygladzone)
+	skala_wizualna = lerpf(0.45, 1.0, wygladzone) + sin(postep * PI) * 0.08
 	modulate.a = wygladzone
 	position.y = pozycja_bazowa_y + sin(czas_animacji * 2.4) * 2.4
 	queue_redraw()
 
 
 func _draw() -> void:
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * skala_wizualna)
 	var kolor = _kolor_bonusu()
 	if zebrany:
 		var postep = clampf(czas_zebrania / CZAS_ZEBRANIA, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, 18.0 + postep * 23.0, 0.0, TAU, 48, Color(kolor, 1.0 - postep), 2.2, true)
+		draw_circle(Vector2.ZERO, 18.0 * (1.0 - postep), Color(_kolor_blysku(), (1.0 - postep) * 0.55))
+		for i in range(6):
+			var kierunek := Vector2.from_angle(float(i) * TAU / 6.0 + 0.3)
+			draw_line(kierunek * (20.0 + postep * 12.0), kierunek * (24.0 + postep * 20.0), Color(kolor, 1.0 - postep), 1.5, true)
 		return
+	var wejscie := clampf(czas_animacji / CZAS_POJAWIENIA, 0.0, 1.0)
+	if wejscie < 1.0:
+		draw_arc(Vector2.ZERO, lerpf(34.0, 23.0, wejscie), 0.0, TAU, 48, Color(kolor, (1.0 - wejscie) * 0.55), 1.5, true)
 
 	var puls = 0.5 + 0.5 * sin(czas_animacji * 3.0)
 	var promien = 20.0 + sin(czas_animacji * 3.5) * 0.8
@@ -114,5 +122,5 @@ func _on_body_entered(body: Node2D) -> void:
 
 func _rozpocznij_zbieranie() -> void:
 	zebrany = true
-	monitoring = false
+	set_deferred("monitoring", false)
 	$CollisionShape2D.set_deferred("disabled", true)

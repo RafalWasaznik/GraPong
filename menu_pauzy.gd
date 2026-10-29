@@ -1,7 +1,7 @@
 extends CanvasLayer
 
 const KOLOR_TURKUS = Color("#55e7ff")
-const KOLOR_FIOLET = KOLOR_TURKUS
+const KOLOR_FIOLET = Color("#ad83ff")
 const FONT_ARCADE = preload("res://assets/fonts/Oxanium.ttf")
 
 var efekty_przewijanie: ScrollContainer
@@ -65,14 +65,17 @@ func _styluj_interfejs() -> void:
 func _styluj_panel(panel: PanelContainer, akcent: Color) -> void:
 	panel.custom_minimum_size.x = 500.0
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color("#0c1628", 0.96)
+	styl.bg_color = Color("#0b1727", 0.98)
+	styl.border_color = Color(akcent, 0.30)
+	styl.set_border_width_all(1)
+	styl.border_width_top = 2
 	styl.set_corner_radius_all(8)
 	styl.content_margin_left = 30.0
 	styl.content_margin_right = 30.0
 	styl.content_margin_top = 18.0
 	styl.content_margin_bottom = 18.0
-	styl.shadow_color = Color(akcent, 0.0)
-	styl.shadow_size = 0
+	styl.shadow_color = Color(0.0, 0.0, 0.0, 0.35)
+	styl.shadow_size = 12
 	styl.shadow_offset = Vector2(0.0, 8.0)
 	panel.add_theme_stylebox_override("panel", styl)
 
@@ -82,6 +85,9 @@ func _styluj_przycisk(guzik: Button) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	var gra_meczu := get_parent() as GraPongAPI
+	if gra_meczu != null and gra_meczu.mecz_zakonczony:
+		return
 	if Ustawienia.tryb == "endless":
 		var gra := get_parent() as GraPongAPI
 		if gra != null and gra.przebieg().run_state != null and gra.przebieg().run_state.wybor_aktywny:
@@ -154,8 +160,8 @@ func _odswiez_zdobyte_efekty() -> void:
 	var statystyki := PanelContainer.new()
 	statystyki.add_theme_stylebox_override("panel", StylMenu.styl_bloku())
 	efekty_lista.add_child(statystyki)
-	_dodaj_etykiete_efektu(statystyki, "%d/%d Życia   •   %d Obrażenia   •   x%s Wynik   •   %d Odbicia" % [stan.lives, stan.maxLives, stan.ballDamage, UlepszenieRun._liczba(stan.scoreMult), stan.hits], Color("#b9cde2"), 13)
-	for rzadkosc in [UlepszenieRun.Rzadkosc.ZWYKLE, UlepszenieRun.Rzadkosc.RZADKIE, UlepszenieRun.Rzadkosc.PRZEKLETE]:
+	_dodaj_etykiete_efektu(statystyki, "%d/%d Życia   •   %d Obrażenia   •   %d Odbicia" % [stan.lives, stan.maxLives, stan.ballDamage, stan.hits], Color("#b9cde2"), 13)
+	for rzadkosc in UlepszenieRun.Rzadkosc.values():
 		var kolumna: VBoxContainer
 		for ulepszenie in przebieg.rejestr_ulepszen:
 			var stosy := stan.liczba_stosow(ulepszenie.id)

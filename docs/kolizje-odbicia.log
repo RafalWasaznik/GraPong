@@ -1,0 +1,129 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+PASS: lewa--52.0-620: jeden efekt kontaktu
+PASS: lewa--52.0-620: jeden burst particle
+PASS: lewa--52.0-620: kierunek w glab planszy
+PASS: lewa--52.0-620: kolor kontaktu
+PASS: lewa--52.0-620: wysokosc kontaktu
+PASS: lewa--52.0-620: pilka odbita
+PASS: lewa-0.0-620: jeden efekt kontaktu
+PASS: lewa-0.0-620: jeden burst particle
+PASS: lewa-0.0-620: kierunek w glab planszy
+PASS: lewa-0.0-620: kolor kontaktu
+PASS: lewa-0.0-620: wysokosc kontaktu
+PASS: lewa-0.0-620: pilka odbita
+PASS: lewa-52.0-620: jeden efekt kontaktu
+PASS: lewa-52.0-620: jeden burst particle
+PASS: lewa-52.0-620: kierunek w glab planszy
+PASS: lewa-52.0-620: kolor kontaktu
+PASS: lewa-52.0-620: wysokosc kontaktu
+PASS: lewa-52.0-620: pilka odbita
+PASS: prawa--52.0-620: jeden efekt kontaktu
+PASS: prawa--52.0-620: jeden burst particle
+PASS: prawa--52.0-620: kierunek w glab planszy
+PASS: prawa--52.0-620: kolor kontaktu
+PASS: prawa--52.0-620: wysokosc kontaktu
+PASS: prawa--52.0-620: pilka odbita
+PASS: prawa-0.0-620: jeden efekt kontaktu
+PASS: prawa-0.0-620: jeden burst particle
+PASS: prawa-0.0-620: kierunek w glab planszy
+PASS: prawa-0.0-620: kolor kontaktu
+PASS: prawa-0.0-620: wysokosc kontaktu
+PASS: prawa-0.0-620: pilka odbita
+PASS: prawa-52.0-620: jeden efekt kontaktu
+PASS: prawa-52.0-620: jeden burst particle
+PASS: prawa-52.0-620: kierunek w glab planszy
+PASS: prawa-52.0-620: kolor kontaktu
+PASS: prawa-52.0-620: wysokosc kontaktu
+PASS: prawa-52.0-620: pilka odbita
+PASS: lewa--52.0-6000: jeden efekt kontaktu
+PASS: lewa--52.0-6000: jeden burst particle
+PASS: lewa--52.0-6000: kierunek w glab planszy
+PASS: lewa--52.0-6000: kolor kontaktu
+PASS: lewa--52.0-6000: wysokosc kontaktu
+PASS: lewa--52.0-6000: pilka odbita
+PASS: lewa-0.0-6000: jeden efekt kontaktu
+PASS: lewa-0.0-6000: jeden burst particle
+PASS: lewa-0.0-6000: kierunek w glab planszy
+PASS: lewa-0.0-6000: kolor kontaktu
+PASS: lewa-0.0-6000: wysokosc kontaktu
+PASS: lewa-0.0-6000: pilka odbita
+PASS: lewa-52.0-6000: jeden efekt kontaktu
+PASS: lewa-52.0-6000: jeden burst particle
+PASS: lewa-52.0-6000: kierunek w glab planszy
+PASS: lewa-52.0-6000: kolor kontaktu
+PASS: lewa-52.0-6000: wysokosc kontaktu
+PASS: lewa-52.0-6000: pilka odbita
+PASS: prawa--52.0-6000: jeden efekt kontaktu
+PASS: prawa--52.0-6000: jeden burst particle
+PASS: prawa--52.0-6000: kierunek w glab planszy
+PASS: prawa--52.0-6000: kolor kontaktu
+PASS: prawa--52.0-6000: wysokosc kontaktu
+PASS: prawa--52.0-6000: pilka odbita
+PASS: prawa-0.0-6000: jeden efekt kontaktu
+PASS: prawa-0.0-6000: jeden burst particle
+PASS: prawa-0.0-6000: kierunek w glab planszy
+PASS: prawa-0.0-6000: kolor kontaktu
+PASS: prawa-0.0-6000: wysokosc kontaktu
+PASS: prawa-0.0-6000: pilka odbita
+PASS: prawa-52.0-6000: jeden efekt kontaktu
+PASS: prawa-52.0-6000: jeden burst particle
+PASS: prawa-52.0-6000: kierunek w glab planszy
+PASS: prawa-52.0-6000: kolor kontaktu
+PASS: prawa-52.0-6000: wysokosc kontaktu
+PASS: prawa-52.0-6000: pilka odbita
+PASS: wall-170-620: jeden efekt kontaktu
+PASS: wall-170-620: jeden burst particle
+PASS: wall-170-620: kierunek w glab planszy
+PASS: wall-170-620: kolor kontaktu
+PASS: wall-170-620: wysokosc kontaktu
+PASS: wall-170-620: pilka odbita
+PASS: wall-170-620: efekt na granicy
+PASS: wall-170-620: zachowana predkosc
+PASS: wall-170-620: brak powtorzenia na granicy
+PASS: wall-324-620: jeden efekt kontaktu
+PASS: wall-324-620: jeden burst particle
+PASS: wall-324-620: kierunek w glab planszy
+PASS: wall-324-620: kolor kontaktu
+PASS: wall-324-620: wysokosc kontaktu
+PASS: wall-324-620: pilka odbita
+PASS: wall-324-620: efekt na granicy
+PASS: wall-324-620: zachowana predkosc
+PASS: wall-324-620: brak powtorzenia na granicy
+PASS: wall-478-620: jeden efekt kontaktu
+PASS: wall-478-620: jeden burst particle
+PASS: wall-478-620: kierunek w glab planszy
+PASS: wall-478-620: kolor kontaktu
+PASS: wall-478-620: wysokosc kontaktu
+PASS: wall-478-620: pilka odbita
+PASS: wall-478-620: efekt na granicy
+PASS: wall-478-620: zachowana predkosc
+PASS: wall-478-620: brak powtorzenia na granicy
+PASS: wall-170-6000: jeden efekt kontaktu
+PASS: wall-170-6000: jeden burst particle
+PASS: wall-170-6000: kierunek w glab planszy
+PASS: wall-170-6000: kolor kontaktu
+PASS: wall-170-6000: wysokosc kontaktu
+PASS: wall-170-6000: pilka odbita
+PASS: wall-170-6000: efekt na granicy
+PASS: wall-170-6000: zachowana predkosc
+PASS: wall-170-6000: brak powtorzenia na granicy
+PASS: wall-324-6000: jeden efekt kontaktu
+PASS: wall-324-6000: jeden burst particle
+PASS: wall-324-6000: kierunek w glab planszy
+PASS: wall-324-6000: kolor kontaktu
+PASS: wall-324-6000: wysokosc kontaktu
+PASS: wall-324-6000: pilka odbita
+PASS: wall-324-6000: efekt na granicy
+PASS: wall-324-6000: zachowana predkosc
+PASS: wall-324-6000: brak powtorzenia na granicy
+PASS: wall-478-6000: jeden efekt kontaktu
+PASS: wall-478-6000: jeden burst particle
+PASS: wall-478-6000: kierunek w glab planszy
+PASS: wall-478-6000: kolor kontaktu
+PASS: wall-478-6000: wysokosc kontaktu
+PASS: wall-478-6000: pilka odbita
+PASS: wall-478-6000: efekt na granicy
+PASS: wall-478-6000: zachowana predkosc
+PASS: wall-478-6000: brak powtorzenia na granicy
+WYNIK: 126 kontroli, 0 bledow

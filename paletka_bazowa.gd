@@ -10,6 +10,8 @@ const DZWIEK_DASH_GENERATOR = preload("res://dzwiek_dash.gd")
 @onready var start_x: float = position.x
 @onready var kolizja: CollisionShape2D = $CollisionShape2D
 
+var czas_energii: float = 0.0
+var czas_obrazen: float = 0.0
 var run_state: RunState
 var czas_blysku = 0.0
 var idealne_odbicie = false
@@ -24,6 +26,11 @@ var ostatni_kierunek = -1.0
 var sieciowy_kierunek = 0.0
 var sieciowy_dash_zadany = false
 var dzwiek_dasha: AudioStreamPlayer
+var styl_sladu := StyleBoxFlat.new()
+var styl_poswiaty := StyleBoxFlat.new()
+var styl_obrysu := StyleBoxFlat.new()
+var styl_wypelnienia := StyleBoxFlat.new()
+var styl_strefy := StyleBoxFlat.new()
 
 
 func _ready() -> void:
@@ -40,7 +47,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	var odswiez = run_state != null
+	czas_energii += delta
+	czas_obrazen = maxf(0.0, czas_obrazen - delta)
+	var odswiez = true
 	if czas_blysku > 0.0:
 		czas_blysku = maxf(0.0, czas_blysku - delta)
 		odswiez = true
@@ -52,41 +61,41 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var kolor_paletki = _kolor_paletki()
+	var kolor_paletki = _kolor_paletki().lerp(Color("#ff527c"), clampf(czas_obrazen / 0.3, 0.0, 1.0))
 	var wysokosc = _polowa_wysokosci_paletki() * 2.0
 	var czas_pelnego_blysku = 0.28 if idealne_odbicie else 0.14
-	var blysk = clampf(czas_blysku / czas_pelnego_blysku, 0.0, 1.0)
+	var blysk = clampf(czas_blysku / czas_pelnego_blysku, 0.0, 1.0) * Ustawienia.intensywnosc_efektow / 100.0
 	if dash_efekt_czas > 0.0:
 		for i in range(3):
-			var slad = StyleBoxFlat.new()
+			var slad = styl_sladu
 			var alfa_sladu = (0.28 - float(i) * 0.075) * dash_efekt_czas / 0.28
 			slad.bg_color = Color(kolor_paletki.r, kolor_paletki.g, kolor_paletki.b, alfa_sladu)
 			slad.set_corner_radius_all(5)
 			var przesuniecie = -dash_efekt_kierunek * float(i + 1) * 30.0
 			draw_style_box(slad, Rect2(-9.0, -wysokosc * 0.5 + przesuniecie, 18.0, wysokosc))
 
-	var poswiata = StyleBoxFlat.new()
+	var poswiata = styl_poswiaty
 	poswiata.bg_color = Color(kolor_paletki.r, kolor_paletki.g, kolor_paletki.b, 0.08 + blysk * 0.12)
 	poswiata.set_corner_radius_all(10)
 	draw_style_box(poswiata, Rect2(-15.0, -wysokosc * 0.5 - 7.0, 30.0, wysokosc + 14.0))
 
-	var obrys = StyleBoxFlat.new()
+	var obrys = styl_obrysu
 	obrys.bg_color = Color("#081321")
 	obrys.border_color = Color(kolor_paletki.r, kolor_paletki.g, kolor_paletki.b, 0.72 + blysk * 0.28)
 	obrys.set_border_width_all(1)
 	obrys.set_corner_radius_all(7)
 	draw_style_box(obrys, Rect2(-12.0, -wysokosc * 0.5 - 3.0, 24.0, wysokosc + 6.0))
 
-	var wypelnienie = StyleBoxFlat.new()
-	wypelnienie.bg_color = kolor_paletki.lerp(Color.WHITE, blysk * (0.72 if idealne_odbicie else 0.45))
+	var wypelnienie = styl_wypelnienia
+	wypelnienie.bg_color = Color("#182b40").lerp(kolor_paletki, 0.18 + blysk * 0.65)
 	wypelnienie.set_corner_radius_all(5)
 	draw_style_box(wypelnienie, Rect2(-9.0, -wysokosc * 0.5, 18.0, wysokosc))
 	if idealne_odbicie and czas_blysku > 0.0:
 		draw_line(Vector2(-6.0, 0.0), Vector2(6.0, 0.0), Color(1.0, 1.0, 1.0, blysk), 2.0)
 
 	var wysokosc_strefy = wysokosc * 0.175
-	var ciemniejszy_kolor = wypelnienie.bg_color.darkened(0.36)
-	var strefa = StyleBoxFlat.new()
+	var ciemniejszy_kolor = kolor_paletki.lerp(Color.WHITE, 0.3 + 0.12 * sin(czas_energii * 4.0) + blysk * 0.5)
+	var strefa = styl_strefy
 	strefa.bg_color = ciemniejszy_kolor
 	strefa.set_corner_radius_all(4)
 	draw_style_box(strefa, Rect2(-8.0, -wysokosc * 0.5 + 1.5, 16.0, wysokosc_strefy))
@@ -96,6 +105,26 @@ func _draw() -> void:
 
 	var wysokosc_blysku = maxf(wysokosc - 2.0 * (wysokosc_strefy + 5.0), 1.0)
 	draw_rect(Rect2(-6.0, -wysokosc * 0.5 + wysokosc_strefy + 5.0, 3.0, wysokosc_blysku), Color(1.0, 1.0, 1.0, 0.22 + blysk * 0.2), true)
+
+
+	# Szyna energii i pancerz nie zmieniają geometrii stref końcowych.
+	var polowa_srodka := maxf(2.0, wysokosc * 0.5 - wysokosc_strefy - 5.0)
+	draw_rect(Rect2(-3.0, -polowa_srodka, 6.0, polowa_srodka * 2.0), Color(kolor_paletki, 0.7 + blysk * 0.3))
+	for i in range(5):
+		var y := fposmod(czas_energii * 25.0 + i * polowa_srodka * 0.4, polowa_srodka * 2.0) - polowa_srodka
+		draw_line(Vector2(-2,y), Vector2(2,y), Color.WHITE, 1.4, true)
+	for znak in [-1.0, 1.0]:
+		draw_line(Vector2(znak * 8, -polowa_srodka), Vector2(znak * 8, polowa_srodka), Color("#8babc1"), 1.0, true)
+		for i in range(3):
+			var y: float = znak * (wysokosc * 0.5 - wysokosc_strefy * 0.5) + (i - 1) * 4.0
+			draw_line(Vector2(-5,y), Vector2(5,y), Color(kolor_paletki.darkened(0.65),0.7), 1.0, true)
+	if absf(velocity.y) > 10.0:
+		draw_line(Vector2(-11, -signf(velocity.y) * wysokosc * 0.25), Vector2(-11, signf(velocity.y) * wysokosc * 0.25), Color(kolor_paletki, 0.45), 2.0, true)
+
+
+func efekt_obrazen() -> void:
+	czas_obrazen = 0.3
+	queue_redraw()
 
 
 func _kolor_paletki() -> Color:

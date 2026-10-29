@@ -7,7 +7,8 @@ const KOLOR_FIOLET = Color("#ad83ff")
 const KOLOR_ROZ = Color("#ff5fb7")
 const KOLOR_PILKI = Color("#ffd166")
 const KOLOR_BLYSKU = Color("#fff0a8")
-const MAKS_PRZESZKOD = 15
+const MAKS_PRZESZKOD = 8
+const SIATKA_TLA = preload("res://shaders/background_grid_scroller.gdshader")
 
 var pilka = Vector2.ZERO
 var predkosc = Vector2(460.0, 260.0)
@@ -15,15 +16,40 @@ var slady: Array[Vector2] = []
 var lewa_y = 0.0
 var prawa_y = 0.0
 var gotowy = false
+var material_siatki: ShaderMaterial
+var warstwa_siatki: ColorRect
 var przeszkody: Array[Dictionary] = []
 var poprzednie_miejsca: Array[Vector2] = []
 var czas_do_przeszkody = 1.4
 var przyciemnienie = 0.0
 var docelowe_przyciemnienie = 0.0
+var czas_watchdoga: float = 0.0
+var pozycja_watchdoga := Vector2.ZERO
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var siatka := ColorRect.new()
+	warstwa_siatki = siatka
+	siatka.name = "SiatkaTla"
+	siatka.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	siatka.show_behind_parent = true
+	siatka.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	material_siatki = ShaderMaterial.new()
+	material_siatki.shader = SIATKA_TLA
+	material_siatki.set_shader_parameter("bg_color", Color("#050c16"))
+	material_siatki.set_shader_parameter("line_color", Color("#49768b", 0.09))
+	material_siatki.set_shader_parameter("glow_color", Color("#3394ad", 0.05))
+	material_siatki.set_shader_parameter("scroll_speed", 0.004)
+	material_siatki.set_shader_parameter("grid_size", 0.085)
+	siatka.material = material_siatki
+	add_child(siatka)
+	resized.connect(_dopasuj_siatke)
+	_dopasuj_siatke()
+
+
+func _dopasuj_siatke() -> void:
+	material_siatki.set_shader_parameter("rect_size", size)
 
 
 func ustaw_przyciemnienie(aktywne: bool) -> void:
@@ -31,13 +57,11 @@ func ustaw_przyciemnienie(aktywne: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	warstwa_siatki.modulate.a = Ustawienia.intensywnosc_efektow / 100.0
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
 	if not gotowy:
-		var boisko = _prostokat_boisko()
-		pilka = boisko.get_center()
-		lewa_y = pilka.y
-		prawa_y = pilka.y
+		_resetuj_symulacje(_prostokat_boisko())
 		gotowy = true
 	przyciemnienie = move_toward(przyciemnienie, docelowe_przyciemnienie, delta * 1.8)
 	_symuluj(delta)
@@ -45,20 +69,20 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), KOLOR_TLA, true)
 	draw_circle(Vector2(size.x * 0.12, size.y * 0.18), size.y * 0.42, Color("#183047", 0.12))
 	draw_circle(Vector2(size.x * 0.88, size.y * 0.82), size.y * 0.48, Color("#241c3b", 0.10))
 	if przyciemnienie > 0.01:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.015, 0.03, 0.055, przyciemnienie), true)
 	var boisko = _prostokat_boisko()
+	_rysuj_narozniki(boisko)
 	var paletka_w = clampf(boisko.size.x * 0.012, 12.0, 20.0)
 	var paletka_h = clampf(boisko.size.y * 0.22, 66.0, 116.0)
 	var lewa = Rect2(Vector2(boisko.position.x + 14.0, lewa_y - paletka_h * 0.5), Vector2(paletka_w, paletka_h))
 	var prawa = Rect2(Vector2(boisko.end.x - 14.0 - paletka_w, prawa_y - paletka_h * 0.5), Vector2(paletka_w, paletka_h))
-	draw_rect(lewa.grow(8.0), Color(KOLOR_TURKUS, 0.2), true)
+	draw_rect(lewa.grow(8.0), Color(KOLOR_TURKUS, 0.09), true)
 	draw_rect(lewa, Color("#40dff5"), true)
 	draw_rect(lewa, Color("#c7faff"), false, 2.0)
-	draw_rect(prawa.grow(8.0), Color(KOLOR_ROZ, 0.22), true)
+	draw_rect(prawa.grow(8.0), Color(KOLOR_ROZ, 0.09), true)
 	draw_rect(prawa, Color("#ff4fa3"), true)
 	draw_rect(prawa, Color("#ffe0f1"), false, 2.0)
 	for i in range(slady.size()):
@@ -74,9 +98,17 @@ func _draw() -> void:
 		draw_circle(miejsce, 10.0 * pojawienie, Color("#17152a", pojawienie))
 		draw_circle(miejsce, 8.0 * pojawienie, Color(kolor, (0.72 + blysk * 0.28) * pojawienie), false, 2.0)
 		draw_circle(miejsce, 3.5 * pojawienie, Color.WHITE if blysk > 0.0 else Color(kolor, 0.9 * pojawienie))
-	draw_circle(pilka, 20.0, Color("#ff9f43", 0.34))
+	draw_circle(pilka, 20.0, Color("#ff9f43", 0.12))
 	draw_circle(pilka, 11.0, KOLOR_PILKI)
 	draw_circle(pilka, 5.5, Color.WHITE)
+
+
+func _rysuj_narozniki(boisko: Rect2) -> void:
+	var dlugosc := 32.0
+	for punkt: Vector2 in [boisko.position, Vector2(boisko.end.x, boisko.position.y), boisko.end, Vector2(boisko.position.x, boisko.end.y)]:
+		var kierunek := (boisko.get_center() - punkt).sign()
+		draw_line(punkt, punkt + Vector2(kierunek.x * dlugosc, 0.0), Color(KOLOR_TURKUS, 0.22), 1.0, true)
+		draw_line(punkt, punkt + Vector2(0.0, kierunek.y * dlugosc), Color(KOLOR_TURKUS, 0.22), 1.0, true)
 
 
 func _prostokat_boisko() -> Rect2:
@@ -85,8 +117,31 @@ func _prostokat_boisko() -> Rect2:
 	return Rect2(Vector2(margines_x, margines_y), Vector2(maxf(size.x - margines_x * 2.0, 1.0), maxf(size.y - margines_y * 2.0, 1.0)))
 
 
+func _resetuj_symulacje(boisko: Rect2) -> void:
+	pilka = boisko.get_center()
+	predkosc = Vector2(390.0 if randf() > 0.5 else -390.0, randf_range(-240.0, 240.0)).normalized() * 460.0
+	lewa_y = pilka.y
+	prawa_y = pilka.y
+	slady.clear()
+	przeszkody.clear()
+	czas_do_przeszkody = 1.4
+	czas_watchdoga = 0.0
+	pozycja_watchdoga = pilka
+
+
 func _symuluj(delta: float) -> void:
+	var pozostalo := minf(delta, 0.15)
+	while pozostalo > 0.0:
+		var krok := minf(pozostalo, 1.0 / 120.0)
+		_krok_symulacji(krok)
+		pozostalo -= krok
+
+
+func _krok_symulacji(delta: float) -> void:
 	var boisko = _prostokat_boisko()
+	if not pilka.is_finite() or not predkosc.is_finite() or not boisko.has_point(pilka) or predkosc.length_squared() < 1.0:
+		_resetuj_symulacje(boisko)
+		return
 	if przeszkody.size() < MAKS_PRZESZKOD:
 		czas_do_przeszkody -= delta
 		if czas_do_przeszkody <= 0.0:
@@ -113,15 +168,24 @@ func _symuluj(delta: float) -> void:
 		nowa_pozycja.y = clampf(nowa_pozycja.y, gora, dol)
 	var x_lewej = boisko.position.x + 14.0 + paletka_w
 	var x_prawej = boisko.end.x - 14.0 - paletka_w
-	if predkosc.x < 0.0 and nowa_pozycja.x - 6.0 <= x_lewej and absf(nowa_pozycja.y - lewa_y) <= paletka_h * 0.5 + 8.0:
-		predkosc.x = absf(predkosc.x)
-		predkosc.y += (nowa_pozycja.y - lewa_y) * 1.2
-	elif predkosc.x > 0.0 and nowa_pozycja.x + 6.0 >= x_prawej and absf(nowa_pozycja.y - prawa_y) <= paletka_h * 0.5 + 8.0:
-		predkosc.x = -absf(predkosc.x)
-		predkosc.y += (nowa_pozycja.y - prawa_y) * 1.2
-	if nowa_pozycja.x < boisko.position.x + 5.0 or nowa_pozycja.x > boisko.end.x - 5.0:
-		predkosc.x *= -1.0
-		nowa_pozycja.x = clampf(nowa_pozycja.x, boisko.position.x + 5.0, boisko.end.x - 5.0)
+	var powierzchnia_lewej: float = x_lewej + 11.0
+	var powierzchnia_prawej: float = x_prawej - 11.0
+	var trafia_w_lewa: bool = predkosc.x < 0.0 and stara_pozycja.x >= powierzchnia_lewej and nowa_pozycja.x <= powierzchnia_lewej
+	var trafia_w_prawa: bool = predkosc.x > 0.0 and stara_pozycja.x <= powierzchnia_prawej and nowa_pozycja.x >= powierzchnia_prawej
+	if trafia_w_lewa or trafia_w_prawa:
+		var powierzchnia := powierzchnia_lewej if trafia_w_lewa else powierzchnia_prawej
+		var udzial := clampf((powierzchnia - stara_pozycja.x) / (nowa_pozycja.x - stara_pozycja.x), 0.0, 1.0)
+		var y_trafienia := lerpf(stara_pozycja.y, nowa_pozycja.y, udzial)
+		var y_paletki: float = lewa_y if trafia_w_lewa else prawa_y
+		if absf(y_trafienia - y_paletki) > paletka_h * 0.5 + 11.0:
+			_resetuj_symulacje(boisko)
+			return
+		predkosc.x = absf(predkosc.x) if trafia_w_lewa else -absf(predkosc.x)
+		predkosc.y += (y_trafienia - y_paletki) * 1.2
+		nowa_pozycja.x = powierzchnia + predkosc.x * delta * (1.0 - udzial)
+	if nowa_pozycja.x < powierzchnia_lewej - 1.0 or nowa_pozycja.x > powierzchnia_prawej + 1.0:
+		_resetuj_symulacje(boisko)
+		return
 	for przeszkoda in przeszkody:
 		var miejsce: Vector2 = boisko.position + Vector2(przeszkoda["miejsce"].x * boisko.size.x, przeszkoda["miejsce"].y * boisko.size.y)
 		var roznica = nowa_pozycja - miejsce
@@ -132,12 +196,21 @@ func _symuluj(delta: float) -> void:
 				predkosc = predkosc.bounce(normalna)
 				nowa_pozycja = miejsce + normalna * 18.5
 				przeszkoda["blysk"] = 0.45
+	if absf(predkosc.x) < 150.0:
+		predkosc.x = -150.0 if predkosc.x < 0.0 else 150.0
 	predkosc = predkosc.normalized() * 460.0
 	if slady.is_empty() or pilka.distance_to(slady.back()) > 2.5:
 		slady.append(stara_pozycja)
 		if slady.size() > 16:
 			slady.pop_front()
 	pilka = nowa_pozycja
+	czas_watchdoga += delta
+	if czas_watchdoga >= 0.8:
+		if pilka.distance_squared_to(pozycja_watchdoga) < 64.0:
+			_resetuj_symulacje(boisko)
+			return
+		czas_watchdoga = 0.0
+		pozycja_watchdoga = pilka
 	var cel_lewej = pilka.y if predkosc.x < 0.0 else boisko.get_center().y
 	var cel_prawej = pilka.y if predkosc.x > 0.0 else boisko.get_center().y
 	lewa_y = move_toward(lewa_y, cel_lewej, 300.0 * delta)

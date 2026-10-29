@@ -36,6 +36,7 @@ var boss_oczekuje: bool = false
 var nagroda_bossa_otwarta: bool = false
 var obrazenia_bossa: Array[BossRun.Trafienie] = []
 var trafienia_pociskow: Array[Vector2] = []
+var trafienia_dronow: Array[Vector2] = []
 var strata_pilki_bossa: bool = false
 var rozpad_bossa_zakonczony: bool = false
 var run_state: RunState
@@ -45,7 +46,6 @@ var endless_wysokosc_startowa = 120.0
 var mecz_zakonczony = false
 var endless_info: HBoxContainer
 var endless_wartosci: Array[Label] = []
-var endless_postep: ProgressBar
 var endless_krysztaly: Label
 
 
@@ -57,6 +57,7 @@ func uruchom(gra_glowna: GraPongAPI) -> void:
 			endless_wysokosc_startowa = ksztalt_paletki.size.y
 		process_physics_priority = 100
 		run_state = RunState.new()
+		gra.lewa_paletka().collision_layer |= PociskDronaRun.WARSTWA_GRACZA
 		gra.pilka().run_state = run_state
 		gra.lewa_paletka().run_state = run_state
 		wybor_ulepszenia = WyborUlepszenia.new()
@@ -73,6 +74,9 @@ func _physics_process(delta: float) -> void:
 		if run_state == null or mecz_zakonczony or run_state.boss_aktywny or get_tree().paused:
 			return
 		_kolejkuj_wybory_endless()
+		_sprawdz_prog_bossa()
+		if run_state.boss_aktywny:
+			return
 		czas_krysztalow += delta
 		czas_do_krysztalu -= delta
 		if czas_do_krysztalu <= 0.0:
@@ -169,15 +173,7 @@ func zarejestruj_odbicie_endless(idealne: bool) -> void:
 	run_state.zarejestruj_odbicie(idealne)
 	if not run_state.boss_aktywny:
 		_kolejkuj_wybory_endless()
-		run_state.bossHits += 1
-		if run_state.bossHits >= RunState.BOSS_EVERY_HITS:
-			run_state.boss_aktywny = true
-			boss_oczekuje = true
-			for krysztal in krysztaly:
-				if is_instance_valid(krysztal):
-					run_state.score += 5.0 * run_state.targetRewardMult * run_state.scoreMult * krysztal.rozlicz_przed_bossem()
-			krysztaly.clear()
-			gra.pilka().set_physics_process(false)
+		_sprawdz_prog_bossa()
 	endless_odbicia = run_state.hits
 	wynik_gracza = floori(run_state.score)
 	wynik_ai = run_state.lives
@@ -186,10 +182,23 @@ func zarejestruj_odbicie_endless(idealne: bool) -> void:
 	_odswiez_info_endless()
 
 
+func _sprawdz_prog_bossa() -> void:
+	if run_state.boss_aktywny or nagroda_bossa or floori(run_state.score) < run_state.nextBossScore:
+		return
+	run_state.boss_aktywny = true
+	boss_oczekuje = true
+	for krysztal in krysztaly:
+		if is_instance_valid(krysztal):
+			run_state.dodaj_punkty(krysztal.nagroda_bazowa() * run_state.targetRewardMult * krysztal.rozlicz_przed_bossem())
+	krysztaly.clear()
+	_wyczysc_pociski_dronow()
+	gra.pilka().set_physics_process(false)
+
+
 func _kolejkuj_wybory_endless() -> void:
 	if run_state.boss_aktywny or nagroda_bossa:
 		return
-	while run_state.upgradeProgress >= _prog_ulepszenia(indeks_progu_ulepszenia):
+	while floori(run_state.score) >= _prog_ulepszenia(indeks_progu_ulepszenia):
 		wybory_w_kolejce += 1
 		indeks_progu_ulepszenia += 1
 	if wybory_w_kolejce > 0 and not wybor_oczekuje and not run_state.wybor_aktywny and not get_tree().paused:
@@ -198,9 +207,9 @@ func _kolejkuj_wybory_endless() -> void:
 
 
 func _prog_ulepszenia(indeks: int) -> int:
-	if indeks < RunState.UPGRADE_HIT_THRESHOLDS.size():
-		return RunState.UPGRADE_HIT_THRESHOLDS[indeks]
-	return RunState.UPGRADE_HIT_THRESHOLDS[-1] + (indeks - RunState.UPGRADE_HIT_THRESHOLDS.size() + 1) * RunState.UPGRADE_EVERY_HITS
+	if indeks < RunState.UPGRADE_POINT_THRESHOLDS.size():
+		return RunState.UPGRADE_POINT_THRESHOLDS[indeks]
+	return RunState.UPGRADE_POINT_THRESHOLDS[-1] + (indeks - RunState.UPGRADE_POINT_THRESHOLDS.size() + 1) * RunState.UPGRADE_EVERY_POINTS
 
 
 func _pokaz_wybor_endless() -> void:
@@ -216,6 +225,8 @@ func _pokaz_wybor_endless() -> void:
 		wybor_ulepszenia.pokaz(run_state, oferty)
 	else:
 		wybory_w_kolejce = 0
+		if nagroda_bossa:
+			nagroda_bossa_otwarta = true
 
 
 func _dostosuj_spawn(trudnosc: TrudnoscRun) -> void:
@@ -248,14 +259,13 @@ func _spawn_krysztalu() -> void:
 	for i in range(krysztaly.size() - 1, -1, -1):
 		if not is_instance_valid(krysztaly[i]) or krysztaly[i].is_queued_for_deletion() or krysztaly[i].rozpad:
 			krysztaly.remove_at(i)
-	var trudnosc := TrudnoscRun.getDifficulty(run_state.hits, run_state.bossIndex)
+	var trudnosc := TrudnoscRun.getDifficulty(floori(run_state.score), run_state.bossIndex)
 	_dostosuj_spawn(trudnosc)
 	czas_do_krysztalu = interwal_krysztalow / 1000.0
 	if krysztaly.size() >= trudnosc.crystal_limit:
 		return
 	var promien := KrysztalRun.PROMIEN
-	var srodek_x: float = (Ustawienia.lewa_granica + Ustawienia.prawa_granica) * 0.5
-	var minimum := Vector2(srodek_x + DIFFICULTY.FIELD_LEFT_MARGIN + promien, Ustawienia.gorna_granica + DIFFICULTY.FIELD_TOP_MARGIN + promien)
+	var minimum := Vector2(gra.lewa_paletka().position.x + DIFFICULTY.FIELD_LEFT_MARGIN + promien, Ustawienia.gorna_granica + DIFFICULTY.FIELD_TOP_MARGIN + promien)
 	var maksimum := Vector2(Ustawienia.prawa_granica - DIFFICULTY.FIELD_RIGHT_MARGIN - promien, Ustawienia.dolna_granica - DIFFICULTY.FIELD_BOTTOM_MARGIN - promien)
 	if maksimum.x <= minimum.x or maksimum.y <= minimum.y:
 		return
@@ -299,6 +309,8 @@ func _spawn_krysztalu() -> void:
 				if obszar.intersects(zajety):
 					wolne = false
 			var pilka := gra.pilka()
+			if pilka.intro_aktywne and Geometry2D.get_closest_point_to_segment(pilka.srodek_intro, poczatek, koniec).distance_to(pilka.srodek_intro) < Pilka.PROMIEN_OKREGU + promien + DIFFICULTY.TRACK_PADDING:
+				wolne = false
 			if Geometry2D.get_closest_point_to_segment(pilka.position, poczatek, koniec).distance_to(pilka.position) < promien + pilka.promien_aktualny() + DIFFICULTY.BALL_MARGIN:
 				wolne = false
 			poczatki.append(poczatek)
@@ -307,8 +319,17 @@ func _spawn_krysztalu() -> void:
 		if not wolne:
 			continue
 		for i in range(warianty.size()):
-			var nowy := KrysztalRun.new()
-			nowy.skonfiguruj(warianty[i], run_state, poczatki[i], konce[i])
+			var nowy: KrysztalRun
+			if DronRun.czy_zastapic(_liczba_dronow()):
+				var dron := DronRun.new()
+				dron.paletka = gra.lewa_paletka()
+				dron.wystrzelono.connect(_podlacz_pocisk_drona)
+				nowy = dron
+				var srodek := poczatki[i].lerp(konce[i], 0.5)
+				nowy.skonfiguruj(KrysztalRun.CRYSTAL_VARIANTS[0], run_state, srodek, srodek)
+			else:
+				nowy = KrysztalRun.new()
+				nowy.skonfiguruj(warianty[i], run_state, poczatki[i], konce[i])
 			nowy.zniszczony.connect(_zniszczono_krysztal.bind(nowy))
 			nowy.wygasl_nietkniety.connect(_krysztal_wygasl)
 			nowy.pancerz_pekl.connect(gra.odtworz_dzwiek_modyfikatora)
@@ -321,8 +342,7 @@ func _zniszczono_krysztal(zrodlo: KrysztalRun) -> void:
 	if run_state == null or mecz_zakonczony or run_state.boss_aktywny:
 		return
 	zniszczenia_krysztalow.append(czas_krysztalow)
-	run_state.score += 5.0 * run_state.targetRewardMult * run_state.scoreMult
-	run_state.upgradeProgress += 2
+	run_state.dodaj_punkty(zrodlo.nagroda_bazowa() * run_state.targetRewardMult)
 	if zrodlo.wybuch_zniszczenia:
 		kolejka_wybuchow_krysztalow.append(zrodlo)
 	if rozstrzyganie_wybuchow_krysztalow:
@@ -347,7 +367,31 @@ func _zniszczono_krysztal(zrodlo: KrysztalRun) -> void:
 	_odswiez_info_endless()
 
 
+func _liczba_dronow() -> int:
+	var liczba := 0
+	for cel in krysztaly:
+		if is_instance_valid(cel) and cel is DronRun and not cel.rozpad and not cel.is_queued_for_deletion():
+			liczba += 1
+	return liczba
+
+
+func _podlacz_pocisk_drona(pocisk: PociskDronaRun) -> void:
+	pocisk.trafiono_gracza.connect(_pocisk_drona_trafil)
+
+
+func _pocisk_drona_trafil(pozycja: Vector2) -> void:
+	if run_state != null and not mecz_zakonczony and not run_state.boss_aktywny:
+		trafienia_dronow.append(pozycja)
+
+
+func _wyczysc_pociski_dronow() -> void:
+	trafienia_dronow.clear()
+	for pocisk in get_tree().get_nodes_in_group("pociski_dronow"):
+		pocisk.queue_free()
+
+
 func _wyczysc_krysztaly() -> void:
+	_wyczysc_pociski_dronow()
 	kolejka_wybuchow_krysztalow.clear()
 	for krysztal in krysztaly:
 		if is_instance_valid(krysztal):
@@ -363,8 +407,9 @@ func _rozpocznij_bossa() -> void:
 	var definicje := BossDefinicja.katalog()
 	boss = BossRun.new()
 	boss.definicja = definicje[run_state.bossIndex % definicje.size()]
+	run_state.punkty_zamrozone = true
 	boss.bossIndex = run_state.bossIndex
-	boss.totalHits = run_state.hits
+	boss.totalPoints = floori(run_state.score)
 	boss.paletka = gra.lewa_paletka()
 	boss.pilka = gra.pilka()
 	boss.satelita_zniszczony.connect(_satelita_zniszczony)
@@ -374,14 +419,13 @@ func _rozpocznij_bossa() -> void:
 	gra.add_child(boss)
 	gra.zresetuj_rozpad_punktu()
 	gra.lewa_paletka().set_physics_process(true)
-	_odnow_pilki_endless()
 	gra.pilka().set_physics_process(false)
 
 
 func _satelita_zniszczony() -> void:
 	if run_state == null or mecz_zakonczony:
 		return
-	run_state.score += DIFFICULTY.SAT_SCORE * run_state.scoreMult
+	run_state.dodaj_punkty(DIFFICULTY.SAT_SCORE)
 	wynik_gracza = floori(run_state.score)
 	gra.ustaw_wyniki(wynik_gracza, run_state.lives)
 
@@ -415,6 +459,7 @@ func _pokonano_bossa() -> void:
 func _wyczysc_zdarzenia_bossa() -> void:
 	obrazenia_bossa.clear()
 	trafienia_pociskow.clear()
+	trafienia_dronow.clear()
 	strata_pilki_bossa = false
 	rozpad_bossa_zakonczony = false
 
@@ -433,7 +478,8 @@ func _rozstrzygnij_zdarzenia_bossa() -> void:
 			nagroda_bossa = false
 			nagroda_bossa_otwarta = false
 			run_state.boss_aktywny = false
-			run_state.bossHits = 0
+			run_state.punkty_zamrozone = false
+			run_state.nextBossScore = (floori(run_state.score / RunState.BOSS_EVERY_POINTS) + 1) * RunState.BOSS_EVERY_POINTS
 			_wyczysc_zdarzenia_bossa()
 			_odnow_pilki_endless()
 		else:
@@ -445,12 +491,15 @@ func _rozstrzygnij_zdarzenia_bossa() -> void:
 	obrazenia_bossa.clear()
 	var zwyciestwo := rozpad_bossa_zakonczony or (is_instance_valid(boss) and boss.hp <= 0)
 	if zwyciestwo:
+		trafienia_dronow.clear()
 		trafienia_pociskow.clear()
 		strata_pilki_bossa = false
 		run_state.lives = maxi(1, run_state.lives)
 		if not rozpad_bossa_zakonczony:
 			return
-		run_state.score += 100.0 * (1.0 + 0.6 * run_state.bossIndex) * run_state.scoreMult
+		wybory_w_kolejce = 0
+		while _prog_ulepszenia(indeks_progu_ulepszenia) <= floori(run_state.score):
+			indeks_progu_ulepszenia += 1
 		run_state.bossIndex += 1
 		czas_do_krysztalu = DIFFICULTY.SPAWN_BASE_MS / 1000.0
 		nagroda_bossa = true
@@ -478,25 +527,44 @@ func _rozstrzygnij_zdarzenia_bossa() -> void:
 		if strata_pilki:
 			gra.pilka().reset_bezpieczny()
 		strata_pilki = false
-	if not strata_pilki and not pocisk_trafil:
+	var dron_trafil := not trafienia_dronow.is_empty()
+	if dron_trafil and run_state.dashIframeRemaining > 0.0:
+		run_state.dodgeSparkPosition = trafienia_dronow[0]
+		run_state.dodgeSparkRemaining = 0.2
+		dron_trafil = false
+	trafienia_dronow.clear()
+	if run_state.invulnRemaining > 0.0:
+		dron_trafil = false
+	if dron_trafil and run_state.uzyj_tarczy():
+		gra.odtworz_dzwiek_bonusu()
+		dron_trafil = false
+	if not strata_pilki and not pocisk_trafil and not dron_trafil:
 		return
+	_wyczysc_pociski_dronow()
+	gra.lewa_paletka().efekt_obrazen()
 	run_state.lives -= 1
 	run_state.invulnRemaining = RunState.INVULN_MS / 1000.0
 	biezaca_wymiana = 0
 	gra.odtworz_dzwiek_punktu()
 	if is_instance_valid(boss):
 		boss.odrocz_atak_po_stracie()
+	if strata_pilki:
+		gra.pilka().pokaz_rozpad_endless(run_state.lives <= 0)
 	gra.zresetuj_rozpad_punktu()
 	gra.lewa_paletka().reset_po_punkcie()
 	gra.lewa_paletka().set_physics_process(true)
-	gra.pilka().reset_bezpieczny()
-	_zastosuj_stan_endless()
 	if run_state.lives <= 0:
+		_zastosuj_stan_endless()
 		_wyczysc_zdarzenia_bossa()
 		_zakoncz_endless()
+	else:
+		gra.pilka().reset_bezpieczny()
+		_zastosuj_stan_endless()
 
 
 func _zastosuj_stan_endless() -> void:
+	if not is_equal_approx(gra.pilka().mnoznik_rozmiaru, run_state.ballSizeMult):
+		gra.animuj_rozmiar_pilki(run_state.ballSizeMult, 0.3)
 	gra.lewa_paletka().ustaw_wysokosc(endless_wysokosc_startowa * run_state.paddleWidthMult)
 	gra.lewa_paletka()._ogranicz_pozycje_y()
 	wynik_ai = run_state.lives
@@ -532,7 +600,7 @@ func zakoncz_po_czasie() -> void:
 func dodaj_info_endless() -> void:
 	endless_info = HBoxContainer.new()
 	endless_info.name = "InformacjaEndless"
-	endless_info.custom_minimum_size = Vector2(SZEROKOSC_INFO_ENDLESS, 58.0)
+	endless_info.custom_minimum_size = Vector2(0.0, 58.0)
 	endless_info.add_theme_constant_override("separation", 10)
 	endless_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	endless_info.z_index = 10
@@ -544,18 +612,6 @@ func dodaj_info_endless() -> void:
 	endless_krysztaly.add_theme_font_override("font", CZCIONKA_ENDLESS)
 	endless_krysztaly.add_theme_font_size_override("font_size", 10)
 	endless_wartosci[2].get_parent().add_child(endless_krysztaly)
-	_dodaj_grupe_info_endless(endless_info, "Do ulepszenia", 130.0, KOLOR_FIOLET_ENDLESS, 12)
-	endless_postep = ProgressBar.new()
-	endless_postep.custom_minimum_size.y = 4.0
-	endless_postep.show_percentage = false
-	endless_postep.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tor := StyleBoxFlat.new()
-	tor.bg_color = Color("#34445d")
-	var wypelnienie := StyleBoxFlat.new()
-	wypelnienie.bg_color = KOLOR_FIOLET_ENDLESS
-	endless_postep.add_theme_stylebox_override("background", tor)
-	endless_postep.add_theme_stylebox_override("fill", wypelnienie)
-	endless_wartosci[3].get_parent().add_child(endless_postep)
 	_dodaj_grupe_info_endless(endless_info, "Tarcza", 100.0, KOLOR_TURKUS_ENDLESS)
 	_dodaj_grupe_info_endless(endless_info, "Regeneracja", 110.0, KOLOR_TURKUS_ENDLESS)
 	endless_info.move_child(endless_wartosci[2].get_parent().get_parent(), 1)
@@ -603,9 +659,9 @@ func _dodaj_grupe_info_endless(uklad: HBoxContainer, tytul: String, szerokosc: f
 
 func _ustaw_pozycje_info_endless() -> void:
 	var wymiar = get_viewport().get_visible_rect().size
-	var szerokosc_planszy = Ustawienia.prawa_granica - Ustawienia.lewa_granica
-	var szerokosc = minf(SZEROKOSC_INFO_ENDLESS, maxf(0.0, szerokosc_planszy - 24.0))
+	var lewa_krawedz = Ustawienia.lewa_granica + 120.0
 	var prawa_krawedz = minf(Ustawienia.prawa_granica - 12.0, wymiar.x - 12.0)
+	var szerokosc = minf(SZEROKOSC_INFO_ENDLESS, maxf(0.0, prawa_krawedz - lewa_krawedz))
 	var x = prawa_krawedz - szerokosc
 	var y = minf(Ustawienia.dolna_granica + 12.0, wymiar.y - 70.0)
 	if is_instance_valid(endless_info):
@@ -619,24 +675,17 @@ func _odswiez_info_endless() -> void:
 	endless_wartosci[0].text = "%d/%d" % [run_state.lives, run_state.maxLives]
 	endless_wartosci[1].text = str(run_state.ownedStacks.size())
 	endless_wartosci[2].text = str(run_state.ballDamage)
-	var poprzedni_prog := _prog_ulepszenia(indeks_progu_ulepszenia - 1) if indeks_progu_ulepszenia > 0 else 0
-	var cel := _prog_ulepszenia(indeks_progu_ulepszenia) - poprzedni_prog
-	var postep := clampi(run_state.upgradeProgress - poprzedni_prog, 0, cel)
-	endless_wartosci[3].text = "%d/%d" % [postep, cel]
-	endless_postep.max_value = cel
-	endless_postep.value = postep
-	(endless_wartosci[3].get_parent() as Control).modulate.a = 0.45 if run_state.boss_aktywny else 1.0
-	(endless_wartosci[4].get_parent().get_parent() as Control).visible = run_state.shieldRecharge > 0
-	endless_wartosci[4].text = "Gotowa" if run_state.shieldHits >= run_state.shieldRecharge else "%d/%d" % [run_state.shieldHits, run_state.shieldRecharge]
-	(endless_wartosci[5].get_parent().get_parent() as Control).visible = run_state.regenInterval > 0
-	endless_wartosci[5].text = "%d/%d" % [run_state.regenHits, run_state.regenInterval]
+	(endless_wartosci[3].get_parent().get_parent() as Control).visible = run_state.shieldRecharge > 0
+	endless_wartosci[3].text = "Gotowa" if run_state.shieldHits >= run_state.shieldRecharge else "%d/%d pkt" % [run_state.shieldHits, run_state.shieldRecharge]
+	(endless_wartosci[4].get_parent().get_parent() as Control).visible = run_state.regenInterval > 0
+	endless_wartosci[4].text = "%d/%d pkt" % [run_state.regenHits, run_state.regenInterval]
 	var najsilniejszy: KrysztalRun
 	for krysztal in krysztaly:
 		if not is_instance_valid(krysztal) or krysztal.rozpad or krysztal.is_queued_for_deletion():
 			continue
 		if najsilniejszy == null or krysztal.hp > najsilniejszy.hp:
 			najsilniejszy = krysztal
-	endless_krysztaly.text = "%s - %d/%d" % [najsilniejszy.wariant.nazwa, najsilniejszy.hp, najsilniejszy.max_hp] if najsilniejszy != null else ""
+	endless_krysztaly.text = "%s - %d/%d" % ["Dron" if najsilniejszy is DronRun else najsilniejszy.wariant.nazwa, najsilniejszy.hp, najsilniejszy.max_hp] if najsilniejszy != null else ""
 	endless_krysztaly.visible = najsilniejszy != null
 	endless_krysztaly.mouse_filter = Control.MOUSE_FILTER_PASS
 	endless_krysztaly.tooltip_text = "Wariant i HP najsilniejszego kryształu. Pękający: wybuch zadaje 1 obrażenie pobliskim kryształom. Opancerzony: pierwszy kontakt piłki rozbija pancerz. Wędrujący: porusza się po widocznym torze. Do 6 HP: segment = 1 HP. Powyżej 6 HP: segmenty pokazują pozostałą część zdrowia."
@@ -665,6 +714,10 @@ func zakoncz_mecz(tekst: String) -> void:
 		arena_manager.zatrzymaj()
 	for pilka in get_tree().get_nodes_in_group("pilki"):
 		pilka.set_physics_process(false)
+		var pilka_meczu := pilka as Pilka
+		if pilka_meczu != null:
+			pilka_meczu.pilka_zniszczona = true
+			pilka_meczu.queue_redraw()
 	gra.lewa_paletka().set_physics_process(false)
 	gra.prawa_paletka().set_physics_process(false)
 
@@ -679,7 +732,7 @@ func pobierz_podsumowanie() -> PodsumowanieMeczu:
 	podsumowanie.mocne_odbicia_lacznie = stat_mocne_odbicia_gracza + stat_mocne_odbicia_rywala
 	if Ustawienia.tryb == "endless" and run_state != null:
 		podsumowanie.ulepszenia_endless = run_state.ownedStacks.size()
-		podsumowanie.mnoznik_predkosci_endless = run_state.ballSpeedMult
+		podsumowanie.mnoznik_predkosci_endless = run_state.ballSpeedMult * run_state.mnoznik_predkosci_za_czas()
 		podsumowanie.rozmiar_paletki_endless = roundi(run_state.paddleWidthMult * 100.0)
 	podsumowanie.najdluzsza_wymiana = najdluzsza_wymiana
 	return podsumowanie

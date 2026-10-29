@@ -1,0 +1,64 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 617.42 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 4070
+
+PASS: etap kamien HP=100/100
+PASS: etap kamien HP=67/100
+PASS: etap kamien HP=66/100
+PASS: etap kamien HP=34/100
+PASS: etap kamien HP=33/100
+PASS: etap kamien HP=1/100
+PASS: ratio HP=6/6
+PASS: ratio HP=4/6
+PASS: ratio HP=3/6
+PASS: ratio HP=2/6
+PASS: ratio HP=1/6
+PASS: reakcja trafienia bez zmiany etapu
+PASS: rozpad kamien wariant 0
+PASS: rozpad kamien wariant 1
+PASS: rozpad kamien wariant 2
+PASS: etap dron HP=100/100
+PASS: etap dron HP=67/100
+PASS: etap dron HP=66/100
+PASS: etap dron HP=34/100
+PASS: etap dron HP=33/100
+PASS: etap dron HP=1/100
+PASS: ratio HP=6/6
+PASS: ratio HP=4/6
+PASS: ratio HP=3/6
+PASS: ratio HP=2/6
+PASS: ratio HP=1/6
+PASS: reakcja trafienia bez zmiany etapu
+PASS: rozpad dron wariant 0
+PASS: rozpad dron wariant 1
+PASS: rozpad dron wariant 2
+PASS: wolny respawn grupa 1
+PASS: respawn zachowuje 1 wrogow
+PASS: wolny respawn grupa 4
+PASS: respawn zachowuje 4 wrogow
+PASS: wolny respawn grupa 8
+PASS: respawn zachowuje 8 wrogow
+PASS: respawn omija caly tor wanderera
+PASS: fallback poza centrum: bezpieczny stacjonarny start
+PASS: odrzucenie punktu poza boczna granica
+PASS: pelna arena bez niebezpiecznego umieszczenia
+PASS: po limicie ograniczone ponowienia 2s
+PASS: odzyskanie po 44 probach i zwolnieniu miejsca
+PASS: wolny srodek pozostaje domyslny
+PASS: blysk strzalu i audio bus Efekty
+PASS: dokladnie jeden kontakt i normalna (-1.0, 0.0)
+PASS: punkt na powierzchni sciany (-1.0, 0.0)
+PASS: dokladnie jeden kontakt i normalna (1.0, 0.0)
+PASS: punkt na powierzchni sciany (1.0, 0.0)
+PASS: dokladnie jeden kontakt i normalna (0.0, -1.0)
+PASS: punkt na powierzchni sciany (0.0, -1.0)
+PASS: dokladnie jeden kontakt i normalna (0.0, 1.0)
+PASS: punkt na powierzchni sciany (0.0, 1.0)
+PASS: audio kontaktu pod ustawieniami gry
+PASS: syntetyczny dzwiek 0
+PASS: syntetyczny dzwiek 1
+PASS: syntetyczny dzwiek 2
+PASS: syntetyczny dzwiek 3
+PASS: runtime start trybu ai
+PASS: runtime start trybu 2graczy
+PASS: runtime start trybu arena
+WYNIK: 60 kontroli, 0 bledow

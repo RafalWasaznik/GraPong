@@ -36,6 +36,7 @@ var _czas_bonusu: Timer
 var _rysowanie_areny: Node2D
 
 var _arena_manager: ArenaManagerAPI
+var efekty_wizualne: EfektyMeczu
 var _referencje_sceny_poprawne = false
 
 
@@ -88,6 +89,11 @@ func zegar_bonusow() -> Timer:
 
 
 func ustaw_wyniki(wynik_lewy: int, wynik_prawy: int) -> void:
+	if is_instance_valid(efekty_wizualne):
+		if _etykieta_wyniku_gracza.text != str(wynik_lewy):
+			efekty_wizualne.zmiana_wyniku(0)
+		if _etykieta_wyniku_rywala.text != str(wynik_prawy):
+			efekty_wizualne.zmiana_wyniku(1)
 	_etykieta_wyniku_gracza.text = str(wynik_lewy)
 	_etykieta_wyniku_rywala.text = str(wynik_prawy)
 

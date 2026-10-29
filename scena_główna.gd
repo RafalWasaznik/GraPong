@@ -256,6 +256,8 @@ func _polowa_wysokosci_paletki(paletka: PaletkaBazowa) -> float:
 func _ready():
 	if not _referencje_sceny_poprawne:
 		return
+	efekty_wizualne = EfektyMeczu.new()
+	add_child(efekty_wizualne)
 	_pilka_glowna.punkt.connect(_przebieg_meczu._on_punkt)
 	_pilka_glowna.odbicie_gracza.connect(_przebieg_meczu.zarejestruj_odbicie_endless)
 	_pilka_glowna.statystyki_odbicia.connect(_przebieg_meczu.zarejestruj_odbicie)
@@ -600,6 +602,7 @@ func odswiez_rysowanie() -> void:
 
 
 func _on_przycisk_menu():
+	get_tree().paused = false
 	if Ustawienia.tryb == "online":
 		Siec.rozlacz()
 		Ustawienia.tryb = "bot"

@@ -1,0 +1,67 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 617.42 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 4070
+
+PASS: boss gora/dol -1.0 - rzeczywista droga 197.87
+PASS: boss gora/dol -1.0 - brak utrwalonego zastoju
+PASS: boss gora/dol -1.0 - zachowana szybkosc
+PASS: boss gora/dol 1.0 - rzeczywista droga 197.87
+PASS: boss gora/dol 1.0 - brak utrwalonego zastoju
+PASS: boss gora/dol 1.0 - zachowana szybkosc
+PASS: boss nadjezdza - rzeczywista droga 104.73
+PASS: boss nadjezdza - brak utrwalonego zastoju
+PASS: boss nadjezdza - zachowana szybkosc
+PASS: boss nadjezdza - odbicie wzgledem powierzchni
+PASS: boss faktycznie rusza ku pilce
+PASS: boss nadjezdza na spowolniona pilke - rzeczywista droga 44.42
+PASS: boss nadjezdza na spowolniona pilke - brak utrwalonego zastoju
+PASS: boss nadjezdza na spowolniona pilke - zachowana szybkosc
+PASS: wedrujacy kamien - rzeczywista droga 242.18
+PASS: wedrujacy kamien - brak utrwalonego zastoju
+PASS: wedrujacy kamien - zachowana szybkosc
+PASS: kamien publikuje predkosc
+PASS: sciana stala - rzeczywista droga 201.77
+PASS: sciana stala - brak utrwalonego zastoju
+PASS: sciana stala - zachowana szybkosc
+PASS: wysoka predkosc - rzeczywista droga 39.69
+PASS: wysoka predkosc - brak utrwalonego zastoju
+PASS: wysoka predkosc - zachowana szybkosc
+PASS: wysoka predkosc - remainder wykonany po odbiciu
+PASS: spowolnienie ulepszenia - rzeczywista droga 50.02
+PASS: spowolnienie ulepszenia - brak utrwalonego zastoju
+PASS: spowolnienie ulepszenia - zachowana szybkosc
+PASS: sciana ruchoma - rzeczywista droga 105.99
+PASS: sciana ruchoma - brak utrwalonego zastoju
+PASS: sciana ruchoma - zachowana szybkosc
+PASS: waski przeswit i szybkie kontakty - rzeczywista droga 230.76
+PASS: waski przeswit i szybkie kontakty - brak utrwalonego zastoju
+PASS: waski przeswit i szybkie kontakty - zachowana szybkosc
+PASS: naroznik - rzeczywista droga 252.38
+PASS: naroznik - brak utrwalonego zastoju
+PASS: naroznik - zachowana szybkosc
+PASS: separacja oddalajacej sie pilki bez falszywego odbicia
+PASS: ruchoma krawedz bramki Areny - rzeczywista droga 63.34
+PASS: ruchoma krawedz bramki Areny - brak utrwalonego zastoju
+PASS: ruchoma krawedz bramki Areny - zachowana szybkosc
+PASS: bramka publikuje ruch krawedzi zmienianego ksztaltu
+PASS: zastane glebokie nakladanie rozdzielone lokalnie
+KOLIZJA brak postepu: obiekt=@StaticBody2D@142:<StaticBody2D#146481875189> normalna=(1.0, 0.0) predkosc=(620.0, 0.0) powierzchnia=(0.0, 0.0) droga=0.0/10.3333333333333 separacja=(0.0, 0.0) czas=0.13333333333333
+KOLIZJA brak postepu: obiekt=@StaticBody2D@142:<StaticBody2D#146481875189> normalna=(1.0, 0.0) predkosc=(620.0, 0.0) powierzchnia=(0.0, 0.0) droga=0.0/10.3333333333333 separacja=(0.0, 0.0) czas=0.13333333333333
+PASS: watchdog wykrywa rzeczywisty brak postepu w blednym kontakcie
+PASS: watchdog lokalny bez teleportu i zmiany szybkosci
+PASS: dron prog etapu 0
+PASS: dron hitbox niezmieniony 0
+PASS: dron kazde trafienie etapu 0
+PASS: dron prog etapu 1
+PASS: dron hitbox niezmieniony 1
+PASS: dron kazde trafienie etapu 1
+PASS: dron prog etapu 2
+PASS: dron hitbox niezmieniony 2
+PASS: dron kazde trafienie etapu 2
+PASS: dron prog etapu 3
+PASS: dron hitbox niezmieniony 3
+PASS: dron kazde trafienie etapu 3
+PASS: dron ostatnie przezyte trafienie czytelne
+PASS: ostrzezenie wiezyczki nadal 0.5s
+PASS: namierzanie zablokowane podczas ostrzezenia
+PASS: strzal i interwal bez zmian
+WYNIK: 61 kontroli, 0 bledow

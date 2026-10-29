@@ -327,6 +327,7 @@ func online_odbierz_stan(pakiet_json: String) -> void:
 		otrzymano_pierwszy_stan = true
 	var wynik_gracza_poprzedni: int = aktualny_stan.wynik_gracza if aktualny_stan != null else stan.wynik_gracza
 	var wynik_rywala_poprzedni: int = aktualny_stan.wynik_ai if aktualny_stan != null else stan.wynik_ai
+	var pozycja_pilki_przed_punktem: Vector2 = aktualny_stan.pilka if aktualny_stan != null else stan.pilka
 	var nowe_odbicia_paletki: int = stan.odbicia_paletki - odebrane_odbicia_paletka
 	var nowe_odbicia_sciany: int = stan.odbicia_sciany - odebrane_odbicia_sciana
 	var lewa = _lewa_paletka()
@@ -358,12 +359,19 @@ func online_odbierz_stan(pakiet_json: String) -> void:
 	gra.pobierz_wskazniki_dasha().queue_redraw()
 	if nowe_odbicia_paletki > 0:
 		_pilka().dzwiek_paletka.play()
+		if is_instance_valid(gra.efekty_wizualne):
+			gra.efekty_wizualne.odbicie(stan.pilka, Vector2.RIGHT, Color("#7ceaff"), true)
 	if nowe_odbicia_sciany > 0:
 		_pilka().dzwiek_sciana.play()
-		odebrane_odbicia_paletka = stan.odbicia_paletki
+		if is_instance_valid(gra.efekty_wizualne):
+			gra.efekty_wizualne.odbicie(stan.pilka, Vector2.UP)
+	odebrane_odbicia_paletka = stan.odbicia_paletki
 	odebrane_odbicia_sciana = stan.odbicia_sciany
 	if stan.wynik_gracza != wynik_gracza_poprzedni or stan.wynik_ai != wynik_rywala_poprzedni:
 		gra.odtworz_dzwiek_punktu()
+		_pilka().pokaz_rozpad_online(pozycja_pilki_przed_punktem, stan.koniec)
+		if is_instance_valid(gra.efekty_wizualne):
+			gra.efekty_wizualne.punkt(pozycja_pilki_przed_punktem)
 	if stan.koniec and not gra.mecz_zakonczony:
 		var komunikat_konca := stan.komunikat_konca
 		if komunikat_konca.is_empty():

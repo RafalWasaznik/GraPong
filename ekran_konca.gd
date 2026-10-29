@@ -12,6 +12,7 @@ var podsumowanie_endless = false
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var przyciemnienie_konca = ColorRect.new()
 	przyciemnienie_konca.name = "PrzyciemnienieKoniecGry"
 	przyciemnienie_konca.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -27,16 +28,17 @@ func _ready() -> void:
 	karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	karta.z_index = 10
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color("#0c1628f7")
+	styl.bg_color = Color("#0b1727fa")
 	styl.border_color = Color("#55e7ff", 0.48)
-	styl.set_border_width_all(0)
+	styl.set_border_width_all(1)
+	styl.border_width_top = 2
 	styl.set_corner_radius_all(16)
 	styl.content_margin_left = 30.0
 	styl.content_margin_right = 30.0
 	styl.content_margin_top = 30.0
 	styl.content_margin_bottom = 30.0
-	styl.shadow_color = Color("#55e7ff30")
-	styl.shadow_size = 0
+	styl.shadow_color = Color(0.0, 0.0, 0.0, 0.5)
+	styl.shadow_size = 16
 	styl.shadow_offset = Vector2(0.0, 10.0)
 	karta.add_theme_stylebox_override("panel", styl)
 	add_child(karta)
@@ -161,9 +163,10 @@ func _utworz_podsumowanie_statystyk() -> void:
 		karta.custom_minimum_size = Vector2(242.0, 62.0)
 		karta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var styl = StyleBoxFlat.new()
-		styl.bg_color = Color("#55e7ff", 0.035)
-		styl.border_color = Color("#315270")
-		styl.set_border_width_all(0)
+		styl.bg_color = Color("#142c40", 0.72)
+		styl.border_color = Color("#315270", 0.5)
+		styl.set_border_width_all(1)
+		styl.border_width_bottom = 2
 		styl.set_corner_radius_all(12)
 		styl.shadow_color = Color("#55e7ff12")
 		styl.shadow_size = 0

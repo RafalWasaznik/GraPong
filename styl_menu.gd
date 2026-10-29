@@ -2,20 +2,22 @@ class_name StylMenu
 extends RefCounted
 
 const FONT_MENU = preload("res://assets/fonts/Oxanium.ttf")
-const PROMIEN_PRZYCISKU = 6
+const DZWIEK_NAJECHANIA = preload("res://assets/kenney_ui/Sounds/tap-a.ogg")
+const PROMIEN_PRZYCISKU = 10
 
 static func styl_przycisku_karty(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	var wynik := styl(tlo, obramowanie)
 	wynik.shadow_color = Color(0.0, 0.0, 0.0, 0.22)
-	wynik.shadow_size = 0
-	wynik.shadow_offset = Vector2(0.0, 2.0)
+	wynik.shadow_size = 6
+	wynik.shadow_offset = Vector2(0.0, 3.0)
 	return wynik
 
 
 static func styl_pola(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	var wynik := StyleBoxFlat.new()
-	wynik.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.82))
+	wynik.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.94))
 	wynik.border_color = obramowanie
+	wynik.set_border_width_all(1)
 	wynik.border_width_bottom = 2
 	wynik.set_corner_radius_all(9)
 	wynik.content_margin_left = 14.0
@@ -30,12 +32,12 @@ static func dodaj_opis_trybu(przycisk: Button, tytul: String, opis: String, akce
 	przycisk.custom_minimum_size = Vector2(420.0, 76.0 if opis.is_empty() else 96.0)
 	przycisk.tooltip_text = opis
 	przycisk.set_meta("neon_akcent", akcent)
-	var styl_karty := styl_przycisku_karty(Color("#101d31"), Color(akcent, 0.42))
+	var styl_karty := styl_przycisku_karty(Color("#101f31"), Color(akcent, 0.32))
 	przycisk.add_theme_stylebox_override("normal", styl_karty)
 	var styl_hover := styl_przycisku_karty(Color("#1a2d47"), akcent)
 	styl_hover.border_width_bottom = 2
 	styl_hover.shadow_color = Color(akcent, 0.08)
-	styl_hover.shadow_size = 0
+	styl_hover.shadow_size = 5
 	styl_hover.shadow_offset = Vector2.ZERO
 	przycisk.add_theme_stylebox_override("hover", styl_hover)
 	if opis.is_empty():
@@ -98,8 +100,9 @@ static func styluj_przycisk(
 	przycisk.add_theme_stylebox_override("normal", styl(tlo_normalne, obramowanie_normalne))
 	przycisk.add_theme_stylebox_override("hover", styl(tlo_najechane, akcent))
 	przycisk.add_theme_stylebox_override("pressed", styl(tlo_wcisniete, obramowanie_wcisniete))
-	var fokus := styl(Color.TRANSPARENT, Color(akcent, 0.65))
+	var fokus := styl(Color.TRANSPARENT, Color(akcent, 0.85))
 	fokus.bg_color = Color.TRANSPARENT
+	fokus.set_border_width_all(2)
 	przycisk.add_theme_stylebox_override("focus", fokus)
 	przycisk.add_theme_stylebox_override("disabled", styl(Color("#151d2b"), Color("#293a4e")))
 	dodaj_animacje(przycisk, akcent)
@@ -118,18 +121,21 @@ static func dodaj_animacje(przycisk: Button, akcent: Color) -> void:
 	var obrys := StyleBoxFlat.new()
 	obrys.bg_color = Color.TRANSPARENT
 	obrys.border_color = Color(akcent, 0.0)
+	obrys.set_border_width_all(1)
 	obrys.border_width_bottom = 2
 	obrys.set_corner_radius_all(PROMIEN_PRZYCISKU)
 	obrys.shadow_color = Color(akcent, 0.0)
-	obrys.shadow_size = 0
+	obrys.shadow_size = 7
 	poswiata.add_theme_stylebox_override("panel", obrys)
 	przycisk.add_child(poswiata)
 	przycisk.set_meta("neon_obrys", obrys)
 	przycisk.pivot_offset = przycisk.size * 0.5
 	przycisk.resized.connect(func(): przycisk.pivot_offset = przycisk.size * 0.5)
 	przycisk.mouse_entered.connect(animuj_najechanie.bind(przycisk, true))
+	przycisk.mouse_entered.connect(_odtworz_najechanie.bind(przycisk))
 	przycisk.mouse_exited.connect(animuj_najechanie.bind(przycisk, false))
 	przycisk.focus_entered.connect(animuj_najechanie.bind(przycisk, true))
+	przycisk.focus_entered.connect(_odtworz_najechanie.bind(przycisk))
 	przycisk.focus_exited.connect(animuj_najechanie.bind(przycisk, false))
 	przycisk.visibility_changed.connect(func():
 		if przycisk.has_meta("animacja_najechania"):
@@ -140,6 +146,27 @@ static func dodaj_animacje(przycisk: Button, akcent: Color) -> void:
 		obrys.border_color.a = 0.0
 		obrys.shadow_color.a = 0.0
 	)
+
+
+static func _odtworz_najechanie(przycisk: Button) -> void:
+	if not przycisk.is_visible_in_tree() or przycisk.disabled:
+		return
+	var viewport := przycisk.get_viewport()
+	var dzwiek := viewport.get_node_or_null("DzwiekNajechaniaUI") as AudioStreamPlayer
+	if dzwiek == null:
+		dzwiek = AudioStreamPlayer.new()
+		dzwiek.name = "DzwiekNajechaniaUI"
+		dzwiek.stream = DZWIEK_NAJECHANIA
+		dzwiek.bus = &"Efekty"
+		dzwiek.volume_db = -24.0
+		dzwiek.process_mode = Node.PROCESS_MODE_ALWAYS
+		viewport.add_child(dzwiek)
+	var teraz := Time.get_ticks_msec()
+	var ostatnio: int = dzwiek.get_meta("ostatnie_najechanie", -120)
+	if teraz - ostatnio < 120:
+		return
+	dzwiek.set_meta("ostatnie_najechanie", teraz)
+	dzwiek.play()
 
 
 static func animuj_najechanie(przycisk: Button, _aktywne: bool) -> void:
@@ -155,16 +182,16 @@ static func animuj_najechanie(przycisk: Button, _aktywne: bool) -> void:
 	animacja.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	animacja.set_parallel(true)
 	var skala_bazowa: Vector2 = przycisk.get_meta("neon_skala_bazowa", Vector2.ONE)
-	animacja.tween_property(przycisk, "scale", skala_bazowa * (1.025 if aktywne else 1.0), 0.18)
+	animacja.tween_property(przycisk, "scale", skala_bazowa * (1.012 if aktywne else 1.0), 0.16)
 	animacja.tween_property(obrys, "border_color", Color(akcent, 0.95 if aktywne else 0.0), 0.18)
-	animacja.tween_property(obrys, "shadow_color", Color(akcent, 0.25 if aktywne else 0.0), 0.22)
+	animacja.tween_property(obrys, "shadow_color", Color(akcent, 0.12 if aktywne else 0.0), 0.18)
 
 
 static func styl(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 	var styl = StyleBoxFlat.new()
-	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.45))
-	styl.border_color = Color(obramowanie, 0.3)
-	styl.set_border_width_all(0)
+	styl.bg_color = Color(tlo.r, tlo.g, tlo.b, minf(tlo.a, 0.90))
+	styl.border_color = Color(obramowanie, 0.42)
+	styl.set_border_width_all(1)
 	styl.border_width_bottom = 2
 	styl.set_corner_radius_all(PROMIEN_PRZYCISKU)
 	styl.content_margin_left = 22.0
@@ -176,7 +203,10 @@ static func styl(tlo: Color, obramowanie: Color) -> StyleBoxFlat:
 
 static func styl_bloku() -> StyleBoxFlat:
 	var wynik := StyleBoxFlat.new()
-	wynik.bg_color = Color("#55e7ff", 0.035)
+	wynik.bg_color = Color("#102235", 0.88)
+	wynik.border_color = Color("#6bb9d8", 0.16)
+	wynik.set_border_width_all(1)
+	wynik.border_width_top = 2
 	wynik.set_corner_radius_all(8)
 	wynik.content_margin_left = 18.0
 	wynik.content_margin_right = 18.0

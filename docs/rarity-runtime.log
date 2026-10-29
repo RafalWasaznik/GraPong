@@ -1,0 +1,30 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+FULL_AVAILABILITY_100000: [48350, 27790, 14761, 7020, 2079]
+PER_UPGRADE: { &"paletka": 16216, &"pilka": 9268, &"wieksza_pilka": 16129, &"zycie": 3530, &"dash": 16005, &"magnes": 9298, &"tarcza": 3490, &"precyzja": 9224, &"regeneracja": 2079, &"spowolnienie": 3674, &"obrazenia": 3705, &"kruszyciel": 3759, &"roj": 3623 }
+PASS: category 0 within 0.7 percentage point
+PASS: category 1 within 0.7 percentage point
+PASS: category 2 within 0.7 percentage point
+PASS: category 3 within 0.7 percentage point
+PASS: category 4 within 0.7 percentage point
+PASS: uniform upgrade selection within each category
+PASS: 13 original upgrades, no curse
+PASS: 10000 ordinary offers: three unique nonmaxed upgrades
+PASS: 10000 boss offers: unique, capped, rare or better guarantee
+PASS: 6400 offers across all 32 exhausted-category combinations
+WITHOUT_COMMON_100000: [0, 53880, 28755, 13485, 3880]
+PASS: weights renormalize to remaining sum 52
+PASS: all caps enforced; empty pool stays empty even for boss
+PASS: preserved max-rank values
+PASS: 1 remaining upgrades produce 1 valid cards
+PASS: 2 remaining upgrades produce 2 valid cards
+PASS: isolated legacy settings fixture saved
+PASS: real settings loader with isolated fixture path
+PASS: legacy record preserved; obsolete run/curse fields ignored
+PASS: resave removes obsolete fields and preserves record
+PASS: exhausted boss reward resumes game without blocking
+PASS: selection applies and releases pause/energy animation
+PASS: legendary energy tween runs while paused
+PASS: selection applies and releases pause/energy animation
+PASS: rarity border visible in every button state across five tiers
+RESULT: 24 checks, 0 failures

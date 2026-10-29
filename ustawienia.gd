@@ -1,5 +1,12 @@
 extends Node
 
+signal grafika_tla_zmieniona
+signal motyw_tla_zmieniony(wybor: int)
+signal paleta_przeciwnikow_zmieniona
+
+const MOTYWY_TLA: PackedStringArray = ["Losowo", "Cyberpunk", "Kosmos", "Synthwave", "Digital Matrix"]
+const JAKOSCI_TLA: PackedStringArray = ["Wyłączone", "Ograniczone", "Pełne"]
+
 const PLIK_USTAWIEN = "user://ustawienia.cfg"
 
 var tryb = "bot"
@@ -20,9 +27,14 @@ var glosnosc_muzyki = 80.0
 var glosnosc_efektow = 80.0
 var pelny_ekran = true
 var kursor_neonowy = true
+var intensywnosc_efektow: float = 70.0
+var motyw_tla: int = 0
+var motyw_przeciwnikow: int = 0
+var ziarno_tla: int = 0
+var jakosc_tla: int = 2
 
-const KURSOR_NEON = preload("res://assets/kursor_neon.svg")
-const KURSOR_TEKST = preload("res://assets/kursor_tekst.svg")
+var tekstura_kursora_neon: Texture2D
+var tekstura_kursora_tekst: Texture2D
 
 const KLAWISZE_DOMYSLNE = {
 	"lewy_gora": KEY_W,
@@ -44,23 +56,68 @@ var dolna_granica = 620.0
 
 
 func _ready() -> void:
+	tekstura_kursora_neon = load("res://assets/kursor_neon.svg")
+	tekstura_kursora_tekst = load("res://assets/kursor_tekst.svg")
 	var plik := ConfigFile.new()
 	if plik.load(PLIK_USTAWIEN) == OK:
 		kursor_neonowy = bool(plik.get_value("interfejs", "kursor_neonowy", true))
+		intensywnosc_efektow = clampf(float(plik.get_value("ekran", "intensywnosc_efektow", 70.0)), 0.0, 100.0)
+		motyw_tla = clampi(int(plik.get_value("ekran", "motyw_tla", 0)), 0, 4)
+		ziarno_tla = clampi(int(plik.get_value("ekran", "ziarno_tla", 0)), 0, 2147483646)
+		jakosc_tla = clampi(int(plik.get_value("ekran", "jakosc_tla", 2)), 0, 2)
 	_zastosuj_kursor()
 
 
 func _zastosuj_kursor() -> void:
-	var strzalka: Texture2D = KURSOR_NEON if kursor_neonowy else null
-	var tekst: Texture2D = KURSOR_TEKST if kursor_neonowy else null
+	var strzalka: Texture2D = tekstura_kursora_neon if kursor_neonowy else null
+	var tekst: Texture2D = tekstura_kursora_tekst if kursor_neonowy else null
 	Input.set_custom_mouse_cursor(strzalka, Input.CURSOR_ARROW, Vector2(4, 3))
 	Input.set_custom_mouse_cursor(strzalka, Input.CURSOR_POINTING_HAND, Vector2(4, 3))
 	Input.set_custom_mouse_cursor(tekst, Input.CURSOR_IBEAM, Vector2(16, 16))
 
 
+func _exit_tree() -> void:
+	for ksztalt in [Input.CURSOR_ARROW, Input.CURSOR_POINTING_HAND, Input.CURSOR_IBEAM]:
+		Input.set_custom_mouse_cursor(null, ksztalt)
+	tekstura_kursora_neon = null
+	tekstura_kursora_tekst = null
+
+
 func ustaw_kursor_neonowy(wartosc: bool) -> void:
 	kursor_neonowy = wartosc
 	_zastosuj_kursor()
+	zapisz()
+
+
+func ustaw_intensywnosc_efektow(wartosc: float) -> void:
+	intensywnosc_efektow = clampf(wartosc, 0.0, 100.0)
+	grafika_tla_zmieniona.emit()
+	zapisz()
+
+
+func ustaw_motyw_tla(wartosc: int) -> void:
+	motyw_tla = clampi(wartosc, 0, 4)
+	motyw_tla_zmieniony.emit(motyw_tla)
+	grafika_tla_zmieniona.emit()
+	zapisz()
+
+
+func ustaw_ziarno_tla(wartosc: int) -> void:
+	ziarno_tla = clampi(wartosc, 0, 2147483646)
+	zapisz()
+
+
+func ustaw_motyw_przeciwnikow(wartosc: int) -> void:
+	var nowy := clampi(wartosc, 0, 3)
+	if motyw_przeciwnikow == nowy:
+		return
+	motyw_przeciwnikow = nowy
+	paleta_przeciwnikow_zmieniona.emit()
+
+
+func ustaw_jakosc_tla(wartosc: int) -> void:
+	jakosc_tla = clampi(wartosc, 0, 2)
+	grafika_tla_zmieniona.emit()
 	zapisz()
 
 
@@ -114,6 +171,10 @@ func wczytaj():
 	glosnosc_muzyki = plik.get_value("audio", "muzyka", glosnosc_muzyki)
 	glosnosc_efektow = plik.get_value("audio", "efekty", glosnosc_efektow)
 	pelny_ekran = plik.get_value("ekran", "pelny_ekran", pelny_ekran)
+	intensywnosc_efektow = clampf(float(plik.get_value("ekran", "intensywnosc_efektow", 70.0)), 0.0, 100.0)
+	motyw_tla = clampi(int(plik.get_value("ekran", "motyw_tla", 0)), 0, 4)
+	ziarno_tla = clampi(int(plik.get_value("ekran", "ziarno_tla", 0)), 0, 2147483646)
+	jakosc_tla = clampi(int(plik.get_value("ekran", "jakosc_tla", 2)), 0, 2)
 	kursor_neonowy = plik.get_value("interfejs", "kursor_neonowy", kursor_neonowy)
 	_zastosuj_kursor()
 
@@ -137,6 +198,10 @@ func zapisz():
 	plik.set_value("audio", "muzyka", glosnosc_muzyki)
 	plik.set_value("audio", "efekty", glosnosc_efektow)
 	plik.set_value("ekran", "pelny_ekran", pelny_ekran)
+	plik.set_value("ekran", "intensywnosc_efektow", intensywnosc_efektow)
+	plik.set_value("ekran", "motyw_tla", motyw_tla)
+	plik.set_value("ekran", "ziarno_tla", ziarno_tla)
+	plik.set_value("ekran", "jakosc_tla", jakosc_tla)
 	plik.set_value("interfejs", "kursor_neonowy", kursor_neonowy)
 	for akcja in KLAWISZE_DOMYSLNE:
 		plik.set_value("sterowanie", akcja, int(klawisze[akcja]))

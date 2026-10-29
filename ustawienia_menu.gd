@@ -13,10 +13,16 @@ const TEKST_DRUGORZEDNY = Color("#91a5b8")
 @onready var pelny_ekran: CheckButton = $Zakladki/Ekran/Margines/Zawartosc/BlokEkranu/Uklad/PelnyEkran
 @onready var kursor_neonowy: CheckButton = $Zakladki/Inne/Margines/Zawartosc/BlokKursora/Uklad/KursorNeonowy
 var animacja_zakladki: Tween
+var intensywnosc_efektow: HSlider
+var etykieta_efektow: Label
+var wybor_tla: OptionButton
+var jakosc_tla: OptionButton
 
 
 func _ready() -> void:
 	$WrocUstawienia.pressed.connect(_zglos_powrot)
+	_dodaj_regulacje_efektow()
+	_dodaj_ustawienia_tla()
 	for suwak: HSlider in [glosnosc_ogolna, glosnosc_muzyki, glosnosc_dzwiekow]:
 		suwak.min_value = 0
 		suwak.max_value = 100
@@ -35,9 +41,97 @@ func _ready() -> void:
 	_ustaw_glosnosc("Muzyka", glosnosc_muzyki.value)
 	_ustaw_glosnosc("Efekty", glosnosc_dzwiekow.value)
 	_styluj()
+	var autorzy := Label.new()
+	autorzy.text = "VFX 2D Free - heyheythere | CC BY 4.0"
+	autorzy.tooltip_text = "https://heyheythere.itch.io/vfx-2d-free\nhttps://creativecommons.org/licenses/by/4.0/"
+	autorzy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	autorzy.add_theme_font_size_override("font_size", 12)
+	autorzy.add_theme_color_override("font_color", TEKST_DRUGORZEDNY)
+	$Zakladki/Inne/Margines/Zawartosc.add_child(autorzy)
 	zakladki.tab_changed.connect(_zmien_zakladke)
 	get_viewport().size_changed.connect(_dopasuj_wysokosc)
 	_dopasuj_wysokosc()
+
+
+func _dodaj_regulacje_efektow() -> void:
+	var blok := PanelContainer.new()
+	blok.name = "BlokEfektowWizualnych"
+	blok.add_theme_stylebox_override("panel", StylMenu.styl_bloku())
+	$Zakladki/Ekran/Margines/Zawartosc.add_child(blok)
+	var uklad := VBoxContainer.new()
+	uklad.add_theme_constant_override("separation", 16)
+	blok.add_child(uklad)
+	etykieta_efektow = Label.new()
+	etykieta_efektow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	etykieta_efektow.add_theme_color_override("font_color", TEKST)
+	uklad.add_child(etykieta_efektow)
+	intensywnosc_efektow = HSlider.new()
+	intensywnosc_efektow.name = "IntensywnoscEfektow"
+	intensywnosc_efektow.custom_minimum_size.y = 32.0
+	intensywnosc_efektow.min_value = 0.0
+	intensywnosc_efektow.max_value = 100.0
+	intensywnosc_efektow.step = 1.0
+	intensywnosc_efektow.accessibility_name = "Intensywność efektów"
+	uklad.add_child(intensywnosc_efektow)
+	_odswiez_intensywnosc_efektow()
+	intensywnosc_efektow.value_changed.connect(_zmien_intensywnosc_efektow)
+	visibility_changed.connect(_odswiez_intensywnosc_efektow)
+
+
+func _odswiez_intensywnosc_efektow() -> void:
+	intensywnosc_efektow.set_value_no_signal(Ustawienia.intensywnosc_efektow)
+	etykieta_efektow.text = "Intensywność efektów - %d%%" % roundi(Ustawienia.intensywnosc_efektow)
+
+
+func _zmien_intensywnosc_efektow(wartosc: float) -> void:
+	Ustawienia.ustaw_intensywnosc_efektow(wartosc)
+	etykieta_efektow.text = "Intensywność efektów - %d%%" % roundi(wartosc)
+
+
+func _dodaj_ustawienia_tla() -> void:
+	var blok := PanelContainer.new()
+	blok.name = "BlokTla"
+	blok.add_theme_stylebox_override("panel", StylMenu.styl_bloku())
+	$Zakladki/Ekran/Margines/Zawartosc.add_child(blok)
+	var uklad := VBoxContainer.new()
+	uklad.add_theme_constant_override("separation", 12)
+	blok.add_child(uklad)
+	_dodaj_opis_tla(uklad, "Tło meczu")
+	wybor_tla = OptionButton.new()
+	wybor_tla.name = "MotywTla"
+	wybor_tla.allow_reselect = true
+	wybor_tla.accessibility_name = "Motyw tła meczu"
+	for nazwa: String in Ustawienia.MOTYWY_TLA:
+		wybor_tla.add_item(nazwa)
+	uklad.add_child(wybor_tla)
+	_dodaj_opis_tla(uklad, "Efekty tła")
+	jakosc_tla = OptionButton.new()
+	jakosc_tla.name = "JakoscTla"
+	jakosc_tla.accessibility_name = "Jakość tła meczu"
+	for nazwa: String in Ustawienia.JAKOSCI_TLA:
+		jakosc_tla.add_item(nazwa)
+	uklad.add_child(jakosc_tla)
+	for pole: Control in [wybor_tla, jakosc_tla]:
+		pole.custom_minimum_size.y = 42
+		pole.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_odswiez_tlo()
+	wybor_tla.item_selected.connect(Ustawienia.ustaw_motyw_tla)
+	jakosc_tla.item_selected.connect(Ustawienia.ustaw_jakosc_tla)
+	visibility_changed.connect(_odswiez_tlo)
+
+
+func _dodaj_opis_tla(rodzic: Control, tekst: String) -> void:
+	var opis := Label.new()
+	opis.text = tekst
+	opis.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opis.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	opis.add_theme_color_override("font_color", TEKST_DRUGORZEDNY)
+	rodzic.add_child(opis)
+
+
+func _odswiez_tlo() -> void:
+	wybor_tla.select(Ustawienia.motyw_tla)
+	jakosc_tla.select(Ustawienia.jakosc_tla)
 
 
 func _zglos_powrot() -> void:
@@ -78,34 +172,9 @@ func _styluj() -> void:
 		zakladki.add_theme_stylebox_override(nazwa, styl)
 	for strona: ScrollContainer in zakladki.get_children():
 		strona.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-		var przewijanie := strona.get_v_scroll_bar()
-		przewijanie.custom_minimum_size.x = 8.0
-		przewijanie.add_theme_stylebox_override("scroll", _plaski_styl(Color("#101b29")))
-		przewijanie.add_theme_stylebox_override("grabber", _plaski_styl(Color("#344b5e")))
-		przewijanie.add_theme_stylebox_override("grabber_highlight", _plaski_styl(AKCENT))
-		przewijanie.add_theme_stylebox_override("grabber_pressed", _plaski_styl(AKCENT))
-		strona.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		przewijanie.add_theme_stylebox_override("scroll_focus", StyleBoxEmpty.new())
+		strona.get_v_scroll_bar().custom_minimum_size.x = 10.0
 	for blok: PanelContainer in [$Zakladki/Ekran/Margines/Zawartosc/BlokEkranu, $Zakladki/Dzwiek/Margines/Zawartosc/BlokOgolny, $Zakladki/Dzwiek/Margines/Zawartosc/BlokMuzyki, $Zakladki/Dzwiek/Margines/Zawartosc/BlokEfektow, $Zakladki/Inne/Margines/Zawartosc/BlokKursora]:
 		blok.add_theme_stylebox_override("panel", StylMenu.styl_bloku())
-	for suwak: HSlider in [glosnosc_ogolna, glosnosc_muzyki, glosnosc_dzwiekow]:
-		var tor := _plaski_styl(Color("#27394a"))
-		tor.content_margin_top = 2.0
-		tor.content_margin_bottom = 2.0
-		var wypelnienie := tor.duplicate() as StyleBoxFlat
-		wypelnienie.bg_color = AKCENT
-		suwak.add_theme_stylebox_override("slider", tor)
-		suwak.add_theme_stylebox_override("grabber_area", wypelnienie)
-		suwak.add_theme_stylebox_override("grabber_area_highlight", wypelnienie)
-		var uchwyt := _tekstura_uchwytu()
-		for nazwa: String in ["grabber", "grabber_highlight", "grabber_disabled"]:
-			suwak.add_theme_icon_override(nazwa, uchwyt)
-	for przelacznik: CheckButton in [pelny_ekran, kursor_neonowy]:
-		przelacznik.add_theme_color_override("font_color", TEKST)
-		przelacznik.add_theme_color_override("font_hover_color", AKCENT)
-		przelacznik.add_theme_color_override("font_pressed_color", AKCENT)
-		przelacznik.add_theme_icon_override("checked", _tekstura_przelacznika(true))
-		przelacznik.add_theme_icon_override("unchecked", _tekstura_przelacznika(false))
 	$Zakladki/Inne/Margines/Zawartosc/BlokKursora/Uklad/Opis.add_theme_color_override("font_color", TEKST_DRUGORZEDNY)
 	StylMenu.styluj_przycisk($WrocUstawienia, Vector2(0, 48), AKCENT, Color("#142432"), Color("#304656"), Color("#1b3443"), Color("#10202e"), AKCENT, 18)
 
@@ -132,30 +201,6 @@ func _zmien_zakladke(_indeks: int) -> void:
 	aktywna_strona.modulate.a = 0.0
 	animacja_zakladki = create_tween()
 	animacja_zakladki.tween_property(aktywna_strona, "modulate:a", 1.0, 0.16)
-
-
-func _tekstura_uchwytu() -> ImageTexture:
-	var obraz := Image.create(16, 16, false, Image.FORMAT_RGBA8)
-	obraz.fill(Color.TRANSPARENT)
-	for y in range(16):
-		for x in range(16):
-			if Vector2(x - 7.5, y - 7.5).length() <= 6.0:
-				obraz.set_pixel(x, y, AKCENT)
-	return ImageTexture.create_from_image(obraz)
-
-
-func _tekstura_przelacznika(wlaczony: bool) -> ImageTexture:
-	var obraz := Image.create(40, 22, false, Image.FORMAT_RGBA8)
-	obraz.fill(Color.TRANSPARENT)
-	var tlo := AKCENT if wlaczony else Color("#344b5e")
-	for y in range(22):
-		for x in range(40):
-			var srodek_x := clampf(float(x), 11.0, 29.0)
-			if Vector2(float(x) - srodek_x, float(y) - 10.5).length() <= 10.0:
-				obraz.set_pixel(x, y, tlo)
-			if Vector2(float(x) - (29.0 if wlaczony else 11.0), float(y) - 10.5).length() <= 7.0:
-				obraz.set_pixel(x, y, Color("#edfaff"))
-	return ImageTexture.create_from_image(obraz)
 
 
 func _zmien_glosnosc_ogolna(wartosc: float) -> void:
