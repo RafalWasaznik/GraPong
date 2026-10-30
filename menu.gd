@@ -82,9 +82,9 @@ func _ready():
 	ekran_ustawien.back_requested.connect(_pokaz_ekran_glowny)
 
 	trudnosc.add_item("Bot Jawor (Łatwy)", 0)
-	trudnosc.add_item("Bot Rafał (Średni)", 1)
-	trudnosc.add_item("Bot Jakub (Trudny)", 2)
-	trudnosc.add_item("Bot Damian (Niemożliwy)", 3)
+	trudnosc.add_item("Bot Jakub (Średni)", 1)
+	trudnosc.add_item("Bot Rafał (Trudny)", 2)
+	trudnosc.add_item("Bot Dosia (Niemożliwy)", 3)
 
 	_ustaw_wybor_trudnosci(Ustawienia.trudnosc_klasyczna)
 
@@ -402,7 +402,7 @@ func _ustaw_wybor_trudnosci(wartosc: String) -> void:
 		"niemozliwy":
 			trudnosc.select(3)
 		_:
-			trudnosc.select(1)
+			trudnosc.select(2)
 
 
 func _trudnosc_z_wyboru() -> String:
@@ -415,7 +415,7 @@ func _trudnosc_z_wyboru() -> String:
 			return "trudny"
 		3:
 			return "niemozliwy"
-	return "sredni"
+	return "trudny"
 
 
 func _pokaz_opcje_dwoch_graczy():

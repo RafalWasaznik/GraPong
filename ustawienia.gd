@@ -12,12 +12,12 @@ const PLIK_USTAWIEN = "user://ustawienia.cfg"
 var tryb = "bot"
 var arena_dwoch_graczy = false
 var online_arena = false
-var trudnosc = "sredni"
+var trudnosc = "trudny"
 var charakter_bota = "defensywny"
 var limit_punktow = 5
-var trudnosc_klasyczna = "sredni"
+var trudnosc_klasyczna = "trudny"
 var limit_punktow_klasyczny = 5
-var trudnosc_areny = "sredni"
+var trudnosc_areny = "trudny"
 var limit_punktow_areny = 5
 var rozmiar_planszy = "standardowa"
 var rekord_endless = 0
@@ -144,6 +144,9 @@ func ustaw_geometrie_planszy():
 
 
 func wczytaj():
+	trudnosc = "trudny"
+	trudnosc_klasyczna = "trudny"
+	trudnosc_areny = "trudny"
 	var plik = ConfigFile.new()
 	var blad = plik.load(PLIK_USTAWIEN)
 
@@ -158,11 +161,8 @@ func wczytaj():
 		klawisze[akcja] = int(plik.get_value("sterowanie", akcja, KLAWISZE_DOMYSLNE[akcja]))
 	_zastosuj_klawisze()
 
-	trudnosc = plik.get_value("gra", "trudnosc", trudnosc)
 	limit_punktow = plik.get_value("gra", "limit_punktow", limit_punktow)
-	trudnosc_klasyczna = plik.get_value("gra", "trudnosc_klasyczna", trudnosc)
 	limit_punktow_klasyczny = plik.get_value("gra", "limit_punktow_klasyczny", limit_punktow)
-	trudnosc_areny = plik.get_value("gra", "trudnosc_areny", trudnosc)
 	limit_punktow_areny = plik.get_value("gra", "limit_punktow_areny", limit_punktow)
 	rozmiar_planszy = plik.get_value("gra", "rozmiar_planszy", rozmiar_planszy)
 	rekord_endless = plik.get_value("endless", "rekord", rekord_endless)
